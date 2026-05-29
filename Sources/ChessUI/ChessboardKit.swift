@@ -43,7 +43,12 @@ public struct BoardSquare: Identifiable, Hashable {
 public class ChessboardModel {
     public var fen: String {
         get { FenSerialization().serialize(position: game.position) }
-        set { game = Game(position: FenSerialization().deserialize(fen: newValue)) }
+        set {
+            game = Game(position: FenSerialization().deserialize(fen: newValue))
+            currentMove = nil
+            movingPiece = nil
+            lastMoveSquares = nil
+        }
     }
     
     public var size: CGFloat = 0
@@ -62,6 +67,27 @@ public class ChessboardModel {
     
     public var highlightLegalMoves: Bool = true
     public var legalMoveSquares: Set<BoardSquare> = []
+
+    /// Duration, in seconds, used when ChessUI animates a piece from the
+    /// source square to the destination square after `setFen(_:lan:)`.
+    ///
+    /// Set this to `0` to make move updates effectively immediate. The default
+    /// is tuned to feel similar to common online chess boards.
+    public var moveAnimationDuration: Double = 0.45
+
+    /// Controls whether ChessUI keeps the source and destination squares of
+    /// the most recent move highlighted after `setFen(_:lan:)`.
+    public var showLastMoveHighlight: Bool = true
+
+    /// Color used to highlight the source and destination squares of the most
+    /// recent move. The default is a translucent gold similar to common online
+    /// chess boards.
+    public var lastMoveHighlight: Color = Color(red: 1.0, green: 0.82, blue: 0.20, opacity: 0.55)
+
+    /// Source and destination squares for the most recent move passed through
+    /// `setFen(_:lan:)`. Direct `fen` assignment clears this value because a raw
+    /// FEN string does not reliably identify the move that produced it.
+    public private(set) var lastMoveSquares: (from: BoardSquare, to: BoardSquare)?
     
     public var showPromotionPicker = false
     
@@ -79,42 +105,81 @@ public class ChessboardModel {
     
     public var movingPiece: (piece: Piece, from: BoardSquare, to: BoardSquare)?
     
+    /// Creates a chessboard model.
+    ///
+    /// - Parameters:
+    ///   - fen: Initial board position.
+    ///   - perspective: Side displayed at the bottom of the board.
+    ///   - colorScheme: Board and marker colors.
+    ///   - allowOpponentMove: Allows dragging pieces that do not belong to the
+    ///     side to move.
+    ///   - highlightLegalMoves: Shows legal destination markers while a piece
+    ///     is selected or dragged.
+    ///   - moveAnimationDuration: Duration, in seconds, for move animations
+    ///     triggered by `setFen(_:lan:)`.
+    ///   - showLastMoveHighlight: Keeps the source and destination squares of
+    ///     the last move highlighted after `setFen(_:lan:)`.
+    ///   - lastMoveHighlight: Overlay color used for the last-move source and
+    ///     destination squares.
     public init(fen: String = EMPTY_FEN,
                 perspective: PieceColor = .white,
                 colorScheme: ChessboardColorScheme = .light,
                 allowOpponentMove: Bool = false,
-                highlightLegalMoves: Bool = true)
+                highlightLegalMoves: Bool = true,
+                moveAnimationDuration: Double = 0.45,
+                showLastMoveHighlight: Bool = true,
+                lastMoveHighlight: Color = Color(red: 1.0, green: 0.82, blue: 0.20, opacity: 0.55))
     {
         self.game = Game(position: FenSerialization().deserialize(fen: fen))
         self.perspective = perspective
         self.colorScheme = colorScheme
         self.allowOpponentMove = allowOpponentMove
         self.highlightLegalMoves = highlightLegalMoves
+        self.moveAnimationDuration = max(0, moveAnimationDuration)
+        self.showLastMoveHighlight = showLastMoveHighlight
+        self.lastMoveHighlight = lastMoveHighlight
     }
     
     public var onMove: (Move, Bool, String, String, String, PieceKind? ) -> Void = { _, _, _, _, _, _ in }
     
     public var dropTarget: (row: Int, column: Int)?
     
+    /// Replaces the current board position and, when `lan` is supplied,
+    /// animates the moved piece from source to destination and highlights both
+    /// squares.
+    ///
+    /// Use this method for interactive play and engine replies. Directly
+    /// assigning `fen` is still supported for arbitrary position loading, but
+    /// direct assignment clears move-specific animation and highlight state
+    /// because a FEN string alone does not identify the source square.
     public func setFen(_ fen: String, lan: String? = nil) {
         prevMove = currentMove
         currentMove = lan == nil ? nil : Move(string: lan!)
+        movingPiece = nil
+        lastMoveSquares = nil
         
-        if currentMove != nil {
+        let newGame = Game(position: FenSerialization().deserialize(fen: fen))
+
+        if let currentMove {
             let pieces = game.position.board.enumeratedPieces()
-            let squareAndPiece = pieces.first { $0.0 == currentMove?.from }
+            let squareAndPiece = pieces.first { $0.0 == currentMove.from }
             
-            if let square = squareAndPiece?.0,
-               let piece = squareAndPiece?.1
-            {
-                let from = BoardSquare(row: square.rank, column: square.file)
-                let to = BoardSquare(row: currentMove!.to.rank, column: currentMove!.to.file)
-                
+            let from = BoardSquare(row: currentMove.from.rank, column: currentMove.from.file)
+            let to = BoardSquare(row: currentMove.to.rank, column: currentMove.to.file)
+
+            lastMoveSquares = (from: from, to: to)
+
+            if let piece = squareAndPiece?.1 ?? newGame.position.board[currentMove.to] {
                 movingPiece = (piece: piece, from: from, to: to)
             }
         }
         
-        self.fen = fen
+        game = newGame
+    }
+
+    /// Clears the persisted last-move source and destination square highlight.
+    public func clearLastMoveHighlight() {
+        lastMoveSquares = nil
     }
     
     public func deselect() {
@@ -308,7 +373,7 @@ private struct MovingPieceView: View {
     
     @Environment(ChessboardModel.self) var chessboardModel
     
-    @State var position: CGPoint = .zero
+    @State private var position: CGPoint?
     
     var body: some View {
         Group {
@@ -317,20 +382,67 @@ private struct MovingPieceView: View {
                                piece: movingPiece.piece,
                                square: BoardSquare(row: movingPiece.from.row, column: movingPiece.from.column),
                                isMovingPiece: true)
-                .position(position)
-                .onAppear {
-                    position = CGPoint(x: chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? 7 - movingPiece.from.column : movingPiece.from.column),
-                                       y: chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? movingPiece.from.row : 7 - movingPiece.from.row))
-                    
-                    withAnimation(.easeInOut(duration: 0.5)) {
-                        position = CGPoint(x: chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? 7 - movingPiece.to.column : movingPiece.to.column),
-                                           y: chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? movingPiece.to.row : 7 - movingPiece.to.row))
-                    } completion: {
-                        chessboardModel.movingPiece = nil
-                    }
+                .allowsHitTesting(false)
+                .position(position ?? squareCenter(for: movingPiece.from))
+                .task(id: movingPieceIdentity(movingPiece)) {
+                    await animate(movingPiece)
                 }
             }
         }
+    }
+
+    private func movingPieceIdentity(_ movingPiece: (piece: Piece, from: BoardSquare, to: BoardSquare)) -> String {
+        "\(movingPiece.piece.color)-\(movingPiece.piece.kind)-\(movingPiece.from.id)-\(movingPiece.to.id)"
+    }
+
+    private func squareCenter(for square: BoardSquare) -> CGPoint {
+        CGPoint(
+            x: chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? 7 - square.column : square.column),
+            y: chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? square.row : 7 - square.row)
+        )
+    }
+
+    @MainActor
+    private func animate(_ movingPiece: (piece: Piece, from: BoardSquare, to: BoardSquare)) async {
+        let source = squareCenter(for: movingPiece.from)
+        let destination = squareCenter(for: movingPiece.to)
+        let duration = max(0, chessboardModel.moveAnimationDuration)
+
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            position = source
+        }
+
+        guard duration > 0 else {
+            position = destination
+            clearMovingPieceIfCurrent(movingPiece)
+            return
+        }
+
+        // Give SwiftUI one display pass at the source square before starting
+        // the animated travel. Without this, source and destination updates can
+        // be coalesced into a single snap on fast board updates.
+        try? await Task.sleep(for: .milliseconds(20))
+        guard isCurrent(movingPiece) else { return }
+
+        withAnimation(.easeInOut(duration: duration)) {
+            position = destination
+        } completion: {
+            clearMovingPieceIfCurrent(movingPiece)
+        }
+    }
+
+    private func isCurrent(_ movingPiece: (piece: Piece, from: BoardSquare, to: BoardSquare)) -> Bool {
+        chessboardModel.movingPiece?.piece == movingPiece.piece &&
+        chessboardModel.movingPiece?.from == movingPiece.from &&
+        chessboardModel.movingPiece?.to == movingPiece.to
+    }
+
+    private func clearMovingPieceIfCurrent(_ movingPiece: (piece: Piece, from: BoardSquare, to: BoardSquare)) {
+        guard isCurrent(movingPiece) else { return }
+        chessboardModel.movingPiece = nil
+        position = nil
     }
 }
 
@@ -347,6 +459,7 @@ public struct Chessboard: View {
         GeometryReader { geometry in
             ZStack {
                 backgroundView
+                lastMoveHighlightsView
                 labelsView
                 squaresView
                 piecesView
@@ -423,24 +536,11 @@ public struct Chessboard: View {
                             let imageName = "\(chessboardModel.perspective == PieceColor.white ? "w" : "b")\(String(describing: piece).uppercased())"
                             
                             ZStack {
-                                AsyncImage(url: Bundle.module.url(forResource: imageName, withExtension: "png")) { phase in
-                                    if let image = phase.image {
-                                        image
-                                            .resizable()
-                                            .frame(width: chessboardModel.size / 8,
-                                                    height: chessboardModel.size / 8)
-                                            .contentShape(Rectangle())
-                                    } else if phase.error != nil {
-                                        Text("\(piece)")
-                                            .foregroundStyle(piece == "w" ? Color.white : Color.black)
-                                            .font(.system(size: 18))
-                                            .scaledToFit()
-                                            .contentShape(Rectangle())
-                                    } else {
-                                        ProgressView()
-                                            .scaleEffect(0.85)
-                                    }
-                                }
+                                PieceImageView(imageName: imageName,
+                                               fallback: piece.uppercased(),
+                                               fallbackColor: Color.black)
+                                    .frame(width: chessboardModel.size / 8,
+                                           height: chessboardModel.size / 8)
                             }
                             .padding(5)
                         }
@@ -468,6 +568,21 @@ public struct Chessboard: View {
                 Rectangle()
                     .fill(isLightSquare ? chessboardModel.colorScheme.light : chessboardModel.colorScheme.dark)
                     .frame(width: chessboardModel.size / 8, height: chessboardModel.size / 8)
+            }
+        }
+    }
+
+    var lastMoveHighlightsView: some View {
+        ZStack {
+            if chessboardModel.showLastMoveHighlight,
+               let lastMoveSquares = chessboardModel.lastMoveSquares
+            {
+                ForEach([lastMoveSquares.from, lastMoveSquares.to], id: \.id) { square in
+                    Rectangle()
+                        .fill(chessboardModel.lastMoveHighlight)
+                        .frame(width: chessboardModel.size / 8, height: chessboardModel.size / 8)
+                        .position(position(for: square))
+                }
             }
         }
     }
@@ -557,10 +672,16 @@ public struct Chessboard: View {
                 Circle()
                     .fill(chessboardModel.colorScheme.legalMove)
                     .frame(width: chessboardModel.size / 24, height: chessboardModel.size / 24)
-                    .position(x: chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? 7 - square.column : square.column),
-                              y: chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? square.row : 7 - square.row))
+                    .position(position(for: square))
             }
         }
+    }
+
+    private func position(for square: BoardSquare) -> CGPoint {
+        CGPoint(
+            x: chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? 7 - square.column : square.column),
+            y: chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? square.row : 7 - square.row)
+        )
     }
     
     public func onMove(_ callback: @escaping (Move, Bool, String, String, String, PieceKind?) -> Void) -> Chessboard {
@@ -672,25 +793,9 @@ private struct ChessPieceView: View {
             if let piece {
                 let imageName = "\(piece.color == PieceColor.white ? "w" : "b")\(String(describing: piece).uppercased())"
                 
-                AsyncImage(url: Bundle.module.url(forResource: imageName, withExtension: "png")) { phase in
-                    if let image = phase.image {
-                        image
-                            .resizable()
-                            .scaledToFit()
-                            .scaleEffect(0.85)
-                            .contentShape(Rectangle())
-                    } else if phase.error != nil {
-                        Text("\(piece)")
-                            .foregroundStyle(piece.color == PieceColor.white ? Color.white : Color.black)
-                            .font(.system(size: 18))
-                            .scaledToFit()
-                            .scaleEffect(0.85)
-                            .contentShape(Rectangle())
-                    } else {
-                        ProgressView()
-                            .scaleEffect(0.85)
-                    }
-                }
+                PieceImageView(imageName: imageName,
+                               fallback: "\(piece)",
+                               fallbackColor: piece.color == PieceColor.white ? Color.white : Color.black)
             } else {
                 Color.clear.contentShape(Rectangle())
             }
@@ -847,6 +952,34 @@ private struct ChessPieceView: View {
                 }
             }
     }
+}
+
+private struct PieceImageView: View {
+    var imageName: String
+    var fallback: String
+    var fallbackColor: Color
+
+    var body: some View {
+        if Self.bundledPieceImageNames.contains(imageName) {
+            Image(imageName, bundle: .module)
+                .resizable()
+                .scaledToFit()
+                .scaleEffect(0.85)
+                .contentShape(Rectangle())
+        } else {
+            Text(fallback)
+                .foregroundStyle(fallbackColor)
+                .font(.system(size: 18))
+                .scaledToFit()
+                .scaleEffect(0.85)
+                .contentShape(Rectangle())
+        }
+    }
+
+    private static let bundledPieceImageNames: Set<String> = [
+        "wK", "wQ", "wR", "wB", "wN", "wP",
+        "bK", "bQ", "bR", "bB", "bN", "bP",
+    ]
 }
 
 public extension View {

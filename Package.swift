@@ -26,7 +26,7 @@ let package = Package(
             name: "ChessUI",
             dependencies: ["ChessCore"],
             resources: [
-                .process("Assets/Pieces/uscf"),
+                .process("Assets/Pieces.xcassets"),
             ]
         ),
         .testTarget(
