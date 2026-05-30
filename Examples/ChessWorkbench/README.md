@@ -1,12 +1,13 @@
-# ChessTest
+# ChessWorkbench
 
-ChessTest is a small macOS SwiftUI test driver for the reusable chess UI and
+ChessWorkbench is a small macOS SwiftUI workbench for the reusable chess UI and
 rules code in `SwiftChessTools`.
 
-It is not intended to be a product app. Keep it around as a quick place to
-exercise `ChessCore` and `ChessUI` behavior without opening the larger demo app.
+It is not an automated test suite or a product app. Keep it around as a quick
+place to exercise `ChessCore` and `ChessUI` behavior without opening the larger
+demo app.
 
-## What It Tests
+## What It Exercises
 
 - Rendering a `ChessUI.ChessBoardView` on macOS.
 - Loading and editing a FEN position.
@@ -32,19 +33,19 @@ That package supplies:
 From the `SwiftChessTools` repository root, open the project in Xcode:
 
 ```sh
-open Examples/ChessTest/ChessTest.xcodeproj
+open Examples/ChessWorkbench/ChessWorkbench.xcodeproj
 ```
 
-Select the `ChessTest` scheme and run it on My Mac.
+Select the `ChessWorkbench` scheme and run it on My Mac.
 
 Command-line build:
 
 ```sh
-xcodebuild -project Examples/ChessTest/ChessTest.xcodeproj \
-  -scheme ChessTest \
+xcodebuild -project Examples/ChessWorkbench/ChessWorkbench.xcodeproj \
+  -scheme ChessWorkbench \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath .build/xcode-chess-test \
+  -derivedDataPath .build/xcode-chess-workbench \
   build
 ```
 
@@ -56,5 +57,5 @@ xcodebuild -project Examples/ChessTest/ChessTest.xcodeproj \
 4. Confirm the FEN field updates.
 5. Try `Reset`, `Hint`, and `Show Promotion Picker`.
 
-Use this example app when you need a small, disposable driver for future
+Use this example app when you need a small, disposable workbench for future
 `SwiftChessTools` UI or rules changes.

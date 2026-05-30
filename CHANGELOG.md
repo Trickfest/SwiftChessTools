@@ -28,8 +28,9 @@ for a release.
 - Added a simulator-backed ChessUI XCUITest harness that drives the real board
   through tap moves, drag moves, invalid moves, promotion, black perspective,
   legal-move indicators, and last-move highlights.
-- Added the macOS `ChessTest` manual driver under `Examples/ChessTest` so
-  package-level UI and rules checks live with `SwiftChessTools`.
+- Added the macOS `ChessWorkbench` manual workbench under
+  `Examples/ChessWorkbench` so package-level UI and rules checks live with
+  `SwiftChessTools`.
 
 ### Changed
 

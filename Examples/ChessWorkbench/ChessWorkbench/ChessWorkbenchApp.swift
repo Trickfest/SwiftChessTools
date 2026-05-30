@@ -1,6 +1,6 @@
 //
-//  ChessTestApp.swift
-//  ChessTest
+//  ChessWorkbenchApp.swift
+//  ChessWorkbench
 //
 //  Created by Mark Harris on 11/19/25.
 //
@@ -8,7 +8,7 @@
 import SwiftUI
 
 @main
-struct ChessTestApp: App {
+struct ChessWorkbenchApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()

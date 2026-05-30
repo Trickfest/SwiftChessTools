@@ -18,9 +18,9 @@ does not provide old-package compatibility shims.
 .product(name: "ChessUI", package: "SwiftChessTools")
 ```
 
-## Manual Test Driver
+## Manual Workbench
 
-`Examples/ChessTest` is a small macOS SwiftUI app for manually exercising
+`Examples/ChessWorkbench` is a small macOS SwiftUI app for manually exercising
 `ChessCore` and `ChessUI` without opening the larger iOS demo. It renders a
 real `ChessBoardView`, lets you edit the current FEN, applies legal board
 moves, and exposes quick controls for reset, hints, board sizing, and promotion
@@ -29,19 +29,19 @@ UI.
 Open the app in Xcode:
 
 ```sh
-open Examples/ChessTest/ChessTest.xcodeproj
+open Examples/ChessWorkbench/ChessWorkbench.xcodeproj
 ```
 
-Select the `ChessTest` scheme and run it on My Mac.
+Select the `ChessWorkbench` scheme and run it on My Mac.
 
 Command-line build:
 
 ```sh
-xcodebuild -project Examples/ChessTest/ChessTest.xcodeproj \
-  -scheme ChessTest \
+xcodebuild -project Examples/ChessWorkbench/ChessWorkbench.xcodeproj \
+  -scheme ChessWorkbench \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath .build/xcode-chess-test \
+  -derivedDataPath .build/xcode-chess-workbench \
   build
 ```
 

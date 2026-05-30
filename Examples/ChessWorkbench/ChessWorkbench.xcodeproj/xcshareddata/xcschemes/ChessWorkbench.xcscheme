@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "BB34104D2ECE7C6800B0622C"
-               BuildableName = "ChessTest.app"
-               BlueprintName = "ChessTest"
-               ReferencedContainer = "container:ChessTest.xcodeproj">
+               BuildableName = "ChessWorkbench.app"
+               BlueprintName = "ChessWorkbench"
+               ReferencedContainer = "container:ChessWorkbench.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -29,8 +29,6 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES"
       shouldAutocreateTestPlan = "YES">
-      <Testables>
-      </Testables>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
@@ -47,9 +45,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "BB34104D2ECE7C6800B0622C"
-            BuildableName = "ChessTest.app"
-            BlueprintName = "ChessTest"
-            ReferencedContainer = "container:ChessTest.xcodeproj">
+            BuildableName = "ChessWorkbench.app"
+            BlueprintName = "ChessWorkbench"
+            ReferencedContainer = "container:ChessWorkbench.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -64,9 +62,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "BB34104D2ECE7C6800B0622C"
-            BuildableName = "ChessTest.app"
-            BlueprintName = "ChessTest"
-            ReferencedContainer = "container:ChessTest.xcodeproj">
+            BuildableName = "ChessWorkbench.app"
+            BlueprintName = "ChessWorkbench"
+            ReferencedContainer = "container:ChessWorkbench.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
