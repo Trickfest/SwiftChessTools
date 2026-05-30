@@ -18,6 +18,41 @@ does not provide old-package compatibility shims.
 .product(name: "ChessUI", package: "SwiftChessTools")
 ```
 
+## Manual Test Driver
+
+`Examples/ChessTest` is a small macOS SwiftUI app for manually exercising
+`ChessCore` and `ChessUI` without opening the larger iOS demo. It renders a
+real `ChessBoardView`, lets you edit the current FEN, applies legal board
+moves, and exposes quick controls for reset, hints, board sizing, and promotion
+UI.
+
+Open the app in Xcode:
+
+```sh
+open Examples/ChessTest/ChessTest.xcodeproj
+```
+
+Select the `ChessTest` scheme and run it on My Mac.
+
+Command-line build:
+
+```sh
+xcodebuild -project Examples/ChessTest/ChessTest.xcodeproj \
+  -scheme ChessTest \
+  -configuration Debug \
+  -destination 'platform=macOS,arch=arm64' \
+  -derivedDataPath .build/xcode-chess-test \
+  build
+```
+
+Manual smoke test:
+
+1. Launch the app.
+2. Confirm the board renders from the starting FEN.
+3. Drag a legal move on the board.
+4. Confirm the FEN field updates.
+5. Try `Reset`, `Hint`, and `Show Promotion Picker`.
+
 ## Testing
 
 Run the package test suite from the repository root:
