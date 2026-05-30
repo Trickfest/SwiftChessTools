@@ -1,6 +1,6 @@
 //
 //  Rays.swift
-//  ChessKit
+//  ChessCore
 //
 //  Created by Alexander Perechnev, 2021.
 //  Modified by Alexander Perechnev, 2025.
@@ -11,13 +11,13 @@ import Foundation
 
 class Rays {
 
-    private(set) var cross = [Bitboard: Bitboard]()
+    private(set) var orthogonal = [Bitboard: Bitboard]()
 
     init() {
         for index in Bitboard.zero..<64 {
             let key: Bitboard = 0b1 << index
             let value: Bitboard = 0x0101_0101_0101_0101 << (index % 8) | 0xFF << (index / 8 * 8)
-            self.cross[key] = value
+            self.orthogonal[key] = value
         }
     }
 

@@ -1,21 +1,21 @@
 //
-//  ShortRangeMoving.swift
-//  ChessKit
+//  StepMoveGenerator.swift
+//  ChessCore
 //
 //  Created by Alexander Perechnev, 2020.
 //  Copyright © 2020 Päike Mikrosüsteemid OÜ. All rights reserved.
 //
 
-class ShortRangeMoving: RangeMoving {
+class StepMoveGenerator: RangeMoveGenerator {
 
-    private let translations: [(Int, Int)]
+    private let offsets: [(Int, Int)]
 
-    init(translations: [(Int, Int)]) {
-        self.translations = translations
+    init(offsets: [(Int, Int)]) {
+        self.offsets = offsets
     }
 
-    func coveredSquares(from square: Square, in position: Position) -> [Square] {
-        return self.translations
+    func reachableSquares(from square: Square, in position: Position) -> [Square] {
+        return self.offsets
             .map { square.translate(file: $0.0, rank: $0.1) }
             .filter {
                 $0.isValid

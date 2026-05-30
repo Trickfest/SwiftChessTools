@@ -1,22 +1,22 @@
 //
 //  PieceColor.swift
-//  ChessKit
+//  ChessCore
 //
 //  Created by Alexander Perechnev, 2020.
 //  Copyright © 2020 Päike Mikrosüsteemid OÜ. All rights reserved.
 //
 
-/// Represents piece and side color.
+/// The side a piece belongs to.
 public enum PieceColor {
 
-    /// White color.
+    /// The white side.
     case white
 
-    /// Black color.
+    /// The black side.
     case black
 
-    /// Negotiates piece color.
-    public var negotiated: PieceColor {
+    /// The other side.
+    public var opposite: PieceColor {
         return self == .white ? .black : .white
     }
 

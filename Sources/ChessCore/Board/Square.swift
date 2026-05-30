@@ -1,35 +1,35 @@
 //
 //  Square.swift
-//  ChessKit
+//  ChessCore
 //
 //  Created by Alexander Perechnev, 2020.
 //  Copyright © 2020 Päike Mikrosüsteemid OÜ. All rights reserved.
 //
 
-/// Square on `Board`.
+/// A square on the board.
 public struct Square: Hashable {
 
     private(set) var index: Int
     let bitboardMask: Bitboard
 
-    /// Index of file of the square.
+    /// Zero-based file index, where `0` is file `a`.
     public var file: Int {
         self.index / Board.rankCoordinates.count
     }
 
-    /// Index of rank of the square.
+    /// Zero-based rank index, where `0` is rank `1`.
     public var rank: Int {
         self.index % Board.fileCoordinates.count
     }
 
-    /// Human readable coorsinate on the square.
+    /// Algebraic coordinate for the square, such as `"e4"`.
     public var coordinate: String {
         let file = Board.fileCoordinates[self.file]
         let rank = Board.rankCoordinates[self.rank]
         return "\(file)\(rank)"
     }
 
-    /// Indicates whether if square is valid.
+    /// `true` when the square is inside the board.
     private(set) var isValid: Bool
 
     // MARK: Initializers
@@ -46,36 +46,20 @@ public struct Square: Hashable {
         }
     }
 
-    /**
-     Initializes `Square` with its index.
-    
-     - Parameters:
-     - index: Index of square in `Board.squares` array.
-     */
+    /// Creates a square from its zero-based board index.
     public init(index: Int) {
         self.index = index
         self.bitboardMask = 1 << index
         self.isValid = (Int.zero..<Board.squaresCount).contains(self.index)
     }
 
-    /**
-     Initializes `Square` with file and rank indexes.
-    
-     - Parameters:
-     - file: File index (from 0 to 7).
-     - rank: Rank index (from 0 to 7).
-     */
+    /// Creates a square from zero-based file and rank indexes.
     public init(file: Int, rank: Int) {
         self.init(index: file * Board.rankCoordinates.count + rank)
         self.isValid = (Int.zero...7).contains(file) && (Int.zero...7).contains(rank)
     }
 
-    /**
-     Initializes a square from human readable coordinate string.
-    
-     - Parameters:
-        - coordinate: Square coordinate in format like: `"e4"`, `"d5"`, etc.
-     */
+    /// Creates a square from an algebraic coordinate such as `"e4"`.
     public init(coordinate: String) {
         let fileCharacter = coordinate.first ?? "-"
         let rankCharacter = coordinate.last ?? "-"
@@ -90,15 +74,7 @@ public struct Square: Hashable {
         }
     }
 
-    /**
-     Creates new square with file and rank offsets.
-    
-     - Parameters:
-        - file: File offset.
-        - rank: Rank offset.
-    
-     - Returns: New square with necessary offset.
-     */
+    /// Returns the square reached by applying file and rank offsets.
     public func translate(file: Int, rank: Int) -> Square {
         return Square(file: self.file + file, rank: self.rank + rank)
     }

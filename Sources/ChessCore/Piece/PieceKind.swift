@@ -1,35 +1,35 @@
 //
 //  PieceKind.swift
-//  ChessKit
+//  ChessCore
 //
 //  Created by Alexander Perechnev, 2020.
 //  Copyright © 2020 Päike Mikrosüsteemid OÜ. All rights reserved.
 //
 
-/// Represents a piece kind regardless of it's color.
+/// The type of chess piece, independent of color.
 public enum PieceKind: String, CustomStringConvertible {
 
-    /// King piece.
+    /// King.
     case king = "k"
 
-    /// Queen piece.
+    /// Queen.
     case queen = "q"
 
-    /// Rook piece.
+    /// Rook.
     case rook = "r"
 
-    /// Bishop piece.
+    /// Bishop.
     case bishop = "b"
 
-    /// Knight piece.
+    /// Knight.
     case knight = "n"
 
-    /// Pawn piece.
+    /// Pawn.
     case pawn = "p"
 
     // MARK: CustomStringConvertible
 
-    /// Converts itself into human readable character.
+    /// Lowercase FEN character for this kind.
     public var description: String {
         return self.rawValue
     }

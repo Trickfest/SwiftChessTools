@@ -1,46 +1,43 @@
 //
 //  Position.swift
-//  ChessKit
+//  ChessCore
 //
 //  Created by Alexander Perechnev, 2020.
 //  Copyright © 2020 Päike Mikrosüsteemid OÜ. All rights reserved.
 //
 
-/// Game position.
+/// Complete board state for a single point in a game.
 public struct Position: Hashable {
 
-    /// Position state.
+    /// State that belongs to a position but is not stored directly on the board.
     public struct State: Hashable {
-        /// Color that holds current side that should make the next move.
+        /// Side to move.
         public var turn: PieceColor
-        /// Available castlings in position.
-        public var castlings: [Piece]
-        /// The square where pawn may be taken by en-passant move.
-        public var enPasant: Square?
+
+        /// Castling rights that are still available.
+        public var castlingRights: [Piece]
+
+        /// Target square for a legal en passant capture.
+        public var enPassant: Square?
 
     }
 
-    /// Position counter.
+    /// Move counters stored in FEN.
     public struct Counter: Hashable {
-        /**
-         This is the number of halfmoves since the last capture or pawn advance.
-        
-         This is used to determine if a draw can be claimed under the fifty-move rule.
-         */
+        /// Half-moves since the last capture or pawn advance.
         public var halfMoves: Int
-        /**
-         The number of the full move.
-        
-         It starts at 1, and is incremented after Black's move.
-         */
+
+        /// Full-move number, starting at 1 and incrementing after Black moves.
         public var fullMoves: Int
     }
 
-    /// Board with pieces that represents current position.
+    /// Pieces on the board.
     public var board: Board
-    /// Position state.
+
+    /// Side to move, castling rights, and en passant target.
     public var state: State
-    /// Position counters.
+
+    /// Half-move and full-move counters.
     public var counter: Counter
 
 }

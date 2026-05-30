@@ -1,45 +1,33 @@
 //
 //  Move.swift
-//  ChessKit
+//  ChessCore
 //
 //  Created by Alexander Perechnev, 2020.
 //  Copyright © 2020 Päike Mikrosüsteemid OÜ. All rights reserved.
 //
 
-/// Represents move on board.
+/// A move from one square to another, with an optional promotion piece.
 public struct Move: CustomStringConvertible, Hashable {
 
-    /// Square where piece goes from.
+    /// Source square.
     public let from: Square
 
-    /// Square where piece goes to.
+    /// Destination square.
     public let to: Square
 
-    /// Indicates if move promotes pawn into piece.
+    /// Piece kind used when this move promotes a pawn.
     public let promotion: PieceKind?
 
     // MARK: Initialization
 
-    /**
-     Initialize move with start and end squares.
-    
-     - Parameters:
-        - from: Square where piece goes from.
-        - to: Square where piece goes to.
-        - promotion: A piece kind which should be set instead of pawn in case of promotion.
-     */
+    /// Creates a move from source and destination squares.
     public init(from: Square, to: Square, promotion: PieceKind? = nil) {
         self.from = from
         self.to = to
         self.promotion = promotion
     }
 
-    /**
-     Initialize move with human readable string.
-    
-     - Parameters:
-        - string: Move string in human readable format (e.g., `"g1f3"`, `"e7e8Q"`).
-     */
+    /// Creates a move from coordinate notation such as `"g1f3"` or `"e7e8Q"`.
     public init(string: String) {
         let fromIndex = string.index(string.startIndex, offsetBy: 2)
         let fromString = string[..<fromIndex].description
@@ -58,7 +46,7 @@ public struct Move: CustomStringConvertible, Hashable {
 
     // MARK: CustomStringConvertible
 
-    /// Converts move into human readable string format.
+    /// Coordinate notation for this move.
     public var description: String {
         var result = "\(self.from)\(self.to)"
 

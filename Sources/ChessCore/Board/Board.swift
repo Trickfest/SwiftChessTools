@@ -1,12 +1,12 @@
 //
-//  ChessBoard.swift
-//  ChessKit
+//  Board.swift
+//  ChessCore
 //
 //  Created by Alexander Perechnev, 2020.
 //  Copyright © 2020 Päike Mikrosüsteemid OÜ. All rights reserved.
 //
 
-/// A class that represents a chess board with pieces.
+/// Stores the pieces on a chess board.
 public struct Board: Hashable {
 
     internal var bitboards: Bitboards
@@ -17,21 +17,12 @@ public struct Board: Hashable {
         self.fileCoordinates.count * self.rankCoordinates.count
     }
 
-    /**
-     Initializes board with empty squares.
-     */
+    /// Creates an empty board.
     public init() {
         self.bitboards = Bitboards()
     }
 
-    /**
-     Provides access to board squares directly by indexes.
-    
-     - Parameters:
-        - index: Index of square.
-    
-     - Returns: A `Piece` that put on specified square or `nil` if square is empty.
-     */
+    /// Reads or writes a piece by its zero-based square index.
     public subscript(index: Int) -> Piece? {
         get {
             let squareMask = Bitboard(1) << index
@@ -103,14 +94,7 @@ public struct Board: Hashable {
         }
     }
 
-    /**
-     Provides access to board squares via `Square` object.
-    
-     - Parameters:
-        - square: A `Square` on board that should be accessed.
-    
-     - Returns: A `Piece` that put on specified square or `nil` if square is empty.
-     */
+    /// Reads or writes the piece on a square.
     public subscript(square: Square) -> Piece? {
         get {
             return self[square.index]
@@ -120,14 +104,7 @@ public struct Board: Hashable {
         }
     }
 
-    /**
-     Provides access to board squares via human readable coordinate.
-    
-     - Parameters:
-        - coordinate: A square coordinate in format like `"e4"` or `"d5"`.
-    
-     - Returns: A `Piece` that put on specified square or `nil` if square is empty.
-     */
+    /// Reads or writes a piece by coordinate, such as `"e4"` or `"d5"`.
     public subscript(coordinate: String) -> Piece? {
         get {
             let square = Square(coordinate: coordinate)
@@ -139,11 +116,7 @@ public struct Board: Hashable {
         }
     }
 
-    /**
-     Provides a list of pieces presented on board.
-    
-     - Returns: Array of tupples that contain pieces and their squares.
-     */
+    /// Returns every occupied square and its piece.
     public func enumeratedPieces() -> [(Square, Piece)] {
         var pieces = [(Square, Piece)]()
 

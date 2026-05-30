@@ -1,8 +1,7 @@
 //
-// ChessboardKit is a SwiftUI library for rendering chessboards and pieces.
+// ChessUI provides reusable SwiftUI chess board views and supporting helpers.
 //
-// See the GitHub repo for documentation:
-// https://github.com/rohanrhu/ChessboardKit
+// See NOTICE.md for upstream attribution and license details.
 //
 // Copyright (C) 2025, Oğuzhan Eroğlu (https://meowingcat.io)
 // Licensed under the MIT License.
@@ -13,7 +12,7 @@
 import Foundation
 import SwiftUI
 
-public protocol ChessboardColorScheme: Sendable {
+public protocol ChessBoardColorScheme: Sendable {
     var light: Color { get }
     var dark: Color { get }
     var label: Color { get }
@@ -22,8 +21,8 @@ public protocol ChessboardColorScheme: Sendable {
     var legalMove: Color { get }
 }
 
-public struct ChessboardColorSchemes {
-    public struct Light: ChessboardColorScheme {
+public struct ChessBoardColorSchemes {
+    public struct Light: ChessBoardColorScheme {
         public var light: Color = Color(red: 0.95, green: 0.95, blue: 0.95)
         public var dark: Color = Color(red: 0.85, green: 0.85, blue: 0.85)
         
@@ -36,7 +35,7 @@ public struct ChessboardColorSchemes {
         public init() {}
     }
     
-    public struct Dark: ChessboardColorScheme {
+    public struct Dark: ChessBoardColorScheme {
         public var light: Color = Color(red: 0.20, green: 0.20, blue: 0.20)
         public var dark: Color = Color(red: 0.10, green: 0.10, blue: 0.10)
         
@@ -49,7 +48,7 @@ public struct ChessboardColorSchemes {
         public init() {}
     }
     
-    public struct Orange: ChessboardColorScheme {
+    public struct Orange: ChessBoardColorScheme {
         public var light: Color = Color(red: 1.0, green: 0.85, blue: 0.60)
         public var dark: Color = Color(red: 1.0, green: 0.65, blue: 0.25)
         public var label: Color = Color(red: 0.20, green: 0.20, blue: 0.20)
@@ -61,7 +60,7 @@ public struct ChessboardColorSchemes {
         public init() {}
     }
     
-    public struct Blue: ChessboardColorScheme {
+    public struct Blue: ChessBoardColorScheme {
         public var light: Color = Color(red: 0.85, green: 0.95, blue: 1.0)
         public var dark: Color = Color(red: 0.55, green: 0.75, blue: 1.0)
         
@@ -74,7 +73,7 @@ public struct ChessboardColorSchemes {
         public init() {}
     }
     
-    public struct Green: ChessboardColorScheme {
+    public struct Green: ChessBoardColorScheme {
         public var light: Color = Color(red: 0.85, green: 1.0, blue: 0.85)
         public var dark: Color = Color(red: 0.55, green: 1.0, blue: 0.55)
         
@@ -87,7 +86,7 @@ public struct ChessboardColorSchemes {
         public init() {}
     }
     
-    public struct Red: ChessboardColorScheme {
+    public struct Red: ChessBoardColorScheme {
         public var light: Color = Color(red: 1.0, green: 0.85, blue: 0.85)
         public var dark: Color = Color(red: 1.0, green: 0.55, blue: 0.55)
         
@@ -100,7 +99,7 @@ public struct ChessboardColorSchemes {
         public init() {}
     }
     
-    public struct Yellow: ChessboardColorScheme {
+    public struct Yellow: ChessBoardColorScheme {
         public var light: Color = Color(red: 1.0, green: 1.0, blue: 0.85)
         public var dark: Color = Color(red: 1.0, green: 1.0, blue: 0.55)
         
@@ -113,7 +112,7 @@ public struct ChessboardColorSchemes {
         public init() {}
     }
     
-    public struct Purple: ChessboardColorScheme {
+    public struct Purple: ChessBoardColorScheme {
         public var light: Color = Color(red: 0.85, green: 0.85, blue: 1.0)
         public var dark: Color = Color(red: 0.55, green: 0.55, blue: 1.0)
         
@@ -136,34 +135,34 @@ public struct ChessboardColorSchemes {
     public static let purple = Purple()
 }
 
-public extension ChessboardColorScheme where Self == ChessboardColorSchemes.Light {
-    static var light: ChessboardColorSchemes.Light { ChessboardColorSchemes.light }
+public extension ChessBoardColorScheme where Self == ChessBoardColorSchemes.Light {
+    static var light: ChessBoardColorSchemes.Light { ChessBoardColorSchemes.light }
 }
 
-public extension ChessboardColorScheme where Self == ChessboardColorSchemes.Dark {
-    static var dark: ChessboardColorSchemes.Dark { ChessboardColorSchemes.dark }
+public extension ChessBoardColorScheme where Self == ChessBoardColorSchemes.Dark {
+    static var dark: ChessBoardColorSchemes.Dark { ChessBoardColorSchemes.dark }
 }
 
-public extension ChessboardColorScheme where Self == ChessboardColorSchemes.Orange {
-    static var orange: ChessboardColorSchemes.Orange { ChessboardColorSchemes.orange }
+public extension ChessBoardColorScheme where Self == ChessBoardColorSchemes.Orange {
+    static var orange: ChessBoardColorSchemes.Orange { ChessBoardColorSchemes.orange }
 }
 
-public extension ChessboardColorScheme where Self == ChessboardColorSchemes.Blue {
-    static var blue: ChessboardColorSchemes.Blue { ChessboardColorSchemes.blue }
+public extension ChessBoardColorScheme where Self == ChessBoardColorSchemes.Blue {
+    static var blue: ChessBoardColorSchemes.Blue { ChessBoardColorSchemes.blue }
 }
 
-public extension ChessboardColorScheme where Self == ChessboardColorSchemes.Green {
-    static var green: ChessboardColorSchemes.Green { ChessboardColorSchemes.green }
+public extension ChessBoardColorScheme where Self == ChessBoardColorSchemes.Green {
+    static var green: ChessBoardColorSchemes.Green { ChessBoardColorSchemes.green }
 }
 
-public extension ChessboardColorScheme where Self == ChessboardColorSchemes.Red {
-    static var red: ChessboardColorSchemes.Red { ChessboardColorSchemes.red }
+public extension ChessBoardColorScheme where Self == ChessBoardColorSchemes.Red {
+    static var red: ChessBoardColorSchemes.Red { ChessBoardColorSchemes.red }
 }
 
-public extension ChessboardColorScheme where Self == ChessboardColorSchemes.Yellow {
-    static var yellow: ChessboardColorSchemes.Yellow { ChessboardColorSchemes.yellow }
+public extension ChessBoardColorScheme where Self == ChessBoardColorSchemes.Yellow {
+    static var yellow: ChessBoardColorSchemes.Yellow { ChessBoardColorSchemes.yellow }
 }
 
-public extension ChessboardColorScheme where Self == ChessboardColorSchemes.Purple {
-    static var purple: ChessboardColorSchemes.Purple { ChessboardColorSchemes.purple }
+public extension ChessBoardColorScheme where Self == ChessBoardColorSchemes.Purple {
+    static var purple: ChessBoardColorSchemes.Purple { ChessBoardColorSchemes.purple }
 }

@@ -1,21 +1,21 @@
 //
-//  KingMoving.swift
-//  ChessKit
+//  KingMoveGenerator.swift
+//  ChessCore
 //
 //  Created by Alexander Perechnev, 2020.
 //  Modified by Alexander Perechnev, 2025.
 //  Copyright © 2020-2025 Päike Mikrosüsteemid OÜ. All rights reserved.
 //
 
-class KingMoving: ShortRangeMoving {
+class KingMoveGenerator: StepMoveGenerator {
 
     init() {
-        super.init(translations: MovingTranslations().crossDiagonal)
+        super.init(offsets: MoveOffsets().allDirections)
     }
 
-    override func coveredSquares(from square: Square, in position: Position) -> [Square] {
+    override func reachableSquares(from square: Square, in position: Position) -> [Square] {
         let destinations =
-            super.coveredSquares(from: square, in: position) + self.castlingSquares(in: position)
+            super.reachableSquares(from: square, in: position) + self.castlingSquares(in: position)
         return self.filterOppositeKingSquares(destinations: destinations, in: position)
     }
 
@@ -23,7 +23,7 @@ class KingMoving: ShortRangeMoving {
         -> [Square]
     {
         let mask =
-            position.board.bitboards.bitboard(for: position.state.turn.negotiated)
+            position.board.bitboards.bitboard(for: position.state.turn.opposite)
             & position.board.bitboards.king
 
         guard mask != Int64.zero else {
@@ -38,7 +38,7 @@ class KingMoving: ShortRangeMoving {
     }
 
     private func castlingSquares(in position: Position) -> [Square] {
-        let castlings = position.state.castlings.filter { $0.color == position.state.turn }
+        let castlingRights = position.state.castlingRights.filter { $0.color == position.state.turn }
 
         var squares = [Square]()
 
@@ -49,7 +49,7 @@ class KingMoving: ShortRangeMoving {
             .queen: [1, 2, 3],
         ]
 
-        for castling in castlings {
+        for castling in castlingRights {
             let isEmpty = shouldBeEmpty[castling.kind]!
                 .map {
                     let square = Square(file: $0, rank: rank)

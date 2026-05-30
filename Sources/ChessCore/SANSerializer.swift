@@ -1,6 +1,6 @@
 //
-//  SanSerialization.swift
-//  ChessKit
+//  SANSerializer.swift
+//  ChessCore
 //
 //  Created by Alexander Perechnev, 2021.
 //  Modified by Alexander Perechnev, 2025.
@@ -9,40 +9,37 @@
 
 import Foundation
 
-/// SAN moves serialization and deserialization.
-public class SanSerialization {
+/// Converts moves to and from Standard Algebraic Notation.
+public class SANSerializer {
 
-    private let kCastlingKing = "O-O"
-    private let kCastlingQueen = "O-O-O"
+    private let kingSideCastleSAN = "O-O"
+    private let queenSideCastleSAN = "O-O-O"
 
-    /// Initialise a new instance.
+    /// Creates a SAN serializer.
     public init() {}
 
     // MARK: - Serialization
 
-    /**
-     Serialize move to SAN string.
-    
-     - Parameters:
-        - move: `Move` object that sould be serialized.
-        - game: A game which is about to make a given move.
-    
-     - Returns: SAN string describing given move.
-     */
+    /// Formats a legal move as SAN in the context of a game.
+    ///
+    /// - Parameters:
+    ///   - move: Move to serialize.
+    ///   - game: Game state before `move` is applied.
+    /// - Returns: SAN text describing `move`.
     public func san(for move: Move, in game: Game) -> String {
         switch game.position.board[move.from]?.kind {
         case .none:
             return ""
         case .pawn:
-            return self.processPawn(move: move, in: game)
+            return self.sanForPawnMove(move, in: game)
         case .king:
-            return self.processKing(move: move, in: game)
+            return self.sanForKingMove(move, in: game)
         default:
-            return self.processPiece(move: move, in: game)
+            return self.sanForPieceMove(move, in: game)
         }
     }
 
-    private func processPawn(move: Move, in game: Game) -> String {
+    private func sanForPawnMove(_ move: Move, in game: Game) -> String {
         let targetSquare = game.position.board[move.to]
         var san =
             targetSquare?.kind != nil
@@ -50,21 +47,21 @@ public class SanSerialization {
         if let promotion = move.promotion {
             san += "=\(promotion)".uppercased()
         }
-        return self.appendCheck(to: san, with: move, in: game)
+        return self.appendingCheckSuffix(to: san, after: move, in: game)
     }
 
-    private func processKing(move: Move, in game: Game) -> String {
+    private func sanForKingMove(_ move: Move, in game: Game) -> String {
         if move.from.file == 4 {
             if move.to.file == 6 {
-                return self.appendCheck(to: "O-O", with: move, in: game)
+                return self.appendingCheckSuffix(to: kingSideCastleSAN, after: move, in: game)
             } else if move.to.file == 2 {
-                return self.appendCheck(to: "O-O-O", with: move, in: game)
+                return self.appendingCheckSuffix(to: queenSideCastleSAN, after: move, in: game)
             }
         }
-        return self.processPiece(move: move, in: game)
+        return self.sanForPieceMove(move, in: game)
     }
 
-    private func processPiece(move: Move, in game: Game) -> String {
+    private func sanForPieceMove(_ move: Move, in game: Game) -> String {
         let sourceSquare = game.position.board[move.from]!
         let targetSquare = game.position.board[move.to]
 
@@ -88,13 +85,13 @@ public class SanSerialization {
 
         san.append(move.to.coordinate)
 
-        return self.appendCheck(to: san, with: move, in: game)
+        return self.appendingCheckSuffix(to: san, after: move, in: game)
     }
 
-    private func appendCheck(to san: String, with move: Move, in game: Game) -> String {
-        let gameCopy = game.deepCopy()
-        gameCopy.make(move: move)
-        if gameCopy.isMate {
+    private func appendingCheckSuffix(to san: String, after move: Move, in game: Game) -> String {
+        let gameCopy = game.copy()
+        gameCopy.apply(move: move)
+        if gameCopy.isCheckmate {
             return san + "#"
         } else if gameCopy.isCheck {
             return san + "+"
@@ -104,15 +101,12 @@ public class SanSerialization {
 
     // MARK: - Deserialization
 
-    /**
-     Deserialize move from given SAN string.
-    
-     - Parameters:
-        - san: String containing SAN move.
-        - game: A game which is about to make a given SAN move.
-    
-     - Returns: `Move` object initialized from given SAN string.
-     */
+    /// Parses SAN into the matching move for the current game state.
+    ///
+    /// - Parameters:
+    ///   - san: SAN text such as `"Nf3"`, `"exd5"`, or `"O-O"`.
+    ///   - game: Game state before the SAN move is applied.
+    /// - Returns: The move represented by `san`.
     public func move(for san: String, in game: Game) -> Move {
         let promotion = self.promotion(in: san)
 
@@ -122,12 +116,12 @@ public class SanSerialization {
             .replacingOccurrences(of: "#", with: "")
             .replacingOccurrences(of: "=[QRBN]", with: "", options: .regularExpression)
 
-        if [kCastlingKing, kCastlingQueen].contains(san) {
-            return self.processCastling(san: san, in: game)
+        if [kingSideCastleSAN, queenSideCastleSAN].contains(san) {
+            return self.moveForCastlingSAN(san, in: game)
         } else if san.count == 2 {
-            return self.processPawn(san: san, promotion: promotion, in: game)
+            return self.pawnMove(for: san, promotion: promotion, in: game)
         } else {
-            return self.process(san: san, promotion: promotion, in: game)
+            return self.pieceMove(for: san, promotion: promotion, in: game)
         }
     }
 
@@ -141,13 +135,13 @@ public class SanSerialization {
         return nil
     }
 
-    private func processCastling(san: String, in game: Game) -> Move {
-        let file = san == kCastlingKing ? "g" : "c"
+    private func moveForCastlingSAN(_ san: String, in game: Game) -> Move {
+        let file = san == kingSideCastleSAN ? "g" : "c"
         let rank = game.position.state.turn == .white ? "1" : "8"
         return Move(string: "e\(rank)\(file)\(rank)")
     }
 
-    private func processPawn(san: String, promotion: PieceKind?, in game: Game) -> Move {
+    private func pawnMove(for san: String, promotion: PieceKind?, in game: Game) -> Move {
         let move = game.legalMoves
             .filter { $0.to.description == san }
             .filter { game.position.board[$0.from]?.kind == .pawn }
@@ -155,40 +149,40 @@ public class SanSerialization {
         return Move(from: move.from, to: move.to, promotion: promotion)
     }
 
-    private func process(san: String, promotion: PieceKind?, in game: Game) -> Move {
-        var move = ""
-        var s = san.replacingOccurrences(of: "x", with: "")
+    private func pieceMove(for san: String, promotion: PieceKind?, in game: Game) -> Move {
+        var targetCoordinate = ""
+        var remainingSAN = san.replacingOccurrences(of: "x", with: "")
 
-        move += "\(s.popLast()!)"
-        move = "\(s.popLast()!)" + move
+        targetCoordinate += "\(remainingSAN.popLast()!)"
+        targetCoordinate = "\(remainingSAN.popLast()!)" + targetCoordinate
 
         var pieceKind: PieceKind? = nil
-        if s.first!.isUppercase {
-            pieceKind = PieceKind(rawValue: "\(s.lowercased().first!)")
+        if remainingSAN.first!.isUppercase {
+            pieceKind = PieceKind(rawValue: "\(remainingSAN.lowercased().first!)")
         }
 
         if pieceKind == nil {
             let move = game.legalMoves
-                .filter({ $0.to.description == move })
+                .filter({ $0.to.description == targetCoordinate })
                 .filter({ game.position.board[$0.from]?.kind == .pawn })
-                .filter({ $0.from.description.contains(s) })
+                .filter({ $0.from.description.contains(remainingSAN) })
                 .first!
             return Move(from: move.from, to: move.to, promotion: promotion)
         }
 
-        s = "\(s.dropFirst())"
+        remainingSAN = "\(remainingSAN.dropFirst())"
 
         var candidates = game.legalMoves
             .filter { game.position.board[$0.from]?.kind == pieceKind }
-            .filter { $0.to.description == move }
+            .filter { $0.to.description == targetCoordinate }
 
-        if !s.isEmpty {
+        if !remainingSAN.isEmpty {
             candidates =
                 candidates
-                .filter { $0.from.description.contains(s) }
+                .filter { $0.from.description.contains(remainingSAN) }
         }
 
-        move = candidates.first!.from.description + move
+        let move = candidates.first!.from.description + targetCoordinate
 
         return Move(string: move)
     }

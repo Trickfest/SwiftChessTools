@@ -1,6 +1,6 @@
 //
-//  FenSerializationTests.swift
-//  ChessKitTests
+//  FENSerializerTests.swift
+//  ChessCoreTests
 //
 //  Created by Alexander Perechnev, 2020.
 //  Modified by Alexander Perechnev, 2025.
@@ -21,7 +21,7 @@ import Testing
         "8/8/8/8/4K3/8/8/8 w - - 0 1",
     ])
 func serialization(fen: String) {
-    let serializator = FenSerialization()
-    let position = serializator.deserialize(fen: fen)
-    #expect(fen == serializator.serialize(position: position))
+    let serializer = FENSerializer()
+    let position = serializer.position(from: fen)
+    #expect(fen == serializer.fen(from: position))
 }

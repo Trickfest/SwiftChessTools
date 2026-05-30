@@ -1,6 +1,6 @@
 //
 //  PieceColorTests.swift
-//  ChessKitTests
+//  ChessCoreTests
 //
 //  Created by Alexander Perechnev, 2020.
 //  Modified by Alexander Perechnev, 2025.
@@ -11,7 +11,7 @@ import Testing
 
 @testable import ChessCore
 
-@Test func negation() {
-    #expect(PieceColor.white == PieceColor.black.negotiated)
-    #expect(PieceColor.black == PieceColor.white.negotiated)
+@Test func oppositeColor() {
+    #expect(PieceColor.white == PieceColor.black.opposite)
+    #expect(PieceColor.black == PieceColor.white.opposite)
 }

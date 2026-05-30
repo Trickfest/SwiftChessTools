@@ -9,20 +9,27 @@ for a release.
 
 ### Added
 
-- Added ChessUI move feedback for position updates made with `setFen(_:lan:)`:
+- Added ChessUI move feedback for position updates made with
+  `setFEN(_:animatedMove:)`:
   pieces now animate from the source square to the destination square, and the
   most recent move's source and destination squares remain highlighted.
 - Added public ChessUI configuration for move feedback:
-  `moveAnimationDuration`, `showLastMoveHighlight`, `lastMoveHighlight`,
+  `moveAnimationDuration`, `showsLastMoveHighlight`, `lastMoveHighlightColor`,
   `lastMoveSquares`, and `clearLastMoveHighlight()`.
 - Added ChessUI smoke tests covering move-feedback state and direct FEN
   assignment behavior.
 
 ### Changed
 
+- Renamed the primary ChessUI public board API to `ChessBoardView`,
+  `ChessBoardModel`, and `ChessBoardColorScheme`.
+- Renamed inherited ChessCore APIs and internals for the current package shape,
+  including `FENSerializer`, `SANSerializer`, `Game.apply(move:)`, and the
+  move-generation types.
+- Renamed the promotion picker dismissal API to `dismissPromotionPicker()`.
 - Increased the default ChessUI move animation duration to `0.45` seconds so
   longer piece moves are easier to see.
-- Direct assignment to `ChessboardModel.fen` now clears move-specific animation
+- Direct assignment to `ChessBoardModel.fen` now clears move-specific animation
   and highlight state because a raw FEN string does not identify the previous
   source square.
 

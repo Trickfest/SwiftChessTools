@@ -1,6 +1,6 @@
 //
 //  PieceTests.swift
-//  ChessKitTests
+//  ChessCoreTests
 //
 //  Created by Alexander Perechnev, 2020.
 //  Modified by Alexander Perechnev, 2025.

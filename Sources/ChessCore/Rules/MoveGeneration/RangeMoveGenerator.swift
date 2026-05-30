@@ -1,19 +1,19 @@
 //
-//  RangeMoving.swift
-//  ChessKit
+//  RangeMoveGenerator.swift
+//  ChessCore
 //
 //  Created by Alexander Perechnev, 2020.
 //  Copyright © 2020 Päike Mikrosüsteemid OÜ. All rights reserved.
 //
 
-protocol RangeMoving: PieceMoving {
+protocol RangeMoveGenerator: PieceMoveGenerator {
 
 }
 
-extension RangeMoving {
+extension RangeMoveGenerator {
 
     func moves(from square: Square, in position: Position) -> [Move] {
-        return self.coveredSquares(from: square, in: position)
+        return self.reachableSquares(from: square, in: position)
             .map { Move(from: square, to: $0) }
     }
 

@@ -1,42 +1,32 @@
 //
 //  Piece.swift
-//  ChessKit
+//  ChessCore
 //
 //  Created by Alexander Perechnev, 2020.
 //  Copyright © 2020 Päike Mikrosüsteemid OÜ. All rights reserved.
 //
 
-/// Piece on `Board` with it's color.
+/// A chess piece with a kind and color.
 public struct Piece: Hashable, CustomStringConvertible {
 
-    /// Piece kind.
+    /// The kind of piece, such as king, rook, or pawn.
     public let kind: PieceKind
 
-    /// Piece color.
+    /// The side this piece belongs to.
     public let color: PieceColor
 
     // MARK: Initialization
 
-    /**
-     Initializes a piece with it's kind and color.
-    
-     - Parameters:
-        - kind: Piece kind.
-        - color: Piece color.
-     */
+    /// Creates a piece with a kind and color.
     public init(kind: PieceKind, color: PieceColor) {
         self.kind = kind
         self.color = color
     }
 
-    /**
-     Initializes a piece with given character.
-    
-     Possible values are: `K` for white king, `n` for black pawn and so on.
-    
-     - Parameters:
-        - character: Character that represents a piece.
-     */
+    /// Creates a piece from a FEN piece character.
+    ///
+    /// Uppercase characters create white pieces, and lowercase characters
+    /// create black pieces.
     public init?(character: Character) {
         guard let kind = PieceKind(rawValue: character.lowercased()) else {
             return nil
@@ -45,13 +35,9 @@ public struct Piece: Hashable, CustomStringConvertible {
         self.init(kind: kind, color: color)
     }
 
-    // MARK: Custom string convertable
+    // MARK: CustomStringConvertible
 
-    /**
-     String that indicates the stored piece.
-    
-     Possible values are: `K` for white king, `r` for black rook and so on.
-     */
+    /// FEN character for this piece.
     public var description: String {
         let character = self.kind.rawValue
         return self.color == .white ? character.uppercased() : character.lowercased()

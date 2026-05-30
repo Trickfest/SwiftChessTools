@@ -1,23 +1,23 @@
 //
-//  PawnMoving.swift
-//  ChessKit
+//  PawnMoveGenerator.swift
+//  ChessCore
 //
 //  Created by Alexander Perechnev, 2020.
 //  Modified by Alexander Perechnev, 2025.
 //  Copyright © 2020-2025 Päike Mikrosüsteemid OÜ. All rights reserved.
 //
 
-class PawnMoving: PieceMoving {
+class PawnMoveGenerator: PieceMoveGenerator {
 
     func moves(from square: Square, in position: Position) -> [Move] {
-        let destinations = self.coveredSquares(from: square, in: position)
+        let destinations = self.reachableSquares(from: square, in: position)
         return self.promotedMoves(from: square, in: position, destinations: destinations)
     }
 
-    func coveredSquares(from square: Square, in position: Position) -> [Square] {
+    func reachableSquares(from square: Square, in position: Position) -> [Square] {
         return self.oneSquareMoves(from: square, in: position)
             + self.twoSquareMoves(from: square, in: position)
-            + self.takingMoves(from: square, in: position)
+            + self.captureMoves(from: square, in: position)
             + self.enPassantMoves(from: square, in: position)
     }
 
@@ -40,34 +40,34 @@ class PawnMoving: PieceMoving {
             return []
         }
 
-        let translation = position.state.turn == .white ? 1 : -1
+        let offset = position.state.turn == .white ? 1 : -1
         let isPathClear =
             (position.board.bitboards.white | position.board.bitboards.black)
-            & square.translate(file: 0, rank: translation).bitboardMask == Int64.zero
+            & square.translate(file: 0, rank: offset).bitboardMask == Int64.zero
             && (position.board.bitboards.white | position.board.bitboards.black)
-                & square.translate(file: 0, rank: translation * 2).bitboardMask == Int64.zero
+                & square.translate(file: 0, rank: offset * 2).bitboardMask == Int64.zero
         guard isPathClear else {
             return []
         }
 
-        return [square.translate(file: 0, rank: translation * 2)]
+        return [square.translate(file: 0, rank: offset * 2)]
     }
 
-    private func takingMoves(from square: Square, in position: Position) -> [Square] {
+    private func captureMoves(from square: Square, in position: Position) -> [Square] {
         let direction = position.state.turn == .white ? 1 : -1
 
         var destinations = [Square]()
 
-        for translation in MovingTranslations().pawnTaking {
-            let takingSquare = square.translate(
-                file: translation.0, rank: translation.1 * direction)
-            if !takingSquare.isValid {
+        for offset in MoveOffsets().pawnCaptures {
+            let captureSquare = square.translate(
+                file: offset.0, rank: offset.1 * direction)
+            if !captureSquare.isValid {
                 continue
             }
-            if position.board.bitboards.bitboard(for: position.state.turn.negotiated)
-                & takingSquare.bitboardMask != Int64.zero
+            if position.board.bitboards.bitboard(for: position.state.turn.opposite)
+                & captureSquare.bitboardMask != Int64.zero
             {
-                destinations.append(takingSquare)
+                destinations.append(captureSquare)
             }
         }
 
@@ -75,16 +75,16 @@ class PawnMoving: PieceMoving {
     }
 
     private func enPassantMoves(from square: Square, in position: Position) -> [Square] {
-        guard let enPassantSquare = position.state.enPasant else {
+        guard let enPassantSquare = position.state.enPassant else {
             return []
         }
 
         let direction = position.state.turn == .white ? 1 : -1
 
-        for takingTranslation in MovingTranslations().pawnTaking {
-            let takingSquare = square.translate(
-                file: takingTranslation.0, rank: takingTranslation.1 * direction)
-            if takingSquare == enPassantSquare {
+        for captureOffset in MoveOffsets().pawnCaptures {
+            let captureSquare = square.translate(
+                file: captureOffset.0, rank: captureOffset.1 * direction)
+            if captureSquare == enPassantSquare {
                 return [enPassantSquare]
             }
         }

@@ -1,159 +1,154 @@
 //
 //  Game.swift
-//  ChessKit
+//  ChessCore
 //
 //  Created by Alexander Perechnev, 2020.
 //  Copyright © 2020 Päike Mikrosüsteemid OÜ. All rights reserved.
 //
 
-/// Chess game.
+/// Tracks a playable game, including the current position and move history.
 public class Game {
 
     private let rules: Rules
 
-    /// Number of occurrences of each position in game.
-    public private(set) var positionsCounter: [Board: Int]
-    /// List of moves made before current game position.
-    public private(set) var movesHistory: [Move]
+    /// Number of times each board position has appeared in this game.
+    public private(set) var positionCounts: [Board: Int]
 
-    /// Current game position.
+    /// Moves that produced the current position.
+    public private(set) var moveHistory: [Move]
+
+    /// Current position, including board state, side to move, and counters.
     public var position: Position
-    /// Indicates whether it's check in current position.
+
+    /// `true` when the side to move is currently in check.
     public var isCheck: Bool {
         return self.rules.isCheck(in: self.position)
     }
-    /// Indicates whether it's mate in current position.
-    public var isMate: Bool {
-        return self.rules.isMate(in: self.position)
+
+    /// `true` when the side to move is checkmated.
+    public var isCheckmate: Bool {
+        return self.rules.isCheckmate(in: self.position)
     }
 
     // MARK: Initialization
 
-    init(position: Position, moves: [Move], positionsCounter: [Board: Int]) {
+    init(position: Position, moves: [Move], positionCounts: [Board: Int]) {
         self.position = position
-        self.movesHistory = moves
-        self.positionsCounter = positionsCounter
+        self.moveHistory = moves
+        self.positionCounts = positionCounts
         self.rules = StandardRules()
     }
 
-    /**
-     Initialize game with given position.
-    
-     - Parameters:
-        - position: Initial game position.
-        - moves: List of moves before given position.
-    */
+    /// Creates a game from an existing position.
+    ///
+    /// - Parameters:
+    ///   - position: Position to use as the starting point.
+    ///   - moves: Moves that already led to that position.
     public init(position: Position, moves: [Move] = []) {
-        self.positionsCounter = [
+        self.positionCounts = [
             position.board: 1
         ]
-        self.movesHistory = moves
+        self.moveHistory = moves
         self.position = position
         self.rules = StandardRules()
     }
 
-    /**
-     Initialize game with given position and rules.
-    
-     - Parameters:
-        - position: Initial game position.
-        - moves: List of moves before given position.
-        - rules: Game rules.
-     */
+    /// Creates a game with a specific rule implementation.
+    ///
+    /// - Parameters:
+    ///   - position: Position to use as the starting point.
+    ///   - moves: Moves that already led to that position.
+    ///   - rules: Rule set used to generate and validate moves.
     internal init(position: Position, moves: [Move] = [], rules: Rules) {
-        self.positionsCounter = [
+        self.positionCounts = [
             position.board: 1
         ]
-        self.movesHistory = moves
+        self.moveHistory = moves
         self.position = position
         self.rules = rules
     }
 
-    // MARK: Making moves
+    // MARK: Applying moves
 
-    /// List of legal moves in current game position.
+    /// Legal moves available to the side to move.
     public var legalMoves: [Move] {
         return self.rules.legalMoves(in: self.position)
     }
 
-    /**
-     Make move.
-    
-     - Parameters:
-        - move: A move in a long algebraic notation (e.g., `"e2e4"`, `"g1f3"`, `"e7e8Q"`).
-     */
-    public func make(move stringMove: String) {
-        let move = Move(string: stringMove)
-        self.make(move: move)
+    /// Applies a coordinate move string such as `"e2e4"` or `"e7e8Q"`.
+    ///
+    /// This method assumes the move is legal. Check `legalMoves` first when
+    /// accepting input from a user or engine.
+    public func apply(move coordinateMove: String) {
+        let move = Move(string: coordinateMove)
+        self.apply(move: move)
     }
 
-    /**
-    Make move.
-    
-    - Parameters:
-       - move: A move to make.
-    */
-    public func make(move: Move) {
-        self.movesHistory.append(move)
+    /// Applies a move to the current position.
+    ///
+    /// This method assumes the move is legal. Check `legalMoves` first when
+    /// accepting input from a user or engine.
+    public func apply(move: Move) {
+        self.moveHistory.append(move)
 
-        let enPassant = self.updateEnPassant(for: move)
+        let enPassant = self.enPassantTarget(after: move)
 
-        self.updateCounters(for: move)
-        self.updateCastlings(for: move)
-        self.perform(move: move)
+        self.updateMoveCounters(after: move)
+        self.updateCastlingRights(after: move)
+        self.applyBoardMove(move)
 
-        self.position.state.enPasant = enPassant
-        self.toogleTurn()
+        self.position.state.enPassant = enPassant
+        self.toggleTurn()
 
-        if self.positionsCounter[self.position.board] == nil {
-            self.positionsCounter[self.position.board] = 0
+        if self.positionCounts[self.position.board] == nil {
+            self.positionCounts[self.position.board] = 0
         }
-        self.positionsCounter[self.position.board]! += 1
+        self.positionCounts[self.position.board]! += 1
     }
 
-    private func perform(move: Move) {
+    private func applyBoardMove(_ move: Move) {
         let isCastling =
             position.board.bitboards.king & move.from.bitboardMask != Int64.zero
             && abs(move.from.file - move.to.file) > 1
 
         let isEnPassant =
             position.board.bitboards.pawn & move.from.bitboardMask != Int64.zero
-            && move.to == self.position.state.enPasant
+            && move.to == self.position.state.enPassant
 
         let isPawnPromotion = move.promotion != nil
 
         if isCastling {
-            self.performCastling(move: move)
+            self.castle(move)
         } else if isEnPassant {
-            self.performEnPassant(move: move)
+            self.captureEnPassant(move)
         } else if isPawnPromotion {
-            self.performPawnPromotion(move: move)
+            self.promotePawn(move)
         } else {
-            self.performSimple(move: move)
+            self.movePiece(move)
         }
     }
 
-    private func performSimple(move: Move) {
+    private func movePiece(_ move: Move) {
         self.position.board[move.to] = self.position.board[move.from]
         self.position.board[move.from] = nil
     }
 
-    private func performCastling(move: Move) {
-        self.performSimple(move: move)
+    private func castle(_ move: Move) {
+        self.movePiece(move)
 
         let rank = self.position.state.turn == .white ? "1" : "8"
 
-        if move.to.file == 2 {  // Queen side
-            self.performSimple(move: Move(string: "a" + rank + "d" + rank))
-        } else if move.to.file == 6 {  // King side
-            self.performSimple(move: Move(string: "h" + rank + "f" + rank))
+        if move.to.file == 2 {
+            self.movePiece(Move(string: "a" + rank + "d" + rank))
+        } else if move.to.file == 6 {
+            self.movePiece(Move(string: "h" + rank + "f" + rank))
         }
     }
 
-    private func performEnPassant(move: Move) {
-        self.performSimple(move: move)
+    private func captureEnPassant(_ move: Move) {
+        self.movePiece(move)
 
-        guard let enPassant = self.position.state.enPasant else {
+        guard let enPassant = self.position.state.enPassant else {
             return
         }
 
@@ -161,8 +156,8 @@ public class Game {
         self.position.board[Square(file: enPassant.file, rank: rank)] = nil
     }
 
-    private func performPawnPromotion(move: Move) {
-        self.performSimple(move: move)
+    private func promotePawn(_ move: Move) {
+        self.movePiece(move)
 
         guard let kind = move.promotion else {
             return
@@ -170,13 +165,13 @@ public class Game {
         self.position.board[move.to] = Piece(kind: kind, color: self.position.state.turn)
     }
 
-    private func updateCounters(for move: Move) {
-        let isTaking =
-            position.board.bitboards.bitboard(for: position.state.turn.negotiated)
+    private func updateMoveCounters(after move: Move) {
+        let isCapture =
+            position.board.bitboards.bitboard(for: position.state.turn.opposite)
             & move.to.bitboardMask != Int64.zero
         let isPawnAdvance = position.board.bitboards.pawn & move.from.bitboardMask != Int64.zero
 
-        if isTaking || isPawnAdvance {
+        if isCapture || isPawnAdvance {
             self.position.counter.halfMoves = 0
         } else {
             self.position.counter.halfMoves += 1
@@ -187,11 +182,11 @@ public class Game {
         }
     }
 
-    private func toogleTurn() {
-        self.position.state.turn = self.position.state.turn.negotiated
+    private func toggleTurn() {
+        self.position.state.turn = self.position.state.turn.opposite
     }
 
-    private func updateEnPassant(for move: Move) -> Square? {
+    private func enPassantTarget(after move: Move) -> Square? {
         if position.board.bitboards.pawn & move.from.bitboardMask == Int64.zero {
             return nil
         }
@@ -203,72 +198,66 @@ public class Game {
         return Square(file: move.from.file, rank: rank)
     }
 
-    private func updateCastlings(for move: Move) {
+    private func updateCastlingRights(after move: Move) {
         guard let piece = self.position.board[move.from] else {
             return
         }
 
         if piece.kind == .king {
-            self.position.state.castlings = self.position.state.castlings
+            self.position.state.castlingRights = self.position.state.castlingRights
                 .filter { $0.color != self.position.state.turn }
         }
 
-        self.position.state.castlings = self.position.state.castlings.filter {
-            // filter should return true if we should not exclude
-            // filter should return false if we should exclude current castling
-            // $0 is one of KQkq pieces (white K, white Q, black k, black q)
-            // castlingColorAndSideToExclude returns piece if move from/to is at some of 4 corners
-            // if castlingColorAndSideToExclude returns piece
-            // for either "from" or for "to" square - we have to exclude casling
+        self.position.state.castlingRights = self.position.state.castlingRights.filter {
             var excludeBecauseOfFrom = false
             var excludeBecauseOfTo = false
-            if let colorAndSideToExclude = castlingColorAndSideToExclude(square: move.from) {
+
+            if let colorAndSideToExclude = castlingRightAffected(by: move.from) {
                 excludeBecauseOfFrom =
                     $0.color == colorAndSideToExclude.color && $0.kind == colorAndSideToExclude.kind
             }
-            if let colorAndSideToExclude = castlingColorAndSideToExclude(square: move.to) {
+
+            if let colorAndSideToExclude = castlingRightAffected(by: move.to) {
                 excludeBecauseOfTo =
                     $0.color == colorAndSideToExclude.color && $0.kind == colorAndSideToExclude.kind
             }
+
             return !(excludeBecauseOfFrom || excludeBecauseOfTo)
         }
     }
 
-    private func castlingColorAndSideToExclude(square: Square) -> Piece? {
-        // is A1?
+    private func castlingRightAffected(by square: Square) -> Piece? {
         if square.file == 0 && square.rank == 0 {
             return Piece(kind: .queen, color: .white)
         }
-        // is H1?
+
         if square.file == 7 && square.rank == 0 {
             return Piece(kind: .king, color: .white)
         }
-        // is A8?
+
         if square.file == 0 && square.rank == 7 {
             return Piece(kind: .queen, color: .black)
         }
-        // is H8?
+
         if square.file == 7 && square.rank == 7 {
             return Piece(kind: .king, color: .black)
         }
+
         return nil
     }
 
     // MARK: Utilities
 
-    /**
-     Creates a deep copy of current game.
-    
-     - Returns: New `Game` object.
-     */
-    public func deepCopy() -> Game {
+    /// Returns a separate game object with the same position, history, and
+    /// repetition counts.
+    public func copy() -> Game {
         let position = self.position
-        let moves = self.movesHistory.map { $0 }
+        let moves = self.moveHistory.map { $0 }
 
         return Game(
             position: position,
             moves: moves,
-            positionsCounter: self.positionsCounter
+            positionCounts: self.positionCounts
         )
     }
 

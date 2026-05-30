@@ -1,6 +1,6 @@
 //
 //  PositionTests.swift
-//  ChessKitTests
+//  ChessCoreTests
 //
 //  Created by Alexander Perechnev, 2020.
 //  Modified by Alexander Perechnev, 2025.
@@ -11,18 +11,18 @@ import Testing
 
 @testable import ChessCore
 
-@Test func deepCopying() {
-    let fenSerializator = FenSerialization()
+@Test func positionCopyIsIndependent() {
+    let fenSerializer = FENSerializer()
     let initialFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-    let position = fenSerializator.deserialize(fen: initialFen)
+    let position = fenSerializer.position(from: initialFen)
 
     var positionCopy = position
     positionCopy.board["e4"] = nil
-    positionCopy.state.castlings = []
-    positionCopy.state.enPasant = Square(coordinate: "e4")
+    positionCopy.state.castlingRights = []
+    positionCopy.state.enPassant = Square(coordinate: "e4")
     positionCopy.state.turn = .black
     positionCopy.counter.fullMoves = 100
     positionCopy.counter.halfMoves = 200
 
-    #expect(fenSerializator.serialize(position: position) == initialFen)
+    #expect(fenSerializer.fen(from: position) == initialFen)
 }

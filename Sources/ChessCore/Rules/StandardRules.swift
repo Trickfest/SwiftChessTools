@@ -1,27 +1,27 @@
 //
 //  StandardRules.swift
-//  ChessKit
+//  ChessCore
 //
 //  Created by Alexander Perechnev, 2020.
 //  Modified by Alexander Perechnev, 2025.
 //  Copyright © 2020-2025 Päike Mikrosüsteemid OÜ. All rights reserved.
 //
 
-/// Standard chess move rules.
+/// Standard chess rules for legal move generation and check detection.
 public class StandardRules: Rules {
 
     private let rays = Rays()
-    private let movings: [PieceKind: PieceMoving]
+    private let moveGenerators: [PieceKind: PieceMoveGenerator]
 
-    /// Initialise a new instance.
+    /// Creates the standard rule set.
     public init() {
-        self.movings = [
-            .king: KingMoving(),
-            .queen: QueenMoving(),
-            .rook: RookMoving(),
-            .bishop: BishopMoving(),
-            .knight: KnightMoving(),
-            .pawn: PawnMoving(),
+        self.moveGenerators = [
+            .king: KingMoveGenerator(),
+            .queen: QueenMoveGenerator(),
+            .rook: RookMoveGenerator(),
+            .bishop: BishopMoveGenerator(),
+            .knight: KnightMoveGenerator(),
+            .pawn: PawnMoveGenerator(),
         ]
     }
 
@@ -30,52 +30,52 @@ public class StandardRules: Rules {
             return false
         }
 
-        let movingTranslation = MovingTranslations()
+        let moveOffsets = MoveOffsets()
         let bitboards = position.board.bitboards
 
-        if self.isLongCheck(
+        if self.hasSlidingAttack(
             kingSquare: kingSquare,
             turn: position.state.turn,
-            translations: movingTranslation.diagonal,
+            offsets: moveOffsets.diagonal,
             bitboards: bitboards,
             pieces: bitboards.queen | bitboards.bishop)
         {
             return true
         }
 
-        let kingRays: Bitboard! = self.rays.cross[kingSquare.bitboardMask]
+        let kingRays: Bitboard! = self.rays.orthogonal[kingSquare.bitboardMask]
 
         if (kingRays & (bitboards.rook | bitboards.queen)
-            & bitboards.bitboard(for: position.state.turn.negotiated) != Bitboard.zero)
-            && self.isLongCheck(
+            & bitboards.bitboard(for: position.state.turn.opposite) != Bitboard.zero)
+            && self.hasSlidingAttack(
                 kingSquare: kingSquare,
                 turn: position.state.turn,
-                translations: movingTranslation.cross,
+                offsets: moveOffsets.orthogonal,
                 bitboards: bitboards,
                 pieces: bitboards.queen | bitboards.rook)
         {
             return true
         }
 
-        for translation in movingTranslation.knight {
-            let destination = kingSquare.translate(file: translation.0, rank: translation.1)
+        for offset in moveOffsets.knight {
+            let destination = kingSquare.translate(file: offset.0, rank: offset.1)
             guard destination.isValid else {
                 continue
             }
-            if bitboards.bitboard(for: position.state.turn.negotiated) & bitboards.knight
+            if bitboards.bitboard(for: position.state.turn.opposite) & bitboards.knight
                 & destination.bitboardMask != Int64.zero
             {
                 return true
             }
         }
 
-        for translation in movingTranslation.pawnTaking {
+        for offset in moveOffsets.pawnCaptures {
             let sign = position.state.turn == .white ? 1 : -1
-            let destination = kingSquare.translate(file: translation.0, rank: translation.1 * sign)
+            let destination = kingSquare.translate(file: offset.0, rank: offset.1 * sign)
             guard destination.isValid else {
                 continue
             }
-            if bitboards.pawn & bitboards.bitboard(for: position.state.turn.negotiated)
+            if bitboards.pawn & bitboards.bitboard(for: position.state.turn.opposite)
                 & destination.bitboardMask != Int64.zero
             {
                 return true
@@ -85,18 +85,18 @@ public class StandardRules: Rules {
         return false
     }
 
-    private func isLongCheck(
+    private func hasSlidingAttack(
         kingSquare: Square,
         turn: PieceColor,
-        translations: [(Int, Int)],
+        offsets: [(Int, Int)],
         bitboards: Bitboards,
         pieces: Bitboard
     ) -> Bool {
-        for translation in translations {
-            for offset in 1..<8 {
+        for offset in offsets {
+            for distance in 1..<8 {
                 let destination = kingSquare.translate(
-                    file: translation.0 * offset,
-                    rank: translation.1 * offset)
+                    file: offset.0 * distance,
+                    rank: offset.1 * distance)
                 guard destination.isValid else {
                     break
                 }
@@ -119,7 +119,7 @@ public class StandardRules: Rules {
         return false
     }
 
-    func isMate(in position: Position) -> Bool {
+    func isCheckmate(in position: Position) -> Bool {
         guard self.isCheck(in: position) else {
             return false
         }
@@ -127,55 +127,47 @@ public class StandardRules: Rules {
     }
 
     func legalMoves(in position: Position) -> [Move] {
-        return self.enumeratedPieces(for: position)
-            .flatMap { self.movesForPiece(at: $0.0, in: position) }
+        return self.piecesForSideToMove(in: position)
+            .flatMap { self.legalMovesForPiece(at: $0.0, in: position) }
     }
 
-    /**
-     Generates available moves from square in given position.
-    
-     - Parameters:
-        - square: Square of the piece.
-        - position: Position.
-    
-     - Returns: List of available moves.
-     */
-    public func movesForPiece(at square: Square, in position: Position) -> [Move] {
+    /// Returns legal moves for the piece on `square`.
+    public func legalMovesForPiece(at square: Square, in position: Position) -> [Move] {
         guard let piece = position.board[square] else {
             return []
         }
         guard piece.color == position.state.turn else {
             return []
         }
-        guard let moving = self.movings[piece.kind] else {
+        guard let moveGenerator = self.moveGenerators[piece.kind] else {
             return []
         }
 
-        let moves = moving.moves(from: square, in: position)
+        let moves = moveGenerator.moves(from: square, in: position)
         return self.filterIllegal(moves: moves, for: position)
     }
 
-    public func coveredSquares(in position: Position) -> [Square] {
-        return self.enumeratedPieces(for: position)
+    public func reachableSquares(in position: Position) -> [Square] {
+        return self.piecesForSideToMove(in: position)
             .filter { $0.1.kind != .king }
-            .flatMap { self.coveredSquaresForPiece(at: $0.0, in: position) }
+            .flatMap { self.reachableSquaresForPiece(at: $0.0, in: position) }
     }
 
-    private func coveredSquaresForPiece(at square: Square, in position: Position) -> [Square] {
+    private func reachableSquaresForPiece(at square: Square, in position: Position) -> [Square] {
         guard let piece = position.board[square] else {
             return []
         }
         guard piece.color == position.state.turn else {
             return []
         }
-        guard let moving = self.movings[piece.kind] else {
+        guard let moveGenerator = self.moveGenerators[piece.kind] else {
             return []
         }
-        if moving is KingMoving {
+        if moveGenerator is KingMoveGenerator {
             return []
         }
 
-        return moving.coveredSquares(from: square, in: position)
+        return moveGenerator.reachableSquares(from: square, in: position)
     }
 
     private func filterIllegal(moves: [Move], for position: Position) -> [Move] {
@@ -184,14 +176,15 @@ public class StandardRules: Rules {
             nextPosition.board[move.to] = nextPosition.board[move.from]
             nextPosition.board[move.from] = nil
 
-            // if move is en passant capture - remove captured pawn from board
-            if let enPassantCapturedPawn = self.squareOfEnPassantCapturedPawn(
+            // En passant captures remove a pawn from a square the moving pawn
+            // never lands on, so simulate that before checking king safety.
+            if let enPassantCapturedPawn = self.capturedEnPassantPawnSquare(
                 move: move, position: position)
             {
                 nextPosition.board[enPassantCapturedPawn] = nil
             }
 
-            if self.isIllelgalCastling(move: move, position: position) {
+            if self.isIllegalCastling(move: move, position: position) {
                 return false
             }
 
@@ -201,8 +194,8 @@ public class StandardRules: Rules {
         return moves.filter(filter)
     }
 
-    private func squareOfEnPassantCapturedPawn(move: Move, position: Position) -> Square? {
-        guard let enPassant = position.state.enPasant else {
+    private func capturedEnPassantPawnSquare(move: Move, position: Position) -> Square? {
+        guard let enPassant = position.state.enPassant else {
             return nil
         }
         if move.to.file == enPassant.file && move.to.rank == enPassant.rank {
@@ -211,7 +204,7 @@ public class StandardRules: Rules {
         return nil
     }
 
-    private func enumeratedPieces(for position: Position) -> [(Square, Piece)] {
+    private func piecesForSideToMove(in position: Position) -> [(Square, Piece)] {
         return position.board.enumeratedPieces()
             .filter { $0.1.color == position.state.turn }
     }
@@ -222,14 +215,14 @@ public class StandardRules: Rules {
         return square.isValid ? square : nil
     }
 
-    private func isIllelgalCastling(move: Move, position: Position) -> Bool {
+    private func isIllegalCastling(move: Move, position: Position) -> Bool {
         guard position.board.bitboards.king & move.from.bitboardMask != Int64.zero else {
             return false
         }
         guard abs(move.from.file - move.to.file) > 1 else {
             return false
         }
-        if self.isCatslingToCheck(move: move, position: position) {
+        if self.isCastlingFromCheck(move: move, position: position) {
             return true
         }
         if self.isCastlingThroughCheck(move: move, position: position) {
@@ -239,25 +232,25 @@ public class StandardRules: Rules {
     }
 
     private func isCastlingThroughCheck(move: Move, position: Position) -> Bool {
-        let fileTranslation = (move.to.file - move.from.file) / 2
-        let squareBetween = move.from.translate(file: fileTranslation, rank: 0)
+        let fileOffset = (move.to.file - move.from.file) / 2
+        let squareBetween = move.from.translate(file: fileOffset, rank: 0)
 
         var nextPosition = position
         nextPosition.board[squareBetween] = nextPosition.board[move.from]
         nextPosition.board[move.from] = nil
-        nextPosition.state.turn = nextPosition.state.turn.negotiated
+        nextPosition.state.turn = nextPosition.state.turn.opposite
 
-        if self.coveredSquares(in: nextPosition).contains(squareBetween) {
+        if self.reachableSquares(in: nextPosition).contains(squareBetween) {
             return true
         }
 
         return false
     }
 
-    private func isCatslingToCheck(move: Move, position: Position) -> Bool {
+    private func isCastlingFromCheck(move: Move, position: Position) -> Bool {
         var nextPosition = position
-        nextPosition.state.turn = nextPosition.state.turn.negotiated
-        if self.coveredSquares(in: nextPosition).contains(move.from) {
+        nextPosition.state.turn = nextPosition.state.turn.opposite
+        if self.reachableSquares(in: nextPosition).contains(move.from) {
             return true
         }
         return false

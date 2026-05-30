@@ -1,8 +1,7 @@
 //
-// ChessboardKit is a SwiftUI library for rendering chessboards and pieces.
+// ChessUI provides reusable SwiftUI chess board views and supporting helpers.
 //
-// See the GitHub repo for documentation:
-// https://github.com/rohanrhu/ChessboardKit
+// See NOTICE.md for upstream attribution and license details.
 //
 // Copyright (C) 2025, Oğuzhan Eroğlu (https://meowingcat.io)
 // Licensed under the MIT License.
@@ -14,8 +13,17 @@ import SwiftUI
 
 import ChessCore
 
-public let EMPTY_FEN = "8/8/8/8/8/8/8/8 w - - 0 1"
-public let INITIAL_FEN = "rnbqkb1r/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB1R w KQkq - 0 1"
+public let emptyFEN = "8/8/8/8/8/8/8/8 w - - 0 1"
+public let initialFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+public typealias ChessBoardMoveHandler = (
+    _ move: Move,
+    _ isLegal: Bool,
+    _ sourceSquare: String,
+    _ targetSquare: String,
+    _ coordinateMove: String,
+    _ promotion: PieceKind?
+) -> Void
 
 public struct BoardSquare: Identifiable, Hashable {
     public var row: Int
@@ -40,12 +48,12 @@ public struct BoardSquare: Identifiable, Hashable {
 }
 
 @Observable
-public class ChessboardModel {
+public class ChessBoardModel {
     public var fen: String {
-        get { FenSerialization().serialize(position: game.position) }
+        get { FENSerializer().fen(from: game.position) }
         set {
-            game = Game(position: FenSerialization().deserialize(fen: newValue))
-            currentMove = nil
+            game = Game(position: FENSerializer().position(from: newValue))
+            animatedMove = nil
             movingPiece = nil
             lastMoveSquares = nil
         }
@@ -53,98 +61,98 @@ public class ChessboardModel {
     
     public var size: CGFloat = 0
     
-    public var colorScheme: ChessboardColorScheme = .light
+    public var colorScheme: ChessBoardColorScheme = .light
     
     public var perspective: PieceColor
     public var turn: PieceColor { game.position.state.turn }
-    public var validateMoves: Bool = false
-    public var allowOpponentMove = false
+    public var validatesMoves: Bool = false
+    public var allowsOpponentMoves = false
     
-    public var inWaiting = false
+    public var isWaiting = false
     
     public var selectedSquare: BoardSquare?
     public var hintedSquares: Set<BoardSquare> = []
     
-    public var highlightLegalMoves: Bool = true
+    public var showsLegalMoveHighlights: Bool = true
     public var legalMoveSquares: Set<BoardSquare> = []
 
     /// Duration, in seconds, used when ChessUI animates a piece from the
-    /// source square to the destination square after `setFen(_:lan:)`.
+    /// source square to the destination square after `setFEN(_:animatedMove:)`.
     ///
     /// Set this to `0` to make move updates effectively immediate. The default
     /// is tuned to feel similar to common online chess boards.
     public var moveAnimationDuration: Double = 0.45
 
     /// Controls whether ChessUI keeps the source and destination squares of
-    /// the most recent move highlighted after `setFen(_:lan:)`.
-    public var showLastMoveHighlight: Bool = true
+    /// the most recent move highlighted after `setFEN(_:animatedMove:)`.
+    public var showsLastMoveHighlight: Bool = true
 
     /// Color used to highlight the source and destination squares of the most
     /// recent move. The default is a translucent gold similar to common online
     /// chess boards.
-    public var lastMoveHighlight: Color = Color(red: 1.0, green: 0.82, blue: 0.20, opacity: 0.55)
+    public var lastMoveHighlightColor: Color = Color(red: 1.0, green: 0.82, blue: 0.20, opacity: 0.55)
 
     /// Source and destination squares for the most recent move passed through
-    /// `setFen(_:lan:)`. Direct `fen` assignment clears this value because a raw
-    /// FEN string does not reliably identify the move that produced it.
+    /// `setFEN(_:animatedMove:)`. Direct `fen` assignment clears this value
+    /// because a raw FEN string does not reliably identify the move that
+    /// produced it.
     public private(set) var lastMoveSquares: (from: BoardSquare, to: BoardSquare)?
     
-    public var showPromotionPicker = false
+    public var isPromotionPickerPresented = false
     
     public var game: Game
     
-    public var currentMove: Move? = nil
-    public var prevMove: Move? = nil
+    public var animatedMove: Move? = nil
     
     public var promotionPiece: Piece?
     public var promotionSourceSquare: String?
     public var promotionTargetSquare: String?
-    public var promotionLan: String?
+    public var promotionBaseMove: Move?
     
     public var shouldFlipBoard: Bool { perspective == .black }
     
     public var movingPiece: (piece: Piece, from: BoardSquare, to: BoardSquare)?
     
-    /// Creates a chessboard model.
+    /// Creates a chess board model.
     ///
     /// - Parameters:
     ///   - fen: Initial board position.
     ///   - perspective: Side displayed at the bottom of the board.
     ///   - colorScheme: Board and marker colors.
-    ///   - allowOpponentMove: Allows dragging pieces that do not belong to the
+    ///   - allowsOpponentMoves: Allows dragging pieces that do not belong to the
     ///     side to move.
-    ///   - highlightLegalMoves: Shows legal destination markers while a piece
+    ///   - showsLegalMoveHighlights: Shows legal destination markers while a piece
     ///     is selected or dragged.
     ///   - moveAnimationDuration: Duration, in seconds, for move animations
-    ///     triggered by `setFen(_:lan:)`.
-    ///   - showLastMoveHighlight: Keeps the source and destination squares of
-    ///     the last move highlighted after `setFen(_:lan:)`.
-    ///   - lastMoveHighlight: Overlay color used for the last-move source and
+    ///     triggered by `setFEN(_:animatedMove:)`.
+    ///   - showsLastMoveHighlight: Keeps the source and destination squares of
+    ///     the last move highlighted after `setFEN(_:animatedMove:)`.
+    ///   - lastMoveHighlightColor: Overlay color used for the last-move source and
     ///     destination squares.
-    public init(fen: String = EMPTY_FEN,
+    public init(fen: String = emptyFEN,
                 perspective: PieceColor = .white,
-                colorScheme: ChessboardColorScheme = .light,
-                allowOpponentMove: Bool = false,
-                highlightLegalMoves: Bool = true,
+                colorScheme: ChessBoardColorScheme = .light,
+                allowsOpponentMoves: Bool = false,
+                showsLegalMoveHighlights: Bool = true,
                 moveAnimationDuration: Double = 0.45,
-                showLastMoveHighlight: Bool = true,
-                lastMoveHighlight: Color = Color(red: 1.0, green: 0.82, blue: 0.20, opacity: 0.55))
+                showsLastMoveHighlight: Bool = true,
+                lastMoveHighlightColor: Color = Color(red: 1.0, green: 0.82, blue: 0.20, opacity: 0.55))
     {
-        self.game = Game(position: FenSerialization().deserialize(fen: fen))
+        self.game = Game(position: FENSerializer().position(from: fen))
         self.perspective = perspective
         self.colorScheme = colorScheme
-        self.allowOpponentMove = allowOpponentMove
-        self.highlightLegalMoves = highlightLegalMoves
+        self.allowsOpponentMoves = allowsOpponentMoves
+        self.showsLegalMoveHighlights = showsLegalMoveHighlights
         self.moveAnimationDuration = max(0, moveAnimationDuration)
-        self.showLastMoveHighlight = showLastMoveHighlight
-        self.lastMoveHighlight = lastMoveHighlight
+        self.showsLastMoveHighlight = showsLastMoveHighlight
+        self.lastMoveHighlightColor = lastMoveHighlightColor
     }
     
-    public var onMove: (Move, Bool, String, String, String, PieceKind? ) -> Void = { _, _, _, _, _, _ in }
+    public var onMove: ChessBoardMoveHandler = { _, _, _, _, _, _ in }
     
     public var dropTarget: (row: Int, column: Int)?
     
-    /// Replaces the current board position and, when `lan` is supplied,
+    /// Replaces the current board position and, when `animatedMove` is supplied,
     /// animates the moved piece from source to destination and highlights both
     /// squares.
     ///
@@ -152,24 +160,23 @@ public class ChessboardModel {
     /// assigning `fen` is still supported for arbitrary position loading, but
     /// direct assignment clears move-specific animation and highlight state
     /// because a FEN string alone does not identify the source square.
-    public func setFen(_ fen: String, lan: String? = nil) {
-        prevMove = currentMove
-        currentMove = lan == nil ? nil : Move(string: lan!)
+    public func setFEN(_ fen: String, animatedMove: Move? = nil) {
+        self.animatedMove = animatedMove
         movingPiece = nil
         lastMoveSquares = nil
         
-        let newGame = Game(position: FenSerialization().deserialize(fen: fen))
+        let newGame = Game(position: FENSerializer().position(from: fen))
 
-        if let currentMove {
+        if let animatedMove = self.animatedMove {
             let pieces = game.position.board.enumeratedPieces()
-            let squareAndPiece = pieces.first { $0.0 == currentMove.from }
+            let squareAndPiece = pieces.first { $0.0 == animatedMove.from }
             
-            let from = BoardSquare(row: currentMove.from.rank, column: currentMove.from.file)
-            let to = BoardSquare(row: currentMove.to.rank, column: currentMove.to.file)
+            let from = BoardSquare(row: animatedMove.from.rank, column: animatedMove.from.file)
+            let to = BoardSquare(row: animatedMove.to.rank, column: animatedMove.to.file)
 
             lastMoveSquares = (from: from, to: to)
 
-            if let piece = squareAndPiece?.1 ?? newGame.position.board[currentMove.to] {
+            if let piece = squareAndPiece?.1 ?? newGame.position.board[animatedMove.to] {
                 movingPiece = (piece: piece, from: from, to: to)
             }
         }
@@ -188,7 +195,7 @@ public class ChessboardModel {
     }
     
     public func updateLegalMoveHighlights(for square: BoardSquare) {
-        guard highlightLegalMoves else {
+        guard showsLegalMoveHighlights else {
             legalMoveSquares.removeAll()
             return
         }
@@ -315,55 +322,48 @@ public class ChessboardModel {
         }
     }
     
-    public func presentPromotionPicker(piece: Piece, sourceSquare: String, targetSquare: String, lan: String) {
+    public func presentPromotionPicker(piece: Piece, sourceSquare: String, targetSquare: String, baseMove: Move) {
         promotionPiece = piece
         promotionSourceSquare = sourceSquare
         promotionTargetSquare = targetSquare
-        promotionLan = lan
+        promotionBaseMove = baseMove
         
         withAnimation(.bouncy) {
-            showPromotionPicker = true
+            isPromotionPickerPresented = true
         }
     }
     
-    public func absentePromotionPicker() {
+    public func dismissPromotionPicker() {
         promotionPiece = nil
         promotionSourceSquare = nil
         promotionTargetSquare = nil
-        promotionLan = nil
+        promotionBaseMove = nil
         
         withAnimation(.bouncy) {
-            showPromotionPicker = false
+            isPromotionPickerPresented = false
         }
     }
     
     public func togglePromotionPicker() {
         withAnimation(.bouncy) {
-            showPromotionPicker.toggle()
+            isPromotionPickerPresented.toggle()
         }
     }
     
-    public func isPromotable(piece: Piece, lan: String) -> Bool {
+    public func requiresPromotionChoice(piece: Piece, move: Move) -> Bool {
         guard piece.kind == .pawn else { return false }
-        guard lan.count >= 4 else { return false }
-        
-        let toSquare = lan.suffix(2)
-        let rowChar = toSquare.last!
-        
-        guard let row = Int(String(rowChar)) else { return false }
-        
-        return row == (piece.color == .white ? 8 : 1)
+        return move.to.rank == (piece.color == .white ? 7 : 0)
     }
     
-    public func beginWaiting() {
+    public func showWaitingOverlay() {
         withAnimation(.bouncy) {
-            inWaiting = true
+            isWaiting = true
         }
     }
     
-    public func endWaiting() {
+    public func hideWaitingOverlay() {
         withAnimation(.bouncy) {
-            inWaiting = false
+            isWaiting = false
         }
     }
 }
@@ -371,13 +371,13 @@ public class ChessboardModel {
 private struct MovingPieceView: View {
     var animation: Namespace.ID
     
-    @Environment(ChessboardModel.self) var chessboardModel
+    @Environment(ChessBoardModel.self) var boardModel
     
     @State private var position: CGPoint?
     
     var body: some View {
         Group {
-            if let movingPiece = chessboardModel.movingPiece {
+            if let movingPiece = boardModel.movingPiece {
                 ChessPieceView(animation: animation,
                                piece: movingPiece.piece,
                                square: BoardSquare(row: movingPiece.from.row, column: movingPiece.from.column),
@@ -397,8 +397,8 @@ private struct MovingPieceView: View {
 
     private func squareCenter(for square: BoardSquare) -> CGPoint {
         CGPoint(
-            x: chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? 7 - square.column : square.column),
-            y: chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? square.row : 7 - square.row)
+            x: boardModel.size / 16 + boardModel.size / 8 * CGFloat(boardModel.shouldFlipBoard ? 7 - square.column : square.column),
+            y: boardModel.size / 16 + boardModel.size / 8 * CGFloat(boardModel.shouldFlipBoard ? square.row : 7 - square.row)
         )
     }
 
@@ -406,7 +406,7 @@ private struct MovingPieceView: View {
     private func animate(_ movingPiece: (piece: Piece, from: BoardSquare, to: BoardSquare)) async {
         let source = squareCenter(for: movingPiece.from)
         let destination = squareCenter(for: movingPiece.to)
-        let duration = max(0, chessboardModel.moveAnimationDuration)
+        let duration = max(0, boardModel.moveAnimationDuration)
 
         var transaction = Transaction()
         transaction.disablesAnimations = true
@@ -434,26 +434,28 @@ private struct MovingPieceView: View {
     }
 
     private func isCurrent(_ movingPiece: (piece: Piece, from: BoardSquare, to: BoardSquare)) -> Bool {
-        chessboardModel.movingPiece?.piece == movingPiece.piece &&
-        chessboardModel.movingPiece?.from == movingPiece.from &&
-        chessboardModel.movingPiece?.to == movingPiece.to
+        boardModel.movingPiece?.piece == movingPiece.piece &&
+        boardModel.movingPiece?.from == movingPiece.from &&
+        boardModel.movingPiece?.to == movingPiece.to
     }
 
     private func clearMovingPieceIfCurrent(_ movingPiece: (piece: Piece, from: BoardSquare, to: BoardSquare)) {
         guard isCurrent(movingPiece) else { return }
-        chessboardModel.movingPiece = nil
+        boardModel.movingPiece = nil
         position = nil
     }
 }
 
-public struct Chessboard: View {
-    public var chessboardModel: ChessboardModel
+public struct ChessBoardView: View {
+    public var model: ChessBoardModel
     
     @Namespace private var animation
     
-    public init(chessboardModel: ChessboardModel) {
-        self.chessboardModel = chessboardModel
+    public init(model: ChessBoardModel) {
+        self.model = model
     }
+
+    private var boardModel: ChessBoardModel { model }
     
     public var body: some View {
         GeometryReader { geometry in
@@ -467,41 +469,41 @@ public struct Chessboard: View {
                 
                 MovingPieceView(animation: animation)
                 
-                if chessboardModel.showPromotionPicker {
+                if model.isPromotionPickerPresented {
                     promotionPickerView
                         .frame(width: geometry.size.width, height: geometry.size.height)
                 }
                 
-                if chessboardModel.inWaiting {
-                    inWaitingView
+                if model.isWaiting {
+                    waitingOverlayView
                 }
             }
-            .environment(chessboardModel)
-            .frame(width: chessboardSize(from: geometry.size),
-                   height: chessboardSize(from: geometry.size))
+            .environment(model)
+            .frame(width: boardSize(from: geometry.size),
+                   height: boardSize(from: geometry.size))
             .onAppear {
-                updateChessboardSize(geometry.size)
+                updateBoardSize(geometry.size)
             }
             .onChange(of: geometry.size) { _, newSize in
-                updateChessboardSize(newSize)
+                updateBoardSize(newSize)
             }
             .task {
-                updateChessboardSize(geometry.size)
+                updateBoardSize(geometry.size)
             }
         }
         .aspectRatio(1, contentMode: .fit)
     }
 
-    private func chessboardSize(from geometrySize: CGSize) -> CGFloat {
+    private func boardSize(from geometrySize: CGSize) -> CGFloat {
         return min(geometrySize.width, geometrySize.height)
     }
 
-    private func updateChessboardSize(_ geometrySize: CGSize) {
-        let newSize = chessboardSize(from: geometrySize)
-        chessboardModel.size = newSize
+    private func updateBoardSize(_ geometrySize: CGSize) {
+        let newSize = boardSize(from: geometrySize)
+        model.size = newSize
     }
     
-    var inWaitingView: some View {
+    var waitingOverlayView: some View {
         ZStack {
             Color.clear.contentShape(Rectangle())
                 .ignoresSafeArea()
@@ -517,30 +519,37 @@ public struct Chessboard: View {
                 HStack(spacing: 20) {
                     ForEach(["q", "r", "b", "n"], id: \.self) { (piece: String) in
                         Button {
-                            guard let sourceSquare = chessboardModel.promotionSourceSquare,
-                                  let targetSquare = chessboardModel.promotionTargetSquare,
-                                  let lan = chessboardModel.promotionLan
+                            guard let sourceSquare = boardModel.promotionSourceSquare,
+                                  let targetSquare = boardModel.promotionTargetSquare,
+                                  let baseMove = boardModel.promotionBaseMove,
+                                  let promotion = PieceKind(rawValue: piece)
                             else {
-                                chessboardModel.absentePromotionPicker()
+                                boardModel.dismissPromotionPicker()
                                 return
                             }
                             
-                            let promotedLan = lan + piece.uppercased()
-                            let promotedMove = Move(string: promotedLan)
-                            let isLegal = chessboardModel.game.legalMoves.contains(promotedMove)
+                            let promotedMove = Move(from: baseMove.from, to: baseMove.to, promotion: promotion)
+                            let promotedCoordinateMove = promotedMove.description
+                            let isLegal = boardModel.game.legalMoves.contains(promotedMove)
                             
-                            chessboardModel.onMove(promotedMove, isLegal, sourceSquare, targetSquare, promotedLan, PieceKind(rawValue: piece))
+                            boardModel.onMove(
+                                promotedMove,
+                                isLegal,
+                                sourceSquare,
+                                targetSquare,
+                                promotedCoordinateMove,
+                                promotion)
                             
-                            chessboardModel.absentePromotionPicker()
+                            boardModel.dismissPromotionPicker()
                         } label: {
-                            let imageName = "\(chessboardModel.perspective == PieceColor.white ? "w" : "b")\(String(describing: piece).uppercased())"
+                            let imageName = "\(boardModel.perspective == PieceColor.white ? "w" : "b")\(String(describing: piece).uppercased())"
                             
                             ZStack {
                                 PieceImageView(imageName: imageName,
                                                fallback: piece.uppercased(),
                                                fallbackColor: Color.black)
-                                    .frame(width: chessboardModel.size / 8,
-                                           height: chessboardModel.size / 8)
+                                    .frame(width: boardModel.size / 8,
+                                           height: boardModel.size / 8)
                             }
                             .padding(5)
                         }
@@ -566,21 +575,21 @@ public struct Chessboard: View {
                 let isLightSquare = (row + column) % 2 == 0
                 
                 Rectangle()
-                    .fill(isLightSquare ? chessboardModel.colorScheme.light : chessboardModel.colorScheme.dark)
-                    .frame(width: chessboardModel.size / 8, height: chessboardModel.size / 8)
+                    .fill(isLightSquare ? boardModel.colorScheme.light : boardModel.colorScheme.dark)
+                    .frame(width: boardModel.size / 8, height: boardModel.size / 8)
             }
         }
     }
 
     var lastMoveHighlightsView: some View {
         ZStack {
-            if chessboardModel.showLastMoveHighlight,
-               let lastMoveSquares = chessboardModel.lastMoveSquares
+            if boardModel.showsLastMoveHighlight,
+               let lastMoveSquares = boardModel.lastMoveSquares
             {
                 ForEach([lastMoveSquares.from, lastMoveSquares.to], id: \.id) { square in
                     Rectangle()
-                        .fill(chessboardModel.lastMoveHighlight)
-                        .frame(width: chessboardModel.size / 8, height: chessboardModel.size / 8)
+                        .fill(boardModel.lastMoveHighlightColor)
+                        .frame(width: boardModel.size / 8, height: boardModel.size / 8)
                         .position(position(for: square))
                 }
             }
@@ -600,32 +609,32 @@ public struct Chessboard: View {
     }
     
     func rowLabelView(row: Int) -> some View {
-        let displayRow = chessboardModel.shouldFlipBoard ? (7 - row) : row
-        let labelSize = chessboardModel.size / 32
-        let squareSize = chessboardModel.size / 8
+        let displayRow = boardModel.shouldFlipBoard ? (7 - row) : row
+        let labelSize = boardModel.size / 32
+        let squareSize = boardModel.size / 8
         
         return Text("\(displayRow + 1)")
             .font(.system(size: labelSize))
-            .foregroundColor(chessboardModel.colorScheme.label)
+            .foregroundColor(boardModel.colorScheme.label)
             .frame(width: labelSize, height: squareSize, alignment: .center)
             .position(
                 x: labelSize / 2 + 2,
-                y: chessboardModel.size - (CGFloat(row) * squareSize + squareSize - 10)
+                y: boardModel.size - (CGFloat(row) * squareSize + squareSize - 10)
             )
     }
     
     func columnLabelView(column: Int) -> some View {
-        let displayColumn = chessboardModel.shouldFlipBoard ? 7 - column : column
-        let labelSize = chessboardModel.size / 32
-        let squareSize = chessboardModel.size / 8
+        let displayColumn = boardModel.shouldFlipBoard ? 7 - column : column
+        let labelSize = boardModel.size / 32
+        let squareSize = boardModel.size / 8
         
         return Text(["a", "b", "c", "d", "e", "f", "g", "h"][displayColumn])
             .font(.system(size: labelSize))
-            .foregroundColor(chessboardModel.colorScheme.label)
+            .foregroundColor(boardModel.colorScheme.label)
             .frame(width: squareSize, height: labelSize, alignment: .center)
             .position(
                 x: (CGFloat(column) * squareSize + squareSize) - 8,
-                y: (chessboardModel.size - labelSize / 2) - 4
+                y: (boardModel.size - labelSize / 2) - 4
             )
     }
     
@@ -634,13 +643,13 @@ public struct Chessboard: View {
             ForEach(0..<64, id: \.self) { index in
                 let row = index % 8
                 let column = index / 8
-                let piece = chessboardModel.game.position.board[index]
+                let piece = boardModel.game.position.board[index]
                 
                 ChessSquareView(piece: piece,
                                 row: row,
                                 column: column)
-                .position(x: chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? 7 - column : column),
-                          y: chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? row : 7 - row))
+                .position(x: boardModel.size / 16 + boardModel.size / 8 * CGFloat(boardModel.shouldFlipBoard ? 7 - column : column),
+                          y: boardModel.size / 16 + boardModel.size / 8 * CGFloat(boardModel.shouldFlipBoard ? row : 7 - row))
             }
         }
     }
@@ -650,28 +659,28 @@ public struct Chessboard: View {
             ForEach(0..<64, id: \.self) { index in
                 let row = index % 8
                 let column = index / 8
-                let piece = chessboardModel.game.position.board[index]
+                let piece = boardModel.game.position.board[index]
                 
-                let isMoving = chessboardModel.movingPiece?.from == BoardSquare(row: row, column: column) ||
-                               chessboardModel.movingPiece?.to == BoardSquare(row: row, column: column)
+                let isMoving = boardModel.movingPiece?.from == BoardSquare(row: row, column: column) ||
+                               boardModel.movingPiece?.to == BoardSquare(row: row, column: column)
                 
                 ChessPieceView(animation: animation,
                                piece: piece,
                                square: BoardSquare(row: row, column: column))
                 .opacity(isMoving ? 0.0 : 1.0)
                 .animation(nil, value: isMoving)
-                .position(x: chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? 7 - column : column),
-                          y: chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? row : 7 - row))
+                .position(x: boardModel.size / 16 + boardModel.size / 8 * CGFloat(boardModel.shouldFlipBoard ? 7 - column : column),
+                          y: boardModel.size / 16 + boardModel.size / 8 * CGFloat(boardModel.shouldFlipBoard ? row : 7 - row))
             }
         }
     }
     
     var legalMoveHighlightsView: some View {
         ZStack {
-            ForEach(Array(chessboardModel.legalMoveSquares), id: \.id) { square in
+            ForEach(Array(boardModel.legalMoveSquares), id: \.id) { square in
                 Circle()
-                    .fill(chessboardModel.colorScheme.legalMove)
-                    .frame(width: chessboardModel.size / 24, height: chessboardModel.size / 24)
+                    .fill(boardModel.colorScheme.legalMove)
+                    .frame(width: boardModel.size / 24, height: boardModel.size / 24)
                     .position(position(for: square))
             }
         }
@@ -679,19 +688,19 @@ public struct Chessboard: View {
 
     private func position(for square: BoardSquare) -> CGPoint {
         CGPoint(
-            x: chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? 7 - square.column : square.column),
-            y: chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? square.row : 7 - square.row)
+            x: boardModel.size / 16 + boardModel.size / 8 * CGFloat(boardModel.shouldFlipBoard ? 7 - square.column : square.column),
+            y: boardModel.size / 16 + boardModel.size / 8 * CGFloat(boardModel.shouldFlipBoard ? square.row : 7 - square.row)
         )
     }
     
-    public func onMove(_ callback: @escaping (Move, Bool, String, String, String, PieceKind?) -> Void) -> Chessboard {
-        chessboardModel.onMove = callback
+    public func onMove(_ callback: @escaping ChessBoardMoveHandler) -> ChessBoardView {
+        boardModel.onMove = callback
         return self
     }
 }
 
 private struct ChessSquareView: View {
-    @Environment(ChessboardModel.self) var chessboardModel
+    @Environment(ChessBoardModel.self) var boardModel
     
     var piece: Piece?
     var row: Int
@@ -703,48 +712,48 @@ private struct ChessSquareView: View {
     var zIndex: Double { isDragging ? 1: 0 }
     
     var isSelected: Bool {
-        if let selectedSquare = chessboardModel.selectedSquare {
+        if let selectedSquare = boardModel.selectedSquare {
             return selectedSquare.row == row && selectedSquare.column == column
         }
         return false
     }
     
     var isHinted: Bool {
-        chessboardModel.hintedSquares.contains { $0.row == row && $0.column == column }
+        boardModel.hintedSquares.contains { $0.row == row && $0.column == column }
     }
     
     var x: CGFloat {
-        chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? 7 - column : column)
+        boardModel.size / 16 + boardModel.size / 8 * CGFloat(boardModel.shouldFlipBoard ? 7 - column : column)
     }
     
     var y: CGFloat {
-        chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? row : 7 - row)
+        boardModel.size / 16 + boardModel.size / 8 * CGFloat(boardModel.shouldFlipBoard ? row : 7 - row)
     }
     
     var body: some View {
         ZStack {
             Color.clear.contentShape(Rectangle())
         }
-        .font(.system(size: chessboardModel.size / 8 * 0.75))
-        .frame(width: chessboardModel.size / 8, height: chessboardModel.size / 8)
+        .font(.system(size: boardModel.size / 8 * 0.75))
+        .frame(width: boardModel.size / 8, height: boardModel.size / 8)
         .modifier {
-            if let dropTarget = chessboardModel.dropTarget,
+            if let dropTarget = boardModel.dropTarget,
                !isDragging &&
                 dropTarget.row == row && dropTarget.column == column
             {
                 $0.overlay {
                     RoundedRectangle(cornerRadius: 2)
-                        .stroke(chessboardModel.colorScheme.selected, lineWidth: 3.5)
+                        .stroke(boardModel.colorScheme.selected, lineWidth: 3.5)
                 }
             } else if isSelected {
                 $0.overlay {
                     RoundedRectangle(cornerRadius: 2)
-                        .stroke(chessboardModel.colorScheme.selected, lineWidth: 3.5)
+                        .stroke(boardModel.colorScheme.selected, lineWidth: 3.5)
                 }
             } else if isHinted {
                 $0.overlay {
                     RoundedRectangle(cornerRadius: 2)
-                        .stroke(chessboardModel.colorScheme.hinted, lineWidth: 3.5)
+                        .stroke(boardModel.colorScheme.hinted, lineWidth: 3.5)
                 }
             } else { $0 }
         }
@@ -752,7 +761,7 @@ private struct ChessSquareView: View {
 }
 
 private struct ChessPieceView: View {
-    @Environment(ChessboardModel.self) var chessboardModel
+    @Environment(ChessBoardModel.self) var boardModel
     
     var animation: Namespace.ID
     
@@ -766,26 +775,26 @@ private struct ChessPieceView: View {
     var zIndex: Double { isDragging ? 1: 0 }
     
     var isSelected: Bool {
-        if let selectedSquare = chessboardModel.selectedSquare {
+        if let selectedSquare = boardModel.selectedSquare {
             return selectedSquare.row == square.row && selectedSquare.column == square.column
         }
         return false
     }
     
     var isHinted: Bool {
-        chessboardModel.hintedSquares.contains { $0.row == square.row && $0.column == square.column }
+        boardModel.hintedSquares.contains { $0.row == square.row && $0.column == square.column }
     }
     
     var x: CGFloat {
-        chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? 7 - square.column : square.column)
+        boardModel.size / 16 + boardModel.size / 8 * CGFloat(boardModel.shouldFlipBoard ? 7 - square.column : square.column)
     }
     
     var y: CGFloat {
-        chessboardModel.size / 16 + chessboardModel.size / 8 * CGFloat(chessboardModel.shouldFlipBoard ? square.row : 7 - square.row)
+        boardModel.size / 16 + boardModel.size / 8 * CGFloat(boardModel.shouldFlipBoard ? square.row : 7 - square.row)
     }
     
     var isMoving: Bool {
-        piece == chessboardModel.movingPiece?.piece && square == chessboardModel.movingPiece?.from
+        piece == boardModel.movingPiece?.piece && square == boardModel.movingPiece?.from
     }
     
     var body: some View {
@@ -801,62 +810,62 @@ private struct ChessPieceView: View {
             }
         }
         .zIndex(zIndex)
-        .font(.system(size: chessboardModel.size / 8 * 0.75))
-        .frame(width: chessboardModel.size / 8, height: chessboardModel.size / 8)
+        .font(.system(size: boardModel.size / 8 * 0.75))
+        .frame(width: boardModel.size / 8, height: boardModel.size / 8)
         .offset(offset)
         .onTapGesture(perform: onTapGesture)
         .gesture(dragGesture)
     }
     
     func onTapGesture() {
-        if chessboardModel.movingPiece != nil {
+        if boardModel.movingPiece != nil {
             return
         }
         
-        if let piece, piece.color != chessboardModel.turn && chessboardModel.selectedSquare == nil {
+        if let piece, piece.color != boardModel.turn && boardModel.selectedSquare == nil {
             return
         }
         
         if isSelected {
-            chessboardModel.selectedSquare = nil
-            chessboardModel.clearLegalMoveHighlights()
-        } else if piece != nil && chessboardModel.selectedSquare == nil {
-            chessboardModel.selectedSquare = isSelected ? nil: BoardSquare(row: square.row, column: square.column)
-            if chessboardModel.selectedSquare != nil {
-                chessboardModel.updateLegalMoveHighlights(for: BoardSquare(row: square.row, column: square.column))
+            boardModel.selectedSquare = nil
+            boardModel.clearLegalMoveHighlights()
+        } else if piece != nil && boardModel.selectedSquare == nil {
+            boardModel.selectedSquare = isSelected ? nil: BoardSquare(row: square.row, column: square.column)
+            if boardModel.selectedSquare != nil {
+                boardModel.updateLegalMoveHighlights(for: BoardSquare(row: square.row, column: square.column))
             }
-        } else if let selectedSquare = chessboardModel.selectedSquare {
+        } else if let selectedSquare = boardModel.selectedSquare {
             let sourceRow = selectedSquare.row
             let sourceColumn = selectedSquare.column
             
             let sourceSquare = "\(Character(UnicodeScalar(sourceColumn + 97)!))\(sourceRow + 1)"
             let targetSquare = "\(Character(UnicodeScalar(square.column + 97)!))\(square.row + 1)"
             
-            let lan = "\(sourceSquare)\(targetSquare)"
-            let move = Move(string: lan)
-            let isLegal = chessboardModel.game.legalMoves.contains(move)
+            let coordinateMove = "\(sourceSquare)\(targetSquare)"
+            let move = Move(string: coordinateMove)
+            let isLegal = boardModel.game.legalMoves.contains(move)
             
-            chessboardModel.deselect()
-            chessboardModel.clearLegalMoveHighlights()
+            boardModel.deselect()
+            boardModel.clearLegalMoveHighlights()
             
-            guard let selectedPiece = chessboardModel.game.position.board[selectedSquare.row + selectedSquare.column * 8]
+            guard let selectedPiece = boardModel.game.position.board[selectedSquare.row + selectedSquare.column * 8]
             else { return }
             
-            let isPromotable = chessboardModel.isPromotable(piece: selectedPiece, lan: lan)
+            let requiresPromotionChoice = boardModel.requiresPromotionChoice(piece: selectedPiece, move: move)
             
-            if !isPromotable {
-                if !chessboardModel.validateMoves || isLegal {
-                    chessboardModel.onMove(move, isLegal, sourceSquare, targetSquare, lan, nil)
+            if !requiresPromotionChoice {
+                if !boardModel.validatesMoves || isLegal {
+                    boardModel.onMove(move, isLegal, sourceSquare, targetSquare, coordinateMove, nil)
                 }
-            } else if ((["q", "r", "b", "n"].map { lan + $0.uppercased() }).contains { promotedLan in
-                return chessboardModel.game.legalMoves.contains(Move(string: promotedLan))
+            } else if ([PieceKind.queen, .rook, .bishop, .knight].contains { promotion in
+                boardModel.game.legalMoves.contains(Move(from: move.from, to: move.to, promotion: promotion))
             }) {
-                chessboardModel.presentPromotionPicker(piece: selectedPiece,
-                                                       sourceSquare: sourceSquare,
-                                                       targetSquare: targetSquare,
-                                                       lan: lan)
-            } else if !chessboardModel.validateMoves || isLegal {
-                chessboardModel.onMove(move, isLegal, sourceSquare, targetSquare, lan, nil)
+                boardModel.presentPromotionPicker(piece: selectedPiece,
+                                                  sourceSquare: sourceSquare,
+                                                  targetSquare: targetSquare,
+                                                  baseMove: move)
+            } else if !boardModel.validatesMoves || isLegal {
+                boardModel.onMove(move, isLegal, sourceSquare, targetSquare, coordinateMove, nil)
             }
         }
     }
@@ -864,91 +873,91 @@ private struct ChessPieceView: View {
     var dragGesture: some Gesture {
         DragGesture()
             .onChanged { value in
-                if chessboardModel.movingPiece != nil {
+                if boardModel.movingPiece != nil {
                     return
                 }
                 
-                if chessboardModel.selectedSquare != nil {
-                    chessboardModel.deselect()
+                if boardModel.selectedSquare != nil {
+                    boardModel.deselect()
                 }
                 
-                if let piece, piece.color != chessboardModel.turn,
-                   !chessboardModel.allowOpponentMove && piece.color != chessboardModel.perspective
+                if let piece, piece.color != boardModel.turn,
+                   !boardModel.allowsOpponentMoves && piece.color != boardModel.perspective
                 {
-                    chessboardModel.selectedSquare = nil
+                    boardModel.selectedSquare = nil
                     isDragging = false
-                    chessboardModel.clearLegalMoveHighlights()
+                    boardModel.clearLegalMoveHighlights()
                     return
                 }
                 
-                chessboardModel.selectedSquare = nil
+                boardModel.selectedSquare = nil
                 
                 if !isDragging {
-                    chessboardModel.updateLegalMoveHighlights(for: BoardSquare(row: square.row, column: square.column))
+                    boardModel.updateLegalMoveHighlights(for: BoardSquare(row: square.row, column: square.column))
                 }
                 
                 isDragging = true
                 
-                let squareSize = chessboardModel.size / 8
+                let squareSize = boardModel.size / 8
                 let columnOffset = Int(round(value.translation.width / squareSize))
                 let rowOffset = Int(round(value.translation.height / squareSize))
                 
-                let targetColumn = chessboardModel.shouldFlipBoard ? square.column - columnOffset : square.column + columnOffset
-                let targetRow = chessboardModel.shouldFlipBoard ? square.row + rowOffset : square.row - rowOffset
+                let targetColumn = boardModel.shouldFlipBoard ? square.column - columnOffset : square.column + columnOffset
+                let targetRow = boardModel.shouldFlipBoard ? square.row + rowOffset : square.row - rowOffset
                 
-                chessboardModel.dropTarget = (targetRow, targetColumn)
+                boardModel.dropTarget = (targetRow, targetColumn)
                 offset = value.translation
             }
             .onEnded { value in
-                chessboardModel.selectedSquare = nil
-                chessboardModel.dropTarget = nil
+                boardModel.selectedSquare = nil
+                boardModel.dropTarget = nil
                 isDragging = false
-                chessboardModel.clearLegalMoveHighlights()
+                boardModel.clearLegalMoveHighlights()
                 
-                if let piece, piece.color != chessboardModel.turn,
-                   !chessboardModel.allowOpponentMove && piece.color != chessboardModel.perspective {
+                if let piece, piece.color != boardModel.turn,
+                   !boardModel.allowsOpponentMoves && piece.color != boardModel.perspective {
                     withAnimation {
                         offset = .zero
                     }
                     return
                 }
                 
-                let squareSize = chessboardModel.size / 8
+                let squareSize = boardModel.size / 8
                 let columnOffset = Int(round(value.translation.width / squareSize))
                 let rowOffset = Int(round(value.translation.height / squareSize))
                 
-                let targetColumn = chessboardModel.shouldFlipBoard ? square.column - columnOffset : square.column + columnOffset
-                let targetRow = chessboardModel.shouldFlipBoard ? square.row + rowOffset : square.row - rowOffset
+                let targetColumn = boardModel.shouldFlipBoard ? square.column - columnOffset : square.column + columnOffset
+                let targetRow = boardModel.shouldFlipBoard ? square.row + rowOffset : square.row - rowOffset
                 
                 let sourceSquare = "\(Character(UnicodeScalar(square.column + 97)!))\(square.row + 1)"
                 let targetSquare = "\(Character(UnicodeScalar(targetColumn + 97)!))\(targetRow + 1)"
                 
-                let lan = "\(sourceSquare)\(targetSquare)"
-                let move = Move(string: lan)
-                let isLegal = chessboardModel.game.legalMoves.contains(move)
+                let coordinateMove = "\(sourceSquare)\(targetSquare)"
+                let move = Move(string: coordinateMove)
+                let isLegal = boardModel.game.legalMoves.contains(move)
                 
                 withAnimation {
                     offset = .zero
                 }
                 
-                guard let selectedPiece = chessboardModel.game.position.board[square.row + square.column * 8]
+                guard let selectedPiece = boardModel.game.position.board[square.row + square.column * 8]
                 else { return }
                 
-                let isPromotable = chessboardModel.isPromotable(piece: selectedPiece, lan: lan)
+                let requiresPromotionChoice = boardModel.requiresPromotionChoice(piece: selectedPiece, move: move)
                 
-                if !isPromotable {
-                    if !chessboardModel.validateMoves || isLegal {
-                        chessboardModel.onMove(move, isLegal, sourceSquare, targetSquare, lan, nil)
+                if !requiresPromotionChoice {
+                    if !boardModel.validatesMoves || isLegal {
+                        boardModel.onMove(move, isLegal, sourceSquare, targetSquare, coordinateMove, nil)
                     }
-                } else if ((["q", "r", "b", "n"].map { lan + $0.uppercased() }).contains { promotedLan in
-                    return chessboardModel.game.legalMoves.contains(Move(string: promotedLan))
+                } else if ([PieceKind.queen, .rook, .bishop, .knight].contains { promotion in
+                    boardModel.game.legalMoves.contains(Move(from: move.from, to: move.to, promotion: promotion))
                 }) {
-                    chessboardModel.presentPromotionPicker(piece: selectedPiece,
-                                                           sourceSquare: sourceSquare,
-                                                           targetSquare: targetSquare,
-                                                           lan: lan)
-                } else if !chessboardModel.validateMoves || chessboardModel.game.legalMoves.contains(move) {
-                    chessboardModel.onMove(move, isLegal, sourceSquare, targetSquare, lan, nil)
+                    boardModel.presentPromotionPicker(piece: selectedPiece,
+                                                      sourceSquare: sourceSquare,
+                                                      targetSquare: targetSquare,
+                                                      baseMove: move)
+                } else if !boardModel.validatesMoves || boardModel.game.legalMoves.contains(move) {
+                    boardModel.onMove(move, isLegal, sourceSquare, targetSquare, coordinateMove, nil)
                 }
             }
     }

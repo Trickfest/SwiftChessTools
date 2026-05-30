@@ -1,16 +1,16 @@
 //
-//  BishopMoving.swift
-//  ChessKit
+//  RookMoveGenerator.swift
+//  ChessCore
 //
 //  Created by Alexander Perechnev, 2020.
 //  Modified by Alexander Perechnev, 2025.
 //  Copyright © 2020-2025 Päike Mikrosüsteemid OÜ. All rights reserved.
 //
 
-class BishopMoving: LongRangeMoving {
+class RookMoveGenerator: SlidingMoveGenerator {
 
     init() {
-        super.init(translations: MovingTranslations().diagonal)
+        super.init(offsets: MoveOffsets().orthogonal)
     }
 
 }

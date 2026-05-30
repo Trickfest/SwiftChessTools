@@ -1,16 +1,16 @@
 //
-//  KnightMoving.swift
-//  ChessKit
+//  QueenMoveGenerator.swift
+//  ChessCore
 //
 //  Created by Alexander Perechnev, 2020.
 //  Modified by Alexander Perechnev, 2025.
 //  Copyright © 2020-2025 Päike Mikrosüsteemid OÜ. All rights reserved.
 //
 
-class KnightMoving: ShortRangeMoving {
+class QueenMoveGenerator: SlidingMoveGenerator {
 
     init() {
-        super.init(translations: MovingTranslations().knight)
+        super.init(offsets: MoveOffsets().allDirections)
     }
 
 }

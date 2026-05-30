@@ -1,6 +1,6 @@
 //
 //  BoardTest.swift
-//  ChessKitTests
+//  ChessCoreTests
 //
 //  Created by Alexander Perechnev, 2020.
 //  Modified by Alexander Perechnev, 2025.
@@ -50,7 +50,7 @@ import Testing
     #expect(board[e4square.index] == whitePawn)
 }
 
-@Test func deepCopy() {
+@Test func boardCopyIsIndependent() {
     let whitePawn = Piece(kind: .pawn, color: .white)
 
     var board = Board()
