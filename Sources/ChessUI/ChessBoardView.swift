@@ -28,6 +28,11 @@ public typealias ChessBoardMoveHandler = (
 public struct BoardSquare: Identifiable, Hashable {
     public var row: Int
     public var column: Int
+
+    public init(row: Int, column: Int) {
+        self.row = row
+        self.column = column
+    }
     
     public var id: String {
         "\(row),\(column)"
@@ -555,6 +560,8 @@ public struct ChessBoardView: View {
                         }
                         .background(.white)
                         .cornerRadius(12)
+                        .accessibilityIdentifier("ChessUI.promotion.\(promotionName(for: piece))")
+                        .accessibilityLabel("Promote to \(promotionName(for: piece))")
                     }
                     .buttonStyle(.plain)
                 }
@@ -564,6 +571,16 @@ public struct ChessBoardView: View {
             .cornerRadius(20)
             .shadow(radius: 5)
             .padding(.horizontal, 20)
+        }
+    }
+
+    private func promotionName(for piece: String) -> String {
+        switch piece {
+        case "q": "queen"
+        case "r": "rook"
+        case "b": "bishop"
+        case "n": "knight"
+        default: piece
         }
     }
     
@@ -591,6 +608,9 @@ public struct ChessBoardView: View {
                         .fill(boardModel.lastMoveHighlightColor)
                         .frame(width: boardModel.size / 8, height: boardModel.size / 8)
                         .position(position(for: square))
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Last move \(coordinate(for: square))")
+                        .accessibilityIdentifier("ChessUI.lastMove.\(coordinate(for: square))")
                 }
             }
         }
@@ -682,6 +702,9 @@ public struct ChessBoardView: View {
                     .fill(boardModel.colorScheme.legalMove)
                     .frame(width: boardModel.size / 24, height: boardModel.size / 24)
                     .position(position(for: square))
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Legal move \(coordinate(for: square))")
+                    .accessibilityIdentifier("ChessUI.legalMove.\(coordinate(for: square))")
             }
         }
     }
@@ -691,6 +714,11 @@ public struct ChessBoardView: View {
             x: boardModel.size / 16 + boardModel.size / 8 * CGFloat(boardModel.shouldFlipBoard ? 7 - square.column : square.column),
             y: boardModel.size / 16 + boardModel.size / 8 * CGFloat(boardModel.shouldFlipBoard ? square.row : 7 - square.row)
         )
+    }
+
+    private func coordinate(for square: BoardSquare) -> String {
+        let file = Character(UnicodeScalar(square.column + 97)!)
+        return "\(file)\(square.row + 1)"
     }
     
     public func onMove(_ callback: @escaping ChessBoardMoveHandler) -> ChessBoardView {
@@ -815,6 +843,38 @@ private struct ChessPieceView: View {
         .offset(offset)
         .onTapGesture(perform: onTapGesture)
         .gesture(dragGesture)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityIdentifier("ChessUI.square.\(coordinate)")
+    }
+
+    private var coordinate: String {
+        let file = Character(UnicodeScalar(square.column + 97)!)
+        return "\(file)\(square.row + 1)"
+    }
+
+    private var accessibilityLabel: String {
+        guard let piece else {
+            return "Empty \(coordinate)"
+        }
+
+        let color = piece.color == .white ? "White" : "Black"
+        let kind: String
+        switch piece.kind {
+        case .king:
+            kind = "king"
+        case .queen:
+            kind = "queen"
+        case .rook:
+            kind = "rook"
+        case .bishop:
+            kind = "bishop"
+        case .knight:
+            kind = "knight"
+        case .pawn:
+            kind = "pawn"
+        }
+        return "\(color) \(kind) \(coordinate)"
     }
     
     func onTapGesture() {

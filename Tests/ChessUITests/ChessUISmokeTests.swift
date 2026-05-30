@@ -45,3 +45,112 @@ import ChessUI
     #expect(model.movingPiece?.from == nil)
     #expect(model.animatedMove == nil)
 }
+
+@Test func legalMoveHighlightsFollowCurrentSelection() {
+    let model = ChessBoardModel(fen: initialFEN)
+
+    model.updateLegalMoveHighlights(for: BoardSquare(row: 1, column: 4))
+
+    #expect(model.legalMoveSquares == [
+        BoardSquare(row: 2, column: 4),
+        BoardSquare(row: 3, column: 4),
+    ])
+}
+
+@Test func legalMoveHighlightsCanBeDisabled() {
+    let model = ChessBoardModel(fen: initialFEN, showsLegalMoveHighlights: false)
+
+    model.updateLegalMoveHighlights(for: BoardSquare(row: 1, column: 4))
+
+    #expect(model.legalMoveSquares.isEmpty)
+}
+
+@Test func hintsCanBeAddedAndCleared() {
+    let model = ChessBoardModel(fen: initialFEN)
+
+    model.hint("e4")
+    model.hint("bad")
+    model.hint(row: 7, column: 6)
+    model.hint([BoardSquare(row: 0, column: 1)])
+
+    #expect(model.hintedSquares.contains(BoardSquare(row: 3, column: 4)))
+    #expect(model.hintedSquares.contains(BoardSquare(row: 7, column: 6)))
+    #expect(model.hintedSquares.contains(BoardSquare(row: 0, column: 1)))
+    #expect(model.hintedSquares.count == 3)
+
+    model.clearHint()
+    #expect(model.hintedSquares.isEmpty)
+}
+
+@Test func promotionPickerStateCanBePresentedAndDismissed() {
+    let model = ChessBoardModel(fen: "7k/4P3/8/8/8/8/8/4K3 w - - 0 1")
+    let pawn = Piece(kind: .pawn, color: .white)
+    let move = Move(string: "e7e8")
+
+    model.presentPromotionPicker(
+        piece: pawn,
+        sourceSquare: "e7",
+        targetSquare: "e8",
+        baseMove: move
+    )
+
+    #expect(model.isPromotionPickerPresented)
+    #expect(model.promotionPiece == pawn)
+    #expect(model.promotionSourceSquare == "e7")
+    #expect(model.promotionTargetSquare == "e8")
+    #expect(model.promotionBaseMove == move)
+
+    model.dismissPromotionPicker()
+
+    #expect(model.isPromotionPickerPresented == false)
+    #expect(model.promotionPiece == nil)
+    #expect(model.promotionSourceSquare == nil)
+    #expect(model.promotionTargetSquare == nil)
+    #expect(model.promotionBaseMove == nil)
+}
+
+@Test func promotionChoiceIsOnlyRequiredForPawnsReachingLastRank() {
+    let whitePawn = Piece(kind: .pawn, color: .white)
+    let blackPawn = Piece(kind: .pawn, color: .black)
+    let whiteKnight = Piece(kind: .knight, color: .white)
+    let model = ChessBoardModel(fen: emptyFEN)
+
+    #expect(model.requiresPromotionChoice(piece: whitePawn, move: Move(string: "e7e8")))
+    #expect(model.requiresPromotionChoice(piece: blackPawn, move: Move(string: "e2e1")))
+    #expect(model.requiresPromotionChoice(piece: whitePawn, move: Move(string: "e6e7")) == false)
+    #expect(model.requiresPromotionChoice(piece: whiteKnight, move: Move(string: "g7h8")) == false)
+}
+
+@Test func modelConfigurationUsesSafeDefaults() {
+    let model = ChessBoardModel(
+        fen: initialFEN,
+        perspective: .black,
+        allowsOpponentMoves: true,
+        showsLegalMoveHighlights: false,
+        moveAnimationDuration: -2,
+        showsLastMoveHighlight: false
+    )
+
+    #expect(model.perspective == .black)
+    #expect(model.shouldFlipBoard)
+    #expect(model.allowsOpponentMoves)
+    #expect(model.showsLegalMoveHighlights == false)
+    #expect(model.moveAnimationDuration == 0)
+    #expect(model.showsLastMoveHighlight == false)
+}
+
+@Test func clearLastMoveHighlightKeepsOtherMoveFeedback() {
+    let model = ChessBoardModel(fen: initialFEN)
+    let move = Move(string: "e2e4")
+
+    model.game.apply(move: move)
+    model.setFEN(FENSerializer().fen(from: model.game.position), animatedMove: move)
+
+    #expect(model.lastMoveSquares != nil)
+    #expect(model.movingPiece != nil)
+
+    model.clearLastMoveHighlight()
+
+    #expect(model.lastMoveSquares == nil)
+    #expect(model.movingPiece != nil)
+}

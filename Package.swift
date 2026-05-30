@@ -35,7 +35,10 @@ let package = Package(
         ),
         .testTarget(
             name: "ChessUITests",
-            dependencies: ["ChessCore", "ChessUI"]
+            dependencies: ["ChessCore", "ChessUI"],
+            resources: [
+                .process("SnapshotReferences"),
+            ]
         ),
     ],
     swiftLanguageModes: [.v5, .v6]

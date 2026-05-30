@@ -97,6 +97,10 @@ func availablePieceMoves(fen: String, targets: String, at coordinate: String) as
         ("3kr3/8/8/8/8/8/8/4K3 w - - 0 1", "e1d1 e1d2 e1f1 e1f2"),  // King cannot move into check.
         ("3k4/8/8/8/8/5q2/8/6K1 w - - 0 1", "g1h2"),  // King has one safe escape.
         ("2rrr3/8/1k6/8/8/8/7R/3K4 w - - 0 1", "h2d2"),  // Blocking the checking line.
+        (
+            "r3k2r/Pp1p1ppp/1b3nbN/nPp5/BBPNP3/q7/Pp1P2PP/R2Q1RK1 w kq c6 0 2",
+            "a1b1 a1c1 a4b3 a4c2 b4a3 b4a5 b4c3 b4c5 b5c6 d1b1 d1b3 d1c1 d1c2 d1e1 d1e2 d1f3 d1g4 d1h5 d2d3 d4b3 d4c2 d4c6 d4e2 d4e6 d4f3 d4f5 e4e5 f1e1 f1f2 f1f3 f1f4 f1f5 f1f6 g1f2 g1h1 g2g3 g2g4 h2h3 h2h4 h6f5 h6f7 h6g4 h6g8"
+        ),  // The en-passant target square is still a normal destination for non-pawns.
 
         // Scotch game position.
         (

@@ -198,10 +198,18 @@ public class StandardRules: Rules {
         guard let enPassant = position.state.enPassant else {
             return nil
         }
-        if move.to.file == enPassant.file && move.to.rank == enPassant.rank {
-            return Square(file: enPassant.file, rank: enPassant.rank == 2 ? 3 : 4)
+        guard position.board.bitboards.pawn & move.from.bitboardMask != Int64.zero else {
+            return nil
         }
-        return nil
+        guard move.to.file == enPassant.file && move.to.rank == enPassant.rank else {
+            return nil
+        }
+        guard abs(move.from.file - move.to.file) == 1 else {
+            return nil
+        }
+
+        let capturedRank = position.state.turn == .white ? enPassant.rank - 1 : enPassant.rank + 1
+        return Square(file: enPassant.file, rank: capturedRank)
     }
 
     private func piecesForSideToMove(in position: Position) -> [(Square, Piece)] {

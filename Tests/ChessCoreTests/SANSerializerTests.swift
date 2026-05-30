@@ -41,6 +41,8 @@ let testables: [(String, String, String)] = [
     // Castling.
     ("O-O", "e1g1", "r2q1rk1/ppp1bppp/2np1n2/4p3/2BPP1b1/2N1BN2/PPP1QPPP/R3K2R w KQ - 8 8"),
     ("O-O-O", "e1c1", "r2q1rk1/ppp1bppp/2np1n2/4p3/2BPP1b1/2N1BN2/PPP1QPPP/R3K2R w KQ - 8 8"),
+    ("O-O", "e8g8", "r3k2r/ppp1bppp/2np1n2/4p3/2BPP1b1/2N1BN2/PPP1QPPP/R3K2R b kq - 8 8"),
+    ("O-O-O", "e8c8", "r3k2r/ppp1bppp/2np1n2/4p3/2BPP1b1/2N1BN2/PPP1QPPP/R3K2R b kq - 8 8"),
 
     // Check suffixes.
     ("Qe6+", "f5e6", "rnb1kbnr/ppp1pppp/8/5q2/3P4/5N2/PPP2PPP/RNBQKB1R b KQkq - 2 4"),
@@ -54,6 +56,7 @@ let testables: [(String, String, String)] = [
     ("a8=Q", "a7a8q", "8/P4pk1/6p1/6Pp/3b3P/8/8/4K3 w - - 0 1"),
     ("a1=N", "a2a1n", "4k3/8/8/7p/6p1/2N3P1/p4PKP/8 b - - 0 1"),
     ("e8=R+", "e7e8r", "r6k/4P3/1R4Q1/8/7p/7P/6PK/8 w - - 1 42"),
+    ("exd8=Q+", "e7d8q", "3r3k/4P3/8/8/8/8/8/4K3 w - - 0 1"),
 ]
 
 // MARK: Serialization
@@ -83,4 +86,23 @@ func move(from san: String, in fen: String) -> String {
     testables.forEach {
         #expect($0.1 == move(from: $0.0, in: $0.2))
     }
+}
+
+@Test func parseAndReplayShortSANGame() {
+    let serializer = SANSerializer()
+    let fenSerializer = FENSerializer()
+    let game = Game(position: fenSerializer.position(from: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"))
+    let sanMoves = ["e4", "e5", "Bc4", "Nc6", "Qh5", "Nf6", "Qxf7#"]
+
+    for san in sanMoves {
+        let move = serializer.move(for: san, in: game)
+        #expect(serializer.san(for: move, in: game) == san)
+        game.apply(move: move)
+    }
+
+    #expect(
+        fenSerializer.fen(from: game.position)
+            == "r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4"
+    )
+    #expect(game.isCheckmate)
 }

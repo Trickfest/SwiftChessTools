@@ -18,6 +18,16 @@ for a release.
   `lastMoveSquares`, and `clearLastMoveHighlight()`.
 - Added ChessUI smoke tests covering move-feedback state and direct FEN
   assignment behavior.
+- Added ChessCore perft tests for standard reference positions, broader SAN
+  parsing coverage, and focused legal-move coverage around en-passant targets.
+- Added ChessUI model tests for legal-move highlighting, hints, promotion
+  state, and board configuration defaults.
+- Added ChessUI snapshot tests with checked-in references for board
+  orientation, selection, last-move highlighting, promotion UI, and color
+  schemes.
+- Added a simulator-backed ChessUI XCUITest harness that drives the real board
+  through tap moves, drag moves, invalid moves, promotion, black perspective,
+  legal-move indicators, and last-move highlights.
 
 ### Changed
 
@@ -39,3 +49,5 @@ for a release.
   before animating it to the destination, avoiding a visual snap.
 - Changed ChessUI piece rendering to use SwiftUI package asset images, avoiding
   `AsyncImage` races without introducing UIKit or AppKit dependencies.
+- Fixed legal-move filtering so a non-pawn move to the current en-passant target
+  square is not simulated as an en-passant capture.
