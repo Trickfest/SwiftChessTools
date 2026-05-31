@@ -55,6 +55,16 @@ Manual smoke test:
 
 ## Testing
 
+Run all automated tests from the repository root:
+
+```sh
+Scripts/test-all.sh
+```
+
+The script runs the SwiftPM test suite, the simulator-backed `ChessUIHarness`
+XCUITest suite, and the macOS `ChessWorkbench` UI tests. To use a different
+simulator or macOS destination, set `IOS_DESTINATION` or `MACOS_DESTINATION`.
+
 Run the package test suite from the repository root:
 
 ```sh
@@ -85,6 +95,18 @@ xcodebuild -project Tests/ChessUIHarness/ChessUIHarness.xcodeproj \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   -derivedDataPath .build/xcode-harness \
   -clonedSourcePackagesDirPath .build/xcode-harness/SourcePackages \
+  test
+```
+
+The macOS `ChessWorkbench` UI tests drive the package's example app directly:
+
+```sh
+xcodebuild -project Examples/ChessWorkbench/ChessWorkbench.xcodeproj \
+  -scheme ChessWorkbench \
+  -configuration Debug \
+  -destination 'platform=macOS,arch=arm64' \
+  -derivedDataPath .build/xcode-chess-workbench \
+  -clonedSourcePackagesDirPath .build/xcode-chess-workbench/SourcePackages \
   test
 ```
 

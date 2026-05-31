@@ -139,6 +139,7 @@ private struct WorkbenchView: View {
                     )
                 }
                 .buttonStyle(WorkbenchButtonStyle(isProminent: boardModel.isPromotionPickerPresented))
+                .accessibilityIdentifier("Workbench.showPromotion")
 
                 Button {
                     boardModel.hint("d3", for: 1)
@@ -146,6 +147,7 @@ private struct WorkbenchView: View {
                     Label("Show d3 Marker", systemImage: "scope")
                 }
                 .buttonStyle(WorkbenchButtonStyle())
+                .accessibilityIdentifier("Workbench.showD3Marker")
 
                 Button {
                     withAnimation {
@@ -157,6 +159,7 @@ private struct WorkbenchView: View {
                 }
                 .disabled(isResetDisabled)
                 .buttonStyle(WorkbenchButtonStyle())
+                .accessibilityIdentifier("Workbench.resetPosition")
 
                 Button {
                     copyFENToPasteboard()
@@ -177,6 +180,7 @@ private struct WorkbenchView: View {
                     .accessibilityLabel(didCopyFEN ? "Copied FEN" : "Copy FEN")
                 }
                 .buttonStyle(WorkbenchButtonStyle())
+                .accessibilityIdentifier("Workbench.copyFEN")
             }
         }
     }
@@ -203,10 +207,13 @@ private struct WorkbenchView: View {
                     .onChange(of: boardModel.fen) { _, newValue in
                         fen = newValue
                     }
+                    .accessibilityLabel("FEN")
+                    .accessibilityIdentifier("Workbench.fenEditor")
 
                 Text(showError ? errorMessage : "FEN accepted")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("Workbench.fenStatus")
             }
         }
     }
@@ -220,6 +227,7 @@ private struct WorkbenchView: View {
                     Text("\(Int(size))")
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("Workbench.boardSizeValue")
                 }
                 .font(.callout)
 

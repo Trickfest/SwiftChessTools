@@ -467,10 +467,13 @@ public struct ChessBoardView: View {
             ZStack {
                 backgroundView
                 lastMoveHighlightsView
+                    .allowsHitTesting(false)
                 labelsView
+                    .allowsHitTesting(false)
                 squaresView
                 piecesView
                 legalMoveHighlightsView
+                    .allowsHitTesting(false)
                 
                 MovingPieceView(animation: animation)
                 
@@ -782,9 +785,17 @@ private struct ChessSquareView: View {
                 $0.overlay {
                     RoundedRectangle(cornerRadius: 2)
                         .stroke(boardModel.colorScheme.hinted, lineWidth: 3.5)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Hint \(coordinate)")
+                        .accessibilityIdentifier("ChessUI.hint.\(coordinate)")
                 }
             } else { $0 }
         }
+    }
+
+    private var coordinate: String {
+        let file = Character(UnicodeScalar(column + 97)!)
+        return "\(file)\(row + 1)"
     }
 }
 
@@ -840,6 +851,7 @@ private struct ChessPieceView: View {
         .zIndex(zIndex)
         .font(.system(size: boardModel.size / 8 * 0.75))
         .frame(width: boardModel.size / 8, height: boardModel.size / 8)
+        .contentShape(Rectangle())
         .offset(offset)
         .onTapGesture(perform: onTapGesture)
         .gesture(dragGesture)

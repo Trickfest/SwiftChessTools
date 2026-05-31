@@ -31,6 +31,11 @@ for a release.
 - Added the macOS `ChessWorkbench` manual workbench under
   `Examples/ChessWorkbench` so package-level UI and rules checks live with
   `SwiftChessTools`.
+- Added a macOS `ChessWorkbenchUITests` XCUITest suite that drives the example
+  app through board rendering, legal and invalid moves, full-square destination
+  taps, FEN updates, markers, promotion UI, copy feedback, and reset behavior.
+- Added `Scripts/test-all.sh` to run the SwiftPM tests, the simulator-backed
+  `ChessUIHarness` UI tests, and the macOS `ChessWorkbench` UI tests together.
 
 ### Changed
 
@@ -54,3 +59,5 @@ for a release.
   `AsyncImage` races without introducing UIKit or AppKit dependencies.
 - Fixed legal-move filtering so a non-pawn move to the current en-passant target
   square is not simulated as an en-passant capture.
+- Fixed ChessUI tap hit testing so the full board square is interactive when
+  selecting pieces or clicking destination squares.

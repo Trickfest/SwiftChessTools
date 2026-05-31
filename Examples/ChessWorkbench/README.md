@@ -3,9 +3,9 @@
 ChessWorkbench is a small macOS SwiftUI workbench for the reusable chess UI and
 rules code in `SwiftChessTools`.
 
-It is not an automated test suite or a product app. Keep it around as a quick
-place to exercise `ChessCore` and `ChessUI` behavior without opening the larger
-demo app.
+It is not a product app. Keep it around as a quick place to exercise
+`ChessCore` and `ChessUI` behavior without opening the larger demo app; its
+Xcode project also hosts focused macOS UI tests for those workbench flows.
 
 ## What It Exercises
 
@@ -47,6 +47,25 @@ xcodebuild -project Examples/ChessWorkbench/ChessWorkbench.xcodeproj \
   -destination 'platform=macOS,arch=arm64' \
   -derivedDataPath .build/xcode-chess-workbench \
   build
+```
+
+Command-line UI tests:
+
+```sh
+xcodebuild -project Examples/ChessWorkbench/ChessWorkbench.xcodeproj \
+  -scheme ChessWorkbench \
+  -configuration Debug \
+  -destination 'platform=macOS,arch=arm64' \
+  -derivedDataPath .build/xcode-chess-workbench \
+  -clonedSourcePackagesDirPath .build/xcode-chess-workbench/SourcePackages \
+  test
+```
+
+To run every automated `SwiftChessTools` suite, including these Workbench UI
+tests, use the repo-level script from the package root:
+
+```sh
+Scripts/test-all.sh
 ```
 
 ## Manual Smoke Test
