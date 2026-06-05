@@ -1,9 +1,7 @@
 # SwiftChessTools
 
-SwiftChessTools is an independent Swift package for reusable chess tools that
-can support multiple future apps.
-
-Phase one focuses on preserving migrated behavior:
+SwiftChessTools is an independent Swift package for reusable chess rules,
+notation, and SwiftUI board UI that can support multiple future apps.
 
 - `ChessCore`: core chess model, rules, and notation code.
 - `ChessUI`: reusable SwiftUI chessboard UI built on `ChessCore`.
@@ -11,12 +9,134 @@ Phase one focuses on preserving migrated behavior:
 This package is not a drop-in replacement for ChessKit or ChessboardKit, and it
 does not provide old-package compatibility shims.
 
+## Requirements
+
+SwiftChessTools uses Swift tools 6.1 and supports Swift 5 and Swift 6 language
+modes. The package currently declares these platform minimums:
+
+- iOS 17+
+- macOS 14+
+
+## Installation
+
+After the first public release is tagged, add SwiftChessTools to your package
+dependencies:
+
+```swift
+dependencies: [
+    .package(
+        url: "https://github.com/Trickfest/SwiftChessTools.git",
+        from: "0.1.0"
+    ),
+]
+```
+
+Then depend on the product or products your target needs:
+
+```swift
+targets: [
+    .target(
+        name: "YourApp",
+        dependencies: [
+            .product(name: "ChessCore", package: "SwiftChessTools"),
+            .product(name: "ChessUI", package: "SwiftChessTools"),
+        ]
+    ),
+]
+```
+
+For local development in a sibling checkout, use a path dependency instead:
+
+```swift
+.package(path: "../SwiftChessTools")
+```
+
 ## Package Products
 
 ```swift
 .product(name: "ChessCore", package: "SwiftChessTools")
 .product(name: "ChessUI", package: "SwiftChessTools")
 ```
+
+## ChessCore Quick Start
+
+Use `ChessCore` when you need rules, positions, legal moves, and notation
+without any SwiftUI dependency:
+
+```swift
+import ChessCore
+
+let startingFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+let fenSerializer = FENSerializer()
+let game = Game(position: fenSerializer.position(from: startingFEN))
+
+let move = Move(string: "e2e4")
+
+if game.legalMoves.contains(move) {
+    game.apply(move: move)
+}
+
+let updatedFEN = fenSerializer.fen(from: game.position)
+let legalReplies = game.legalMoves.map(\.description)
+```
+
+Current FEN and SAN parser entry points expect valid input. Validate or trust
+user-provided strings before passing them to the serializers until public-safe
+throwing or failable parser APIs are added.
+
+## ChessUI Quick Start
+
+Use `ChessUI` when you want a reusable SwiftUI board. The view reports moves;
+your app decides whether to apply them, update state, ask an engine for a
+reply, or reject the move.
+
+```swift
+import SwiftUI
+import ChessCore
+import ChessUI
+
+private let startingFEN =
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+struct BoardDemoView: View {
+    @State private var model = ChessBoardModel(fen: startingFEN)
+
+    var body: some View {
+        ChessBoardView(model: model)
+            .onMove { move, isLegal, _, _, _, promotion in
+                guard isLegal else { return }
+
+                let appliedMove = promotion.map {
+                    Move(from: move.from, to: move.to, promotion: $0)
+                } ?? move
+
+                model.game.apply(move: appliedMove)
+
+                let fen = FENSerializer().fen(from: model.game.position)
+                model.setFEN(fen, animatedMove: appliedMove)
+            }
+            .frame(width: 320, height: 320)
+    }
+}
+```
+
+`Examples/ChessWorkbench` is the runnable integration example for these APIs.
+
+## Scope
+
+SwiftChessTools provides:
+
+- Board state, pieces, moves, legal move generation, FEN, and SAN helpers.
+- A reusable SwiftUI chessboard with piece assets, move interaction,
+  highlighting, hints, promotion UI, and board perspective support.
+- A small macOS workbench and automated tests for package behavior.
+
+SwiftChessTools does not provide:
+
+- A chess engine, AI opponent, Stockfish integration, or analysis UI.
+- PGN import/export, opening books, clocks, online play, accounts, or sync.
+- Compatibility shims for the original ChessKit or ChessboardKit APIs.
 
 ## Manual Workbench
 
@@ -111,6 +231,9 @@ xcodebuild -project Examples/ChessWorkbench/ChessWorkbench.xcodeproj \
 ```
 
 ## Acknowledgements
+
+SwiftChessTools is MIT licensed and independent from the GPL-licensed
+`StockfishEmbedded` sibling project.
 
 This project draws significant inspiration from
 [ChessKit](https://github.com/aperechnev/ChessKit) by Alexander Perechnev and
