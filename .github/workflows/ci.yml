@@ -1,0 +1,18 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  swift-test:
+    name: Swift Package Tests
+    runs-on: macos-26
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run Swift package tests
+        run: swift test
