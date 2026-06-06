@@ -18,7 +18,7 @@ import Testing
     ]
 
     positions.forEach {
-        let position = fenSerializer.position(from: $0)
+        let position = try! fenSerializer.position(from: $0)
         let game = Game(position: position)
 
         #expect(game.isCheck == true)

@@ -50,7 +50,7 @@ private let perftCases: [PerftCase] = [
 
 @Test("Known perft node counts", arguments: perftCases)
 private func knownPerftNodeCounts(testCase: PerftCase) {
-    let position = FENSerializer().position(from: testCase.fen)
+    let position = try! FENSerializer().position(from: testCase.fen)
 
     for depth in testCase.expectedNodeCounts.keys.sorted() {
         let actual = perft(position: position, depth: depth)

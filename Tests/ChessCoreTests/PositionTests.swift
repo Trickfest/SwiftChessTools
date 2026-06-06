@@ -14,7 +14,7 @@ import Testing
 @Test func positionCopyIsIndependent() {
     let fenSerializer = FENSerializer()
     let initialFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-    let position = fenSerializer.position(from: initialFen)
+    let position = try! fenSerializer.position(from: initialFen)
 
     var positionCopy = position
     positionCopy.board["e4"] = nil

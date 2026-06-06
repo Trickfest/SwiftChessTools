@@ -43,7 +43,7 @@ import ChessUI
 @MainActor
 @Test func lastMoveHighlightSnapshot() throws {
     let model = ChessBoardModel(fen: initialFEN)
-    let move = Move(string: "e2e4")
+    let move = try! Move(string: "e2e4")
     model.game.apply(move: move)
     model.setFEN(FENSerializer().fen(from: model.game.position), animatedMove: move)
     model.movingPiece = nil
@@ -60,7 +60,7 @@ import ChessUI
         piece: Piece(kind: .pawn, color: .white),
         sourceSquare: "e7",
         targetSquare: "e8",
-        baseMove: Move(string: "e7e8")
+        baseMove: try! Move(string: "e7e8")
     )
 
     try assertBoardSnapshot(named: "promotion-picker") {

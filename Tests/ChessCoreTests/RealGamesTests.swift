@@ -16,10 +16,10 @@ import Testing
     let moves = "g1h3 c7c6 h3g5 e7e5 g5e4 d7d5 d2d4".split(separator: " ").map { $0.description }
 
     let initialFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-    let position = fenSerializer.position(from: initialFen)
+    let position = try! fenSerializer.position(from: initialFen)
     let game = Game(position: position)
 
-    moves.forEach { game.apply(move: $0) }
+    moves.forEach { try! game.apply(move: $0) }
 
     let finalFen = fenSerializer.fen(from: game.position)
     #expect(
@@ -33,7 +33,7 @@ import Testing
 @Test func game2() {
     let fenSerializer = FENSerializer()
     let fen = "8/1p3p1k/4p3/3p4/6p1/1K6/8/2q5 w - - 0 52"
-    let position = fenSerializer.position(from: fen)
+    let position = try! fenSerializer.position(from: fen)
     let game = Game(position: position)
     let legalMoves = game.legalMoves.map { $0.description }
 

@@ -1,0 +1,69 @@
+name: Bug Report
+description: Report incorrect behavior, a crash, or a regression.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please include the smallest example that reproduces the issue.
+  - type: input
+    id: version
+    attributes:
+      label: SwiftChessTools Version
+      description: Tag, branch, or commit SHA.
+      placeholder: "1.0.0 or main@..."
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: macOS/iOS version, Xcode version, and simulator or device if relevant.
+      placeholder: "macOS 26.5, Xcode 26.5, iPhone 17 Pro simulator"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - ChessCore rules/models
+        - FEN/SAN parsing or serialization
+        - ChessUI board rendering
+        - ChessUI interaction
+        - Examples or tests
+        - Package/build setup
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the behavior and why it seems wrong.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction Steps
+      description: Include code, FEN/SAN input, or UI steps where possible.
+      placeholder: |
+        1. Create a Game with FEN ...
+        2. Apply move ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or Screenshots
+      description: Paste relevant test output, crash logs, or screenshots.
+      render: shell

@@ -6,9 +6,6 @@ notation, and SwiftUI board UI that can support multiple future apps.
 - `ChessCore`: core chess model, rules, and notation code.
 - `ChessUI`: reusable SwiftUI chessboard UI built on `ChessCore`.
 
-This package is not a drop-in replacement for ChessKit or ChessboardKit, and it
-does not provide old-package compatibility shims.
-
 ## Requirements
 
 SwiftChessTools uses Swift tools 6.1 and supports Swift 5 and Swift 6 language
@@ -19,14 +16,14 @@ modes. The package currently declares these platform minimums:
 
 ## Installation
 
-After the first public release is tagged, add SwiftChessTools to your package
+After the initial public release is tagged, add SwiftChessTools to your package
 dependencies:
 
 ```swift
 dependencies: [
     .package(
         url: "https://github.com/Trickfest/SwiftChessTools.git",
-        from: "0.1.0"
+        from: "1.0.0"
     ),
 ]
 ```
@@ -69,9 +66,9 @@ import ChessCore
 let startingFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 let fenSerializer = FENSerializer()
-let game = Game(position: fenSerializer.position(from: startingFEN))
+let game = Game(position: try fenSerializer.position(from: startingFEN))
 
-let move = Move(string: "e2e4")
+let move = try Move(string: "e2e4")
 
 if game.legalMoves.contains(move) {
     game.apply(move: move)
@@ -81,15 +78,35 @@ let updatedFEN = fenSerializer.fen(from: game.position)
 let legalReplies = game.legalMoves.map(\.description)
 ```
 
-Current FEN and SAN parser entry points expect valid input. Validate or trust
-user-provided strings before passing them to the serializers until public-safe
-throwing or failable parser APIs are added.
+FEN, SAN, and coordinate-move parsing APIs are throwing entry points:
+
+```swift
+do {
+    let position = try FENSerializer().position(from: startingFEN)
+    let coordinateGame = Game(position: position)
+    let sanGame = Game(position: position)
+    let coordinateMove = try Move(string: "g1f3")
+    let sanMove = try SANSerializer().move(for: "e4", in: sanGame)
+    coordinateGame.apply(move: coordinateMove)
+    sanGame.apply(move: sanMove)
+} catch let error as FENParsingError {
+    // Handle malformed FEN.
+} catch let error as SANParsingError {
+    // Handle SAN that does not identify exactly one legal move.
+} catch let error as MoveParsingError {
+    // Handle malformed coordinate notation.
+} catch {
+    // Handle any other error.
+}
+```
 
 ## ChessUI Quick Start
 
 Use `ChessUI` when you want a reusable SwiftUI board. The view reports moves;
 your app decides whether to apply them, update state, ask an engine for a
 reply, or reject the move.
+
+![ChessBoardView rendering a starting chess position](Docs/Images/chessboard-starting-position.png)
 
 ```swift
 import SwiftUI
@@ -122,6 +139,8 @@ struct BoardDemoView: View {
 ```
 
 `Examples/ChessWorkbench` is the runnable integration example for these APIs.
+`ChessBoardModel.setFEN(_:animatedMove:)` returns `false` and records
+`fenError` when a FEN update fails, leaving the current board unchanged.
 
 ## Scope
 
@@ -136,15 +155,13 @@ SwiftChessTools does not provide:
 
 - A chess engine, AI opponent, Stockfish integration, or analysis UI.
 - PGN import/export, opening books, clocks, online play, accounts, or sync.
-- Compatibility shims for the original ChessKit or ChessboardKit APIs.
 
 ## Manual Workbench
 
 `Examples/ChessWorkbench` is a small macOS SwiftUI app for manually exercising
-`ChessCore` and `ChessUI` without opening the larger iOS demo. It renders a
-real `ChessBoardView`, lets you edit the current FEN, applies legal board
-moves, and exposes quick controls for reset, hints, board sizing, and promotion
-UI.
+`ChessCore` and `ChessUI` from inside this package. It renders a real
+`ChessBoardView`, lets you edit the current FEN, applies legal board moves, and
+exposes quick controls for reset, hints, board sizing, and promotion UI.
 
 Open the app in Xcode:
 

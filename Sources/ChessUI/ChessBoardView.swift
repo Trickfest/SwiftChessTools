@@ -13,9 +13,13 @@ import SwiftUI
 
 import ChessCore
 
+/// FEN for an empty board with White to move.
 public let emptyFEN = "8/8/8/8/8/8/8/8 w - - 0 1"
+
+/// FEN for the standard chess starting position.
 public let initialFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
+/// Callback invoked when a user attempts a move on `ChessBoardView`.
 public typealias ChessBoardMoveHandler = (
     _ move: Move,
     _ isLegal: Bool,
@@ -25,10 +29,15 @@ public typealias ChessBoardMoveHandler = (
     _ promotion: PieceKind?
 ) -> Void
 
+/// A zero-based board square used by ChessUI state and highlighting APIs.
 public struct BoardSquare: Identifiable, Hashable {
+    /// Zero-based rank index, where `0` is rank 1.
     public var row: Int
+
+    /// Zero-based file index, where `0` is file a.
     public var column: Int
 
+    /// Creates a board square from zero-based row and column indexes.
     public init(row: Int, column: Int) {
         self.row = row
         self.column = column
@@ -52,33 +61,62 @@ public struct BoardSquare: Identifiable, Hashable {
     }
 }
 
+/// Observable state model for `ChessBoardView`.
+///
+/// Use this model to load positions, control board perspective and highlights,
+/// apply move-feedback animations, and inspect the underlying `Game`. Invalid
+/// FEN input is reported through `fenError` instead of crashing.
 @Observable
 public class ChessBoardModel {
+    private static func emptyPosition() -> Position {
+        try! FENSerializer().position(from: emptyFEN)
+    }
+
+    /// Current board position as FEN.
+    ///
+    /// Assigning invalid FEN leaves the current position unchanged and stores
+    /// the parser error in `fenError`.
     public var fen: String {
         get { FENSerializer().fen(from: game.position) }
         set {
-            game = Game(position: FENSerializer().position(from: newValue))
-            animatedMove = nil
-            movingPiece = nil
-            lastMoveSquares = nil
+            setFEN(newValue)
         }
     }
     
+    /// Current rendered board size in points.
     public var size: CGFloat = 0
-    
+
+    /// Board colors used for squares and markers.
     public var colorScheme: ChessBoardColorScheme = .light
-    
+
+    /// Side displayed at the bottom of the board.
     public var perspective: PieceColor
+
+    /// Side to move in the current game state.
     public var turn: PieceColor { game.position.state.turn }
+
+    /// When `true`, move callbacks identify illegal attempted moves but the UI
+    /// does not apply them automatically.
     public var validatesMoves: Bool = false
+
+    /// Allows selecting and moving pieces that do not belong to the side to
+    /// move.
     public var allowsOpponentMoves = false
-    
+
+    /// Controls whether the board shows a non-interactive waiting overlay.
     public var isWaiting = false
-    
+
+    /// Currently selected square, if any.
     public var selectedSquare: BoardSquare?
+
+    /// Squares currently highlighted as hints.
     public var hintedSquares: Set<BoardSquare> = []
-    
+
+    /// Controls whether selecting or dragging a piece highlights legal
+    /// destinations.
     public var showsLegalMoveHighlights: Bool = true
+
+    /// Legal destination squares for the current selection or drag.
     public var legalMoveSquares: Set<BoardSquare> = []
 
     /// Duration, in seconds, used when ChessUI animates a piece from the
@@ -103,19 +141,35 @@ public class ChessBoardModel {
     /// produced it.
     public private(set) var lastMoveSquares: (from: BoardSquare, to: BoardSquare)?
     
+    /// Controls presentation of the built-in promotion picker.
     public var isPromotionPickerPresented = false
-    
+
+    /// Underlying chess game backing the board.
     public var game: Game
+
+    /// The most recent FEN parsing error produced by `fen` assignment or
+    /// `setFEN(_:animatedMove:)`. A successful position update clears this.
+    public private(set) var fenError: Error?
     
+    /// Move currently being animated, if any.
     public var animatedMove: Move? = nil
-    
+
+    /// Pawn awaiting promotion selection, if any.
     public var promotionPiece: Piece?
+
+    /// Source square for the pending promotion move.
     public var promotionSourceSquare: String?
+
+    /// Destination square for the pending promotion move.
     public var promotionTargetSquare: String?
+
+    /// Base non-promoting move for the pending promotion choice.
     public var promotionBaseMove: Move?
-    
+
+    /// `true` when Black is displayed at the bottom of the board.
     public var shouldFlipBoard: Bool { perspective == .black }
-    
+
+    /// Piece currently rendered by the move-feedback overlay.
     public var movingPiece: (piece: Piece, from: BoardSquare, to: BoardSquare)?
     
     /// Creates a chess board model.
@@ -143,7 +197,13 @@ public class ChessBoardModel {
                 showsLastMoveHighlight: Bool = true,
                 lastMoveHighlightColor: Color = Color(red: 1.0, green: 0.82, blue: 0.20, opacity: 0.55))
     {
-        self.game = Game(position: FENSerializer().position(from: fen))
+        do {
+            self.game = Game(position: try FENSerializer().position(from: fen))
+            self.fenError = nil
+        } catch {
+            self.game = Game(position: Self.emptyPosition())
+            self.fenError = error
+        }
         self.perspective = perspective
         self.colorScheme = colorScheme
         self.allowsOpponentMoves = allowsOpponentMoves
@@ -165,12 +225,20 @@ public class ChessBoardModel {
     /// assigning `fen` is still supported for arbitrary position loading, but
     /// direct assignment clears move-specific animation and highlight state
     /// because a FEN string alone does not identify the source square.
-    public func setFEN(_ fen: String, animatedMove: Move? = nil) {
+    @discardableResult
+    public func setFEN(_ fen: String, animatedMove: Move? = nil) -> Bool {
+        let newGame: Game
+        do {
+            newGame = Game(position: try FENSerializer().position(from: fen))
+            fenError = nil
+        } catch {
+            fenError = error
+            return false
+        }
+
         self.animatedMove = animatedMove
         movingPiece = nil
         lastMoveSquares = nil
-        
-        let newGame = Game(position: FENSerializer().position(from: fen))
 
         if let animatedMove = self.animatedMove {
             let pieces = game.position.board.enumeratedPieces()
@@ -187,6 +255,7 @@ public class ChessBoardModel {
         }
         
         game = newGame
+        return true
     }
 
     /// Clears the persisted last-move source and destination square highlight.
@@ -451,11 +520,18 @@ private struct MovingPieceView: View {
     }
 }
 
+/// SwiftUI chessboard view backed by `ChessBoardModel`.
+///
+/// The view renders the board, pieces, markers, move gestures, promotion UI,
+/// and move callbacks. It does not apply moves by itself; callers update the
+/// model after deciding whether a reported move should change the game state.
 public struct ChessBoardView: View {
+    /// State model rendered and mutated by the board.
     public var model: ChessBoardModel
     
     @Namespace private var animation
     
+    /// Creates a chessboard view for the provided model.
     public init(model: ChessBoardModel) {
         self.model = model
     }
@@ -724,6 +800,7 @@ public struct ChessBoardView: View {
         return "\(file)\(square.row + 1)"
     }
     
+    /// Registers a callback for attempted board moves.
     public func onMove(_ callback: @escaping ChessBoardMoveHandler) -> ChessBoardView {
         boardModel.onMove = callback
         return self
@@ -914,11 +991,14 @@ private struct ChessPieceView: View {
             let targetSquare = "\(Character(UnicodeScalar(square.column + 97)!))\(square.row + 1)"
             
             let coordinateMove = "\(sourceSquare)\(targetSquare)"
-            let move = Move(string: coordinateMove)
-            let isLegal = boardModel.game.legalMoves.contains(move)
-            
             boardModel.deselect()
             boardModel.clearLegalMoveHighlights()
+
+            guard let move = try? Move(string: coordinateMove) else {
+                return
+            }
+
+            let isLegal = boardModel.game.legalMoves.contains(move)
             
             guard let selectedPiece = boardModel.game.position.board[selectedSquare.row + selectedSquare.column * 8]
             else { return }
@@ -1000,12 +1080,24 @@ private struct ChessPieceView: View {
                 
                 let targetColumn = boardModel.shouldFlipBoard ? square.column - columnOffset : square.column + columnOffset
                 let targetRow = boardModel.shouldFlipBoard ? square.row + rowOffset : square.row - rowOffset
+
+                guard (0...7).contains(targetColumn), (0...7).contains(targetRow) else {
+                    withAnimation {
+                        offset = .zero
+                    }
+                    return
+                }
                 
                 let sourceSquare = "\(Character(UnicodeScalar(square.column + 97)!))\(square.row + 1)"
                 let targetSquare = "\(Character(UnicodeScalar(targetColumn + 97)!))\(targetRow + 1)"
                 
                 let coordinateMove = "\(sourceSquare)\(targetSquare)"
-                let move = Move(string: coordinateMove)
+                guard let move = try? Move(string: coordinateMove) else {
+                    withAnimation {
+                        offset = .zero
+                    }
+                    return
+                }
                 let isLegal = boardModel.game.legalMoves.contains(move)
                 
                 withAnimation {

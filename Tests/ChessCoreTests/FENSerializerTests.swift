@@ -22,6 +22,46 @@ import Testing
     ])
 func serialization(fen: String) {
     let serializer = FENSerializer()
-    let position = serializer.position(from: fen)
+    let position = try! serializer.position(from: fen)
     #expect(fen == serializer.fen(from: position))
+}
+
+@Test(
+    "FEN parsing failures are reported",
+    arguments: [
+        ("", FENParsingError.invalidFieldCount(expected: 6, actual: 1)),
+        (
+            "8/8/8/8/8/8/8 w - - 0 1",
+            FENParsingError.invalidPiecePlacement("8/8/8/8/8/8/8")
+        ),
+        (
+            "8/8/8/8/8/8/8/8 x - - 0 1",
+            FENParsingError.invalidActiveColor("x")
+        ),
+        (
+            "8/8/8/8/8/8/8/8 w KKK - 0 1",
+            FENParsingError.invalidCastlingRights("KKK")
+        ),
+        (
+            "8/8/8/8/8/8/8/8 w - e4 0 1",
+            FENParsingError.invalidEnPassantSquare("e4")
+        ),
+        (
+            "8/8/8/8/8/8/8/8 w - - -1 1",
+            FENParsingError.invalidHalfmoveClock("-1")
+        ),
+        (
+            "8/8/8/8/8/8/8/8 w - - 0 0",
+            FENParsingError.invalidFullmoveNumber("0")
+        ),
+    ])
+func parsingFailure(fen: String, expectedError: FENParsingError) {
+    do {
+        _ = try FENSerializer().position(from: fen)
+        Issue.record("Expected FEN parsing to fail for: \(fen)")
+    } catch let error as FENParsingError {
+        #expect(error == expectedError)
+    } catch {
+        Issue.record("Expected FENParsingError, got: \(error)")
+    }
 }

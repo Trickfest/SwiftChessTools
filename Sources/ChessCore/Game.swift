@@ -79,8 +79,10 @@ public class Game {
     ///
     /// This method assumes the move is legal. Check `legalMoves` first when
     /// accepting input from a user or engine.
-    public func apply(move coordinateMove: String) {
-        let move = Move(string: coordinateMove)
+    ///
+    /// - Throws: `MoveParsingError` when `coordinateMove` is malformed.
+    public func apply(move coordinateMove: String) throws {
+        let move = try Move(string: coordinateMove)
         self.apply(move: move)
     }
 
@@ -139,9 +141,9 @@ public class Game {
         let rank = self.position.state.turn == .white ? "1" : "8"
 
         if move.to.file == 2 {
-            self.movePiece(Move(string: "a" + rank + "d" + rank))
+            self.movePiece(try! Move(string: "a" + rank + "d" + rank))
         } else if move.to.file == 6 {
-            self.movePiece(Move(string: "h" + rank + "f" + rank))
+            self.movePiece(try! Move(string: "h" + rank + "f" + rank))
         }
     }
 

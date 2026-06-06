@@ -62,9 +62,9 @@ let testables: [(String, String, String)] = [
 // MARK: Serialization
 
 func san(for move: String, in fen: String) -> String {
-    let position = FENSerializer().position(from: fen)
+    let position = try! FENSerializer().position(from: fen)
     let game = Game(position: position)
-    let move = Move(string: move)
+    let move = try! Move(string: move)
     return SANSerializer().san(for: move, in: game)
 }
 
@@ -77,9 +77,9 @@ func san(for move: String, in fen: String) -> String {
 // MARK: Deserialization
 
 func move(from san: String, in fen: String) -> String {
-    let position = FENSerializer().position(from: fen)
+    let position = try! FENSerializer().position(from: fen)
     let game = Game(position: position)
-    return SANSerializer().move(for: san, in: game).description
+    return try! SANSerializer().move(for: san, in: game).description
 }
 
 @Test func testDeserialization() {
@@ -91,11 +91,11 @@ func move(from san: String, in fen: String) -> String {
 @Test func parseAndReplayShortSANGame() {
     let serializer = SANSerializer()
     let fenSerializer = FENSerializer()
-    let game = Game(position: fenSerializer.position(from: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"))
+    let game = Game(position: try! fenSerializer.position(from: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"))
     let sanMoves = ["e4", "e5", "Bc4", "Nc6", "Qh5", "Nf6", "Qxf7#"]
 
     for san in sanMoves {
-        let move = serializer.move(for: san, in: game)
+        let move = try! serializer.move(for: san, in: game)
         #expect(serializer.san(for: move, in: game) == san)
         game.apply(move: move)
     }
@@ -105,4 +105,36 @@ func move(from san: String, in fen: String) -> String {
             == "r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4"
     )
     #expect(game.isCheckmate)
+}
+
+@Test func deserializationAcceptsZeroCastlingNotation() {
+    let game = Game(position: try! FENSerializer().position(
+        from: "r2q1rk1/ppp1bppp/2np1n2/4p3/2BPP1b1/2N1BN2/PPP1QPPP/R3K2R w KQ - 8 8"
+    ))
+
+    #expect(try! SANSerializer().move(for: "0-0", in: game).description == "e1g1")
+}
+
+@Test func deserializationFailureIsReported() {
+    let game = Game(position: try! FENSerializer().position(
+        from: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    ))
+
+    do {
+        _ = try SANSerializer().move(for: "", in: game)
+        Issue.record("Expected empty SAN parsing to fail")
+    } catch let error as SANParsingError {
+        #expect(error == .emptySAN)
+    } catch {
+        Issue.record("Expected SANParsingError, got: \(error)")
+    }
+
+    do {
+        _ = try SANSerializer().move(for: "Qzz", in: game)
+        Issue.record("Expected invalid SAN parsing to fail")
+    } catch let error as SANParsingError {
+        #expect(error == .noMatchingLegalMove("Qzz"))
+    } catch {
+        Issue.record("Expected SANParsingError, got: \(error)")
+    }
 }

@@ -4,8 +4,8 @@ ChessWorkbench is a small macOS SwiftUI workbench for the reusable chess UI and
 rules code in `SwiftChessTools`.
 
 It is not a product app. Keep it around as a quick place to exercise
-`ChessCore` and `ChessUI` behavior without opening the larger demo app; its
-Xcode project also hosts focused macOS UI tests for those workbench flows.
+`ChessCore` and `ChessUI` behavior from inside this package; its Xcode project
+also hosts focused macOS UI tests for those workbench flows.
 
 ## What It Exercises
 

@@ -9,12 +9,12 @@ import ChessUI
 
     #expect(FENValidator.isValid(model.fen))
     #expect(serializer.fen(from: model.game.position) == model.fen)
-    #expect(Move(string: "e2e4").description == "e2e4")
+    #expect(try! Move(string: "e2e4").description == "e2e4")
 }
 
 @Test func setFENWithAnimatedMoveRecordsFeedback() {
     let model = ChessBoardModel(fen: initialFEN)
-    let move = Move(string: "e2e4")
+    let move = try! Move(string: "e2e4")
 
     model.game.apply(move: move)
     let fen = FENSerializer().fen(from: model.game.position)
@@ -33,7 +33,7 @@ import ChessUI
 
 @Test func directFenAssignmentClearsMoveFeedback() {
     let model = ChessBoardModel(fen: initialFEN)
-    let move = Move(string: "e2e4")
+    let move = try! Move(string: "e2e4")
 
     model.game.apply(move: move)
     let fen = FENSerializer().fen(from: model.game.position)
@@ -44,6 +44,22 @@ import ChessUI
     #expect(model.lastMoveSquares?.from == nil)
     #expect(model.movingPiece?.from == nil)
     #expect(model.animatedMove == nil)
+}
+
+@Test func invalidInitialFENFallsBackToEmptyBoard() {
+    let model = ChessBoardModel(fen: "not a fen")
+
+    #expect(model.fen == emptyFEN)
+    #expect(model.fenError is FENParsingError)
+}
+
+@Test func invalidFENAssignmentKeepsExistingBoard() {
+    let model = ChessBoardModel(fen: initialFEN)
+    let originalFEN = model.fen
+
+    #expect(model.setFEN("not a fen") == false)
+    #expect(model.fen == originalFEN)
+    #expect(model.fenError is FENParsingError)
 }
 
 @Test func legalMoveHighlightsFollowCurrentSelection() {
@@ -85,7 +101,7 @@ import ChessUI
 @Test func promotionPickerStateCanBePresentedAndDismissed() {
     let model = ChessBoardModel(fen: "7k/4P3/8/8/8/8/8/4K3 w - - 0 1")
     let pawn = Piece(kind: .pawn, color: .white)
-    let move = Move(string: "e7e8")
+    let move = try! Move(string: "e7e8")
 
     model.presentPromotionPicker(
         piece: pawn,
@@ -115,10 +131,10 @@ import ChessUI
     let whiteKnight = Piece(kind: .knight, color: .white)
     let model = ChessBoardModel(fen: emptyFEN)
 
-    #expect(model.requiresPromotionChoice(piece: whitePawn, move: Move(string: "e7e8")))
-    #expect(model.requiresPromotionChoice(piece: blackPawn, move: Move(string: "e2e1")))
-    #expect(model.requiresPromotionChoice(piece: whitePawn, move: Move(string: "e6e7")) == false)
-    #expect(model.requiresPromotionChoice(piece: whiteKnight, move: Move(string: "g7h8")) == false)
+    #expect(model.requiresPromotionChoice(piece: whitePawn, move: try! Move(string: "e7e8")))
+    #expect(model.requiresPromotionChoice(piece: blackPawn, move: try! Move(string: "e2e1")))
+    #expect(model.requiresPromotionChoice(piece: whitePawn, move: try! Move(string: "e6e7")) == false)
+    #expect(model.requiresPromotionChoice(piece: whiteKnight, move: try! Move(string: "g7h8")) == false)
 }
 
 @Test func modelConfigurationUsesSafeDefaults() {
@@ -141,7 +157,7 @@ import ChessUI
 
 @Test func clearLastMoveHighlightKeepsOtherMoveFeedback() {
     let model = ChessBoardModel(fen: initialFEN)
-    let move = Move(string: "e2e4")
+    let move = try! Move(string: "e2e4")
 
     model.game.apply(move: move)
     model.setFEN(FENSerializer().fen(from: model.game.position), animatedMove: move)

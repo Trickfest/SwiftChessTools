@@ -112,7 +112,7 @@ class PawnMoveGenerator: PieceMoveGenerator {
         }
 
         return destinations.map { Move(from: square, to: $0) }
-            + promotionMoves.map { Move(string: $0) }
+            + promotionMoves.map { try! Move(string: $0) }
     }
 
 }

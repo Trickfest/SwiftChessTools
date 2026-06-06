@@ -9,6 +9,28 @@
 
 import Foundation
 
+/// Errors thrown while parsing Standard Algebraic Notation.
+public enum SANParsingError: Error, Equatable, CustomStringConvertible, LocalizedError {
+    case emptySAN
+    case noMatchingLegalMove(String)
+    case ambiguousSAN(String)
+
+    public var description: String {
+        switch self {
+        case .emptySAN:
+            return "SAN string is empty."
+        case let .noMatchingLegalMove(value):
+            return "No legal move matches SAN: \(value)."
+        case let .ambiguousSAN(value):
+            return "SAN matches more than one legal move: \(value)."
+        }
+    }
+
+    public var errorDescription: String? {
+        description
+    }
+}
+
 /// Converts moves to and from Standard Algebraic Notation.
 public class SANSerializer {
 
@@ -107,84 +129,34 @@ public class SANSerializer {
     ///   - san: SAN text such as `"Nf3"`, `"exd5"`, or `"O-O"`.
     ///   - game: Game state before the SAN move is applied.
     /// - Returns: The move represented by `san`.
-    public func move(for san: String, in game: Game) -> Move {
-        let promotion = self.promotion(in: san)
+    /// - Throws: `SANParsingError` when `san` does not describe exactly one
+    ///   legal move in `game`.
+    public func move(for san: String, in game: Game) throws -> Move {
+        let normalizedSAN = self.normalizedSAN(san)
+        guard !normalizedSAN.isEmpty else {
+            throw SANParsingError.emptySAN
+        }
 
-        let san =
-            san
+        let matches = game.legalMoves.filter {
+            self.normalizedSAN(self.san(for: $0, in: game)) == normalizedSAN
+        }
+
+        if matches.count == 1, let move = matches.first {
+            return move
+        } else if matches.isEmpty {
+            throw SANParsingError.noMatchingLegalMove(san)
+        } else {
+            throw SANParsingError.ambiguousSAN(san)
+        }
+    }
+
+    private func normalizedSAN(_ san: String) -> String {
+        san
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "0", with: "O")
             .replacingOccurrences(of: "+", with: "")
             .replacingOccurrences(of: "#", with: "")
-            .replacingOccurrences(of: "=[QRBN]", with: "", options: .regularExpression)
-
-        if [kingSideCastleSAN, queenSideCastleSAN].contains(san) {
-            return self.moveForCastlingSAN(san, in: game)
-        } else if san.count == 2 {
-            return self.pawnMove(for: san, promotion: promotion, in: game)
-        } else {
-            return self.pieceMove(for: san, promotion: promotion, in: game)
-        }
-    }
-
-    private func promotion(in san: String) -> PieceKind? {
-        if let range = san.range(of: "=[QRBN]", options: .regularExpression) {
-            let piece = san[range]
-                .replacingOccurrences(of: "=", with: "")
-                .lowercased()
-            return PieceKind(rawValue: piece)
-        }
-        return nil
-    }
-
-    private func moveForCastlingSAN(_ san: String, in game: Game) -> Move {
-        let file = san == kingSideCastleSAN ? "g" : "c"
-        let rank = game.position.state.turn == .white ? "1" : "8"
-        return Move(string: "e\(rank)\(file)\(rank)")
-    }
-
-    private func pawnMove(for san: String, promotion: PieceKind?, in game: Game) -> Move {
-        let move = game.legalMoves
-            .filter { $0.to.description == san }
-            .filter { game.position.board[$0.from]?.kind == .pawn }
-            .first!
-        return Move(from: move.from, to: move.to, promotion: promotion)
-    }
-
-    private func pieceMove(for san: String, promotion: PieceKind?, in game: Game) -> Move {
-        var targetCoordinate = ""
-        var remainingSAN = san.replacingOccurrences(of: "x", with: "")
-
-        targetCoordinate += "\(remainingSAN.popLast()!)"
-        targetCoordinate = "\(remainingSAN.popLast()!)" + targetCoordinate
-
-        var pieceKind: PieceKind? = nil
-        if remainingSAN.first!.isUppercase {
-            pieceKind = PieceKind(rawValue: "\(remainingSAN.lowercased().first!)")
-        }
-
-        if pieceKind == nil {
-            let move = game.legalMoves
-                .filter({ $0.to.description == targetCoordinate })
-                .filter({ game.position.board[$0.from]?.kind == .pawn })
-                .filter({ $0.from.description.contains(remainingSAN) })
-                .first!
-            return Move(from: move.from, to: move.to, promotion: promotion)
-        }
-
-        remainingSAN = "\(remainingSAN.dropFirst())"
-
-        var candidates = game.legalMoves
-            .filter { game.position.board[$0.from]?.kind == pieceKind }
-            .filter { $0.to.description == targetCoordinate }
-
-        if !remainingSAN.isEmpty {
-            candidates =
-                candidates
-                .filter { $0.from.description.contains(remainingSAN) }
-        }
-
-        let move = candidates.first!.from.description + targetCoordinate
-
-        return Move(string: move)
+            .uppercased()
     }
 
 }

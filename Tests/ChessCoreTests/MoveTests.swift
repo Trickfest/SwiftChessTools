@@ -25,6 +25,25 @@ import Testing
 }
 
 @Test func initWithString() {
-    #expect(Move(string: "e2e4").description == "e2e4")
-    #expect(Move(string: "f7f8r").description == "f7f8r")
+    #expect(try! Move(string: "e2e4").description == "e2e4")
+    #expect(try! Move(string: "f7f8r").description == "f7f8r")
+}
+
+@Test(
+    "Coordinate move parsing failures are reported",
+    arguments: [
+        ("e2e", MoveParsingError.invalidLength("e2e")),
+        ("i2e4", MoveParsingError.invalidSourceSquare("i2")),
+        ("e2i4", MoveParsingError.invalidDestinationSquare("i4")),
+        ("e7e8k", MoveParsingError.invalidPromotion("k")),
+    ])
+func initWithInvalidString(move: String, expectedError: MoveParsingError) {
+    do {
+        _ = try Move(string: move)
+        Issue.record("Expected move parsing to fail for: \(move)")
+    } catch let error as MoveParsingError {
+        #expect(error == expectedError)
+    } catch {
+        Issue.record("Expected MoveParsingError, got: \(error)")
+    }
 }
