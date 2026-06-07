@@ -7,7 +7,20 @@ release. Replace `TBD` with the release date when a release is tagged.
 
 ## Unreleased
 
-No changes yet.
+### Added
+
+- Added selectable built-in ChessUI piece sets: Sashite Merida,
+  Art Deco Monochrome, Brutalist Monochrome, Origami Monochrome,
+  Circuit Board Monochrome, Blueprint Monochrome, and Sports Monochrome.
+- Added `ChessPieceSet.availableSets` so apps can query the bundled piece-set
+  registry at runtime.
+- Added `ChessPieceSet` asset resolution coverage, per-piece-set ChessUI
+  snapshots, and ChessWorkbench UI coverage for selecting each built-in set.
+
+### Changed
+
+- Replaced the bundled legacy piece PNGs with self-contained prefixed piece
+  asset families that can be added or removed one set at a time.
 
 ## 1.0.0 - TBD
 

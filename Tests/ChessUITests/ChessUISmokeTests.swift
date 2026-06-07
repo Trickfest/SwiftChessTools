@@ -12,6 +12,51 @@ import ChessUI
     #expect(try! Move(string: "e2e4").description == "e2e4")
 }
 
+@Test func builtInPieceSetsResolveEveryStandardPiece() {
+    let pieces = [
+        Piece(kind: .king, color: .white),
+        Piece(kind: .queen, color: .white),
+        Piece(kind: .rook, color: .white),
+        Piece(kind: .bishop, color: .white),
+        Piece(kind: .knight, color: .white),
+        Piece(kind: .pawn, color: .white),
+        Piece(kind: .king, color: .black),
+        Piece(kind: .queen, color: .black),
+        Piece(kind: .rook, color: .black),
+        Piece(kind: .bishop, color: .black),
+        Piece(kind: .knight, color: .black),
+        Piece(kind: .pawn, color: .black),
+    ]
+
+    #expect(ChessPieceSet.availableSets == [
+        .sashiteMerida,
+        .artDecoMonochrome,
+        .brutalistMonochrome,
+        .origamiMonochrome,
+        .circuitBoardMonochrome,
+        .blueprintMonochrome,
+        .sportsMonochrome,
+    ])
+
+    for pieceSet in ChessPieceSet.availableSets {
+        let assetNames = pieces.map { pieceSet.assetName(for: $0) }
+
+        #expect(Set(assetNames).count == pieces.count)
+        #expect(assetNames.allSatisfy { $0.hasPrefix("\(pieceSet.rawValue)_") })
+        #expect(pieceSet.assetNames.sorted() == assetNames.sorted())
+    }
+}
+
+@Test func modelCanSelectEachBuiltInPieceSet() {
+    let model = ChessBoardModel(fen: initialFEN)
+
+    for pieceSet in ChessPieceSet.availableSets {
+        model.pieceSet = pieceSet
+
+        #expect(model.pieceSet == pieceSet)
+    }
+}
+
 @Test func setFENWithAnimatedMoveRecordsFeedback() {
     let model = ChessBoardModel(fen: initialFEN)
     let move = try! Move(string: "e2e4")

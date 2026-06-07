@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		D4C100000000000000000001 /* ChessCore in Frameworks */ = {isa = PBXBuildFile; productRef = D4C100000000000000000003 /* ChessCore */; };
 		D4C100000000000000000002 /* ChessUI in Frameworks */ = {isa = PBXBuildFile; productRef = D4C100000000000000000004 /* ChessUI */; };
+		D4C20000000000000000000E /* ChessUI in Frameworks */ = {isa = PBXBuildFile; productRef = D4C20000000000000000000F /* ChessUI */; };
 		D4C200000000000000000001 /* ChessWorkbenchUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C200000000000000000003 /* ChessWorkbenchUITests.swift */; };
 /* End PBXBuildFile section */
 
@@ -50,6 +51,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D4C20000000000000000000E /* ChessUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -123,6 +125,9 @@
 				D4C20000000000000000000A /* PBXTargetDependency */,
 			);
 			name = ChessWorkbenchUITests;
+			packageProductDependencies = (
+				D4C20000000000000000000F /* ChessUI */,
+			);
 			productName = ChessWorkbenchUITests;
 			productReference = D4C200000000000000000004 /* ChessWorkbenchUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
@@ -500,6 +505,10 @@
 			productName = ChessCore;
 		};
 		D4C100000000000000000004 /* ChessUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ChessUI;
+		};
+		D4C20000000000000000000F /* ChessUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ChessUI;
 		};

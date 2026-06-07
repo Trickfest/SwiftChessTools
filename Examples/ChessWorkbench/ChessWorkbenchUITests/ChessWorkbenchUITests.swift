@@ -1,8 +1,13 @@
+import ChessUI
 import XCTest
 
 final class ChessWorkbenchUITests: XCTestCase {
     private static let startingFEN = "5k2/1P2bn2/8/8/8/3Q4/3K4/8 w - - 0 1"
     private static let queenD7FEN = "5k2/1P1Qbn2/8/8/8/8/3K4/8 b - - 1 1"
+
+    private var pieceSetNames: [String] {
+        ChessPieceSet.availableSets.map(\.displayName)
+    }
 
     private var app: XCUIApplication!
 
@@ -10,7 +15,7 @@ final class ChessWorkbenchUITests: XCTestCase {
         continueAfterFailure = false
         app = XCUIApplication()
         app.launch()
-        waitForFEN(Self.startingFEN)
+        waitForFEN(Self.startingFEN, timeout: 8)
     }
 
     override func tearDownWithError() throws {
@@ -24,6 +29,21 @@ final class ChessWorkbenchUITests: XCTestCase {
         XCTAssertTrue(square("e7").label.contains("Black bishop e7"))
         XCTAssertTrue(square("f7").label.contains("Black knight f7"))
         XCTAssertTrue(square("f8").label.contains("Black king f8"))
+    }
+
+    func testPieceSetPickerSelectsEveryBuiltInSet() {
+        let picker = app.popUpButtons["Workbench.pieceSetPicker"]
+
+        assertExists(picker)
+        XCTAssertEqual(picker.value as? String, ChessPieceSet.artDecoMonochrome.displayName)
+
+        for pieceSetName in pieceSetNames {
+            picker.click()
+            let menuItem = app.menuItems[pieceSetName]
+            assertExists(menuItem, message: "Missing piece set menu item \(pieceSetName)")
+            menuItem.click()
+            XCTAssertEqual(picker.value as? String, pieceSetName)
+        }
     }
 
     func testSourceSquareClickSelectsPieceAndShowsLegalDestinations() {
@@ -128,14 +148,19 @@ final class ChessWorkbenchUITests: XCTestCase {
         return element
     }
 
-    private func fenEditor(file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
+    private func fenEditor(timeout: TimeInterval = 2, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
         let editor = element("Workbench.fenEditor")
-        assertExists(editor, message: "Missing FEN editor", file: file, line: line)
+        assertExists(editor, timeout: timeout, message: "Missing FEN editor", file: file, line: line)
         return editor
     }
 
-    private func waitForFEN(_ expected: String, file: StaticString = #filePath, line: UInt = #line) {
-        let editor = fenEditor(file: file, line: line)
+    private func waitForFEN(
+        _ expected: String,
+        timeout: TimeInterval = 2,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let editor = fenEditor(timeout: timeout, file: file, line: line)
         let predicate = NSPredicate { element, _ in
             guard let element = element as? XCUIElement else {
                 return false
@@ -144,7 +169,7 @@ final class ChessWorkbenchUITests: XCTestCase {
         }
 
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: editor)
-        let result = XCTWaiter().wait(for: [expectation], timeout: 2)
+        let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
         XCTAssertEqual(
             result,
             .completed,

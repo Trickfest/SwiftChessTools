@@ -117,23 +117,34 @@ private let startingFEN =
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 struct BoardDemoView: View {
-    @State private var model = ChessBoardModel(fen: startingFEN)
+    @Bindable private var model = ChessBoardModel(
+        fen: startingFEN,
+        pieceSet: .sashiteMerida
+    )
 
     var body: some View {
-        ChessBoardView(model: model)
-            .onMove { move, isLegal, _, _, _, promotion in
-                guard isLegal else { return }
-
-                let appliedMove = promotion.map {
-                    Move(from: move.from, to: move.to, promotion: $0)
-                } ?? move
-
-                model.game.apply(move: appliedMove)
-
-                let fen = FENSerializer().fen(from: model.game.position)
-                model.setFEN(fen, animatedMove: appliedMove)
+        VStack {
+            Picker("Pieces", selection: $model.pieceSet) {
+                ForEach(ChessPieceSet.availableSets) { pieceSet in
+                    Text(pieceSet.displayName).tag(pieceSet)
+                }
             }
-            .frame(width: 320, height: 320)
+
+            ChessBoardView(model: model)
+                .onMove { move, isLegal, _, _, _, promotion in
+                    guard isLegal else { return }
+
+                    let appliedMove = promotion.map {
+                        Move(from: move.from, to: move.to, promotion: $0)
+                    } ?? move
+
+                    model.game.apply(move: appliedMove)
+
+                    let fen = FENSerializer().fen(from: model.game.position)
+                    model.setFEN(fen, animatedMove: appliedMove)
+                }
+                .frame(width: 320, height: 320)
+        }
     }
 }
 ```
@@ -141,13 +152,34 @@ struct BoardDemoView: View {
 `Examples/ChessWorkbench` is the runnable integration example for these APIs.
 `ChessBoardModel.setFEN(_:animatedMove:)` returns `false` and records
 `fenError` when a FEN update fails, leaving the current board unchanged.
+ChessUI includes seven built-in piece sets: `sashiteMerida`,
+`artDecoMonochrome`, `brutalistMonochrome`, `origamiMonochrome`,
+`circuitBoardMonochrome`, `blueprintMonochrome`, and `sportsMonochrome`.
+Use `ChessPieceSet.availableSets` to build a runtime picker for the sets
+bundled by the current package version.
+
+### Managing Piece Sets
+
+Each bundled piece set is intentionally self-contained:
+
+- one `ChessPieceSet` case,
+- twelve prefixed image assets named `<setName>_wK`, `<setName>_wQ`,
+  `<setName>_wR`, `<setName>_wB`, `<setName>_wN`, `<setName>_wP`,
+  `<setName>_bK`, `<setName>_bQ`, `<setName>_bR`, `<setName>_bB`,
+  `<setName>_bN`, and `<setName>_bP`,
+- one piece-set snapshot reference named `piece-set-<setName>.png`.
+
+To remove a bundled set, delete its enum case, delete its twelve prefixed
+imagesets from `Sources/ChessUI/Assets/Pieces.xcassets`, remove its snapshot
+reference, and refresh the ChessUI snapshots. Callers that use
+`ChessPieceSet.availableSets` automatically stop presenting the removed set.
 
 ## Scope
 
 SwiftChessTools provides:
 
 - Board state, pieces, moves, legal move generation, FEN, and SAN helpers.
-- A reusable SwiftUI chessboard with piece assets, move interaction,
+- A reusable SwiftUI chessboard with selectable piece assets, move interaction,
   highlighting, hints, promotion UI, and board perspective support.
 - A small macOS workbench and automated tests for package behavior.
 
@@ -161,7 +193,8 @@ SwiftChessTools does not provide:
 `Examples/ChessWorkbench` is a small macOS SwiftUI app for manually exercising
 `ChessCore` and `ChessUI` from inside this package. It renders a real
 `ChessBoardView`, lets you edit the current FEN, applies legal board moves, and
-exposes quick controls for reset, hints, board sizing, and promotion UI.
+exposes quick controls for reset, hints, board sizing, piece-set selection, and
+promotion UI.
 
 Open the app in Xcode:
 
@@ -259,7 +292,7 @@ Early versions incorporate ideas and implementation approaches from those
 projects. This repository is independent and is not affiliated with or endorsed
 by the original maintainers.
 
-See `NOTICE.md` for preserved MIT license notices.
+See `NOTICE.md` for preserved MIT license notices and bundled asset provenance.
 
 ## Roadmap
 

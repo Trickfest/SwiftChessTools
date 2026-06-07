@@ -34,7 +34,7 @@ SOFTWARE.
 
 ## ChessboardKit
 
-ChessUI includes code and bundled piece assets derived from ChessboardKit.
+ChessUI includes code derived from ChessboardKit.
 
 Original project: https://github.com/rohanrhu/ChessboardKit
 
@@ -59,3 +59,37 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## Chess Piece Assets
+
+ChessUI bundles normalized PNG derivatives of the following piece assets:
+
+- Sashite Merida chess assets
+  - Source: https://sashite.dev/assets/chess/
+  - License: CC0 1.0 Universal
+  - Notes: bundled from the white and black PNG piece downloads, based on Chess
+    Merida Unicode.
+- Art Deco Monochrome chess pieces
+  - Source: original generated artwork created for SwiftChessTools.
+  - Notes: bundled as normalized transparent PNG derivatives of a generated
+    monochrome Art Deco sprite sheet.
+- Brutalist Monochrome chess pieces
+  - Source: original generated artwork created for SwiftChessTools.
+  - Notes: bundled as normalized transparent PNG derivatives of a generated
+    monochrome Brutalist sprite sheet.
+- Origami Monochrome chess pieces
+  - Source: original generated artwork created for SwiftChessTools.
+  - Notes: bundled as normalized transparent PNG derivatives of a generated
+    monochrome Origami sprite sheet.
+- Circuit Board Monochrome chess pieces
+  - Source: original generated artwork created for SwiftChessTools.
+  - Notes: bundled as normalized transparent PNG derivatives of a generated
+    monochrome Circuit Board sprite sheet.
+- Blueprint Monochrome chess pieces
+  - Source: original generated artwork created for SwiftChessTools.
+  - Notes: bundled as normalized transparent PNG derivatives of a generated
+    monochrome Blueprint sprite sheet.
+- Sports Monochrome chess pieces
+  - Source: original generated artwork created for SwiftChessTools.
+  - Notes: bundled as normalized transparent PNG derivatives of a generated
+    monochrome Sports sprite sheet.

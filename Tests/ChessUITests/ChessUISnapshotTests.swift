@@ -78,6 +78,15 @@ import ChessUI
 }
 
 @MainActor
+@Test func builtInPieceSetSnapshots() throws {
+    for pieceSet in ChessPieceSet.availableSets {
+        try assertBoardSnapshot(named: "piece-set-\(pieceSet.rawValue)") {
+            ChessBoardView(model: ChessBoardModel(fen: initialFEN, pieceSet: pieceSet))
+        }
+    }
+}
+
+@MainActor
 private func assertBoardSnapshot<Content: View>(
     named name: String,
     @ViewBuilder content: () -> Content

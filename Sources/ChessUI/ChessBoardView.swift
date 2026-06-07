@@ -9,6 +9,9 @@
 // See the LICENSE file for more information.
 //
 
+import CoreGraphics
+import Foundation
+import ImageIO
 import SwiftUI
 
 import ChessCore
@@ -88,6 +91,9 @@ public class ChessBoardModel {
 
     /// Board colors used for squares and markers.
     public var colorScheme: ChessBoardColorScheme = .light
+
+    /// Piece artwork used by the board and promotion picker.
+    public var pieceSet: ChessPieceSet = .sashiteMerida
 
     /// Side displayed at the bottom of the board.
     public var perspective: PieceColor
@@ -178,6 +184,7 @@ public class ChessBoardModel {
     ///   - fen: Initial board position.
     ///   - perspective: Side displayed at the bottom of the board.
     ///   - colorScheme: Board and marker colors.
+    ///   - pieceSet: Built-in piece artwork used by the board.
     ///   - allowsOpponentMoves: Allows dragging pieces that do not belong to the
     ///     side to move.
     ///   - showsLegalMoveHighlights: Shows legal destination markers while a piece
@@ -191,6 +198,7 @@ public class ChessBoardModel {
     public init(fen: String = emptyFEN,
                 perspective: PieceColor = .white,
                 colorScheme: ChessBoardColorScheme = .light,
+                pieceSet: ChessPieceSet = .sashiteMerida,
                 allowsOpponentMoves: Bool = false,
                 showsLegalMoveHighlights: Bool = true,
                 moveAnimationDuration: Double = 0.45,
@@ -206,6 +214,7 @@ public class ChessBoardModel {
         }
         self.perspective = perspective
         self.colorScheme = colorScheme
+        self.pieceSet = pieceSet
         self.allowsOpponentMoves = allowsOpponentMoves
         self.showsLegalMoveHighlights = showsLegalMoveHighlights
         self.moveAnimationDuration = max(0, moveAnimationDuration)
@@ -626,10 +635,13 @@ public struct ChessBoardView: View {
                             
                             boardModel.dismissPromotionPicker()
                         } label: {
-                            let imageName = "\(boardModel.perspective == PieceColor.white ? "w" : "b")\(String(describing: piece).uppercased())"
+                            let promotionColor: PieceColor = boardModel.perspective == .white ? .white : .black
+                            let promotionPiece = Piece(kind: PieceKind(rawValue: piece)!, color: promotionColor)
+                            let imageName = boardModel.pieceSet.assetName(for: promotionPiece)
                             
                             ZStack {
                                 PieceImageView(imageName: imageName,
+                                               pieceSet: boardModel.pieceSet,
                                                fallback: piece.uppercased(),
                                                fallbackColor: Color.black)
                                     .frame(width: boardModel.size / 8,
@@ -916,9 +928,10 @@ private struct ChessPieceView: View {
     var body: some View {
         ZStack {
             if let piece {
-                let imageName = "\(piece.color == PieceColor.white ? "w" : "b")\(String(describing: piece).uppercased())"
+                let imageName = boardModel.pieceSet.assetName(for: piece)
                 
                 PieceImageView(imageName: imageName,
+                               pieceSet: boardModel.pieceSet,
                                fallback: "\(piece)",
                                fallbackColor: piece.color == PieceColor.white ? Color.white : Color.black)
             } else {
@@ -1129,16 +1142,15 @@ private struct ChessPieceView: View {
 
 private struct PieceImageView: View {
     var imageName: String
+    var pieceSet: ChessPieceSet
     var fallback: String
     var fallbackColor: Color
 
-    var body: some View {
-        if Self.bundledPieceImageNames.contains(imageName) {
-            Image(imageName, bundle: .module)
-                .resizable()
-                .scaledToFit()
-                .scaleEffect(0.85)
-                .contentShape(Rectangle())
+    @ViewBuilder var body: some View {
+        if let image = Self.bundledPNGImages[imageName] {
+            renderedPieceImage(Image(decorative: image, scale: 1, orientation: .up))
+        } else if Self.bundledPieceImageNames.contains(imageName) {
+            renderedPieceImage(Image(imageName, bundle: .module))
         } else {
             Text(fallback)
                 .foregroundStyle(fallbackColor)
@@ -1149,10 +1161,41 @@ private struct PieceImageView: View {
         }
     }
 
-    private static let bundledPieceImageNames: Set<String> = [
-        "wK", "wQ", "wR", "wB", "wN", "wP",
-        "bK", "bQ", "bR", "bB", "bN", "bP",
-    ]
+    private func renderedPieceImage(_ image: Image) -> some View {
+        image
+            .resizable()
+            .modifier { image in
+                switch pieceSet.imageInterpolation {
+                case .high:
+                    image.interpolation(.high)
+                case .none:
+                    image.interpolation(.none)
+                }
+            }
+            .scaledToFit()
+            .scaleEffect(0.85)
+            .contentShape(Rectangle())
+    }
+
+    private static let bundledPieceImageNames = ChessPieceSet.bundledAssetNames
+
+    private static let bundledPNGImages: [String: CGImage] = {
+        Dictionary(uniqueKeysWithValues: ChessPieceSet.bundledAssetNames.compactMap { imageName in
+            let subdirectory = "Pieces.xcassets/\(imageName).imageset"
+            guard let url = Bundle.module.url(
+                forResource: imageName,
+                withExtension: "png",
+                subdirectory: subdirectory
+            ),
+                let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+                let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
+            else {
+                return nil
+            }
+
+            return (imageName, image)
+        })
+    }()
 }
 
 public extension View {

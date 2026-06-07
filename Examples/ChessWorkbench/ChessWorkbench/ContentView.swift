@@ -24,7 +24,8 @@ private struct WorkbenchView: View {
     @Bindable private var boardModel = ChessBoardModel(
         fen: startingPosition,
         perspective: .white,
-        colorScheme: .light
+        colorScheme: .light,
+        pieceSet: .artDecoMonochrome
     )
 
     private var isResetDisabled: Bool {
@@ -221,6 +222,15 @@ private struct WorkbenchView: View {
     private var displaySection: some View {
         WorkbenchSection("Display") {
             VStack(alignment: .leading, spacing: 10) {
+                Picker("Pieces", selection: $boardModel.pieceSet) {
+                    ForEach(ChessPieceSet.availableSets) { pieceSet in
+                        Text(pieceSet.displayName).tag(pieceSet)
+                    }
+                }
+                .pickerStyle(.menu)
+                .accessibilityIdentifier("Workbench.pieceSetPicker")
+                .accessibilityValue(boardModel.pieceSet.displayName)
+
                 HStack {
                     Text("Board size")
                     Spacer()
