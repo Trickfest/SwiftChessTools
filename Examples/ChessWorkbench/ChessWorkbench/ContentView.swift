@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 import ChessCore
 import ChessUI
@@ -316,9 +315,8 @@ private struct WorkbenchView: View {
     }
 
     private func copyFENToPasteboard() {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(FENSerializer().fen(from: boardModel.game.position), forType: .string)
+        let currentFEN = FENSerializer().fen(from: boardModel.game.position)
+        guard WorkbenchPasteboard.copy(currentFEN) else { return }
 
         didCopyFEN = true
         Task {
