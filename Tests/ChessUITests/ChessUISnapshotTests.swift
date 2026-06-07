@@ -69,19 +69,19 @@ import ChessUI
 }
 
 @MainActor
-@Test func blueThemeSnapshot() throws {
-    let model = ChessBoardModel(fen: initialFEN, colorScheme: .blue)
-
-    try assertBoardSnapshot(named: "blue-theme") {
-        ChessBoardView(model: model)
-    }
-}
-
-@MainActor
 @Test func builtInPieceSetSnapshots() throws {
     for pieceSet in ChessPieceSet.availableSets {
         try assertBoardSnapshot(named: "piece-set-\(pieceSet.rawValue)") {
             ChessBoardView(model: ChessBoardModel(fen: initialFEN, pieceSet: pieceSet))
+        }
+    }
+}
+
+@MainActor
+@Test func builtInBoardThemeSnapshots() throws {
+    for boardTheme in ChessBoardTheme.availableThemes {
+        try assertBoardSnapshot(named: "board-theme-\(boardTheme.rawValue)") {
+            ChessBoardView(model: ChessBoardModel(fen: initialFEN, boardTheme: boardTheme, pieceSet: .artDecoMonochrome))
         }
     }
 }

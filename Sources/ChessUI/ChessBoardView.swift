@@ -89,8 +89,12 @@ public class ChessBoardModel {
     /// Current rendered board size in points.
     public var size: CGFloat = 0
 
-    /// Board colors used for squares and markers.
-    public var colorScheme: ChessBoardColorScheme = .light
+    /// Board theme used for squares, labels, and markers.
+    public var boardTheme: ChessBoardTheme = .artDecoMonochrome {
+        didSet {
+            lastMoveHighlightColor = boardTheme.lastMoveHighlight
+        }
+    }
 
     /// Piece artwork used by the board and promotion picker.
     public var pieceSet: ChessPieceSet = .sashiteMerida
@@ -137,9 +141,8 @@ public class ChessBoardModel {
     public var showsLastMoveHighlight: Bool = true
 
     /// Color used to highlight the source and destination squares of the most
-    /// recent move. The default is a translucent gold similar to common online
-    /// chess boards.
-    public var lastMoveHighlightColor: Color = Color(red: 1.0, green: 0.82, blue: 0.20, opacity: 0.55)
+    /// recent move.
+    public var lastMoveHighlightColor: Color = ChessBoardTheme.artDecoMonochrome.lastMoveHighlight
 
     /// Source and destination squares for the most recent move passed through
     /// `setFEN(_:animatedMove:)`. Direct `fen` assignment clears this value
@@ -183,7 +186,7 @@ public class ChessBoardModel {
     /// - Parameters:
     ///   - fen: Initial board position.
     ///   - perspective: Side displayed at the bottom of the board.
-    ///   - colorScheme: Board and marker colors.
+    ///   - boardTheme: Board styling used for squares, labels, and markers.
     ///   - pieceSet: Built-in piece artwork used by the board.
     ///   - allowsOpponentMoves: Allows dragging pieces that do not belong to the
     ///     side to move.
@@ -193,17 +196,14 @@ public class ChessBoardModel {
     ///     triggered by `setFEN(_:animatedMove:)`.
     ///   - showsLastMoveHighlight: Keeps the source and destination squares of
     ///     the last move highlighted after `setFEN(_:animatedMove:)`.
-    ///   - lastMoveHighlightColor: Overlay color used for the last-move source and
-    ///     destination squares.
     public init(fen: String = emptyFEN,
                 perspective: PieceColor = .white,
-                colorScheme: ChessBoardColorScheme = .light,
+                boardTheme: ChessBoardTheme = .artDecoMonochrome,
                 pieceSet: ChessPieceSet = .sashiteMerida,
                 allowsOpponentMoves: Bool = false,
                 showsLegalMoveHighlights: Bool = true,
                 moveAnimationDuration: Double = 0.45,
-                showsLastMoveHighlight: Bool = true,
-                lastMoveHighlightColor: Color = Color(red: 1.0, green: 0.82, blue: 0.20, opacity: 0.55))
+                showsLastMoveHighlight: Bool = true)
     {
         do {
             self.game = Game(position: try FENSerializer().position(from: fen))
@@ -213,13 +213,13 @@ public class ChessBoardModel {
             self.fenError = error
         }
         self.perspective = perspective
-        self.colorScheme = colorScheme
+        self.boardTheme = boardTheme
         self.pieceSet = pieceSet
         self.allowsOpponentMoves = allowsOpponentMoves
         self.showsLegalMoveHighlights = showsLegalMoveHighlights
         self.moveAnimationDuration = max(0, moveAnimationDuration)
         self.showsLastMoveHighlight = showsLastMoveHighlight
-        self.lastMoveHighlightColor = lastMoveHighlightColor
+        self.lastMoveHighlightColor = boardTheme.lastMoveHighlight
     }
     
     public var onMove: ChessBoardMoveHandler = { _, _, _, _, _, _ in }
@@ -529,6 +529,254 @@ private struct MovingPieceView: View {
     }
 }
 
+private struct ChessBoardSquareBackground: View {
+    var theme: ChessBoardTheme
+    var isLightSquare: Bool
+    var row: Int
+    var column: Int
+
+    private var baseColor: Color {
+        isLightSquare ? theme.lightSquare : theme.darkSquare
+    }
+
+    var body: some View {
+        Rectangle()
+            .fill(baseColor)
+            .overlay {
+                textureView
+            }
+            .clipped()
+    }
+
+    @ViewBuilder
+    private var textureView: some View {
+        switch theme.texture {
+        case .none:
+            EmptyView()
+        case .wood:
+            ChessBoardWoodTexture(isLightSquare: isLightSquare, row: row, column: column)
+        case .marble:
+            ChessBoardMarbleTexture(isLightSquare: isLightSquare, row: row, column: column)
+        case .blueprint:
+            ChessBoardBlueprintTexture(isLightSquare: isLightSquare)
+        case .artDeco:
+            ChessBoardArtDecoTexture(isLightSquare: isLightSquare, row: row, column: column)
+        case .circuit:
+            ChessBoardCircuitTexture(isLightSquare: isLightSquare, row: row, column: column)
+        case .sportsCourt:
+            ChessBoardSportsCourtTexture(isLightSquare: isLightSquare, row: row, column: column)
+        }
+    }
+}
+
+private struct ChessBoardWoodTexture: View {
+    var isLightSquare: Bool
+    var row: Int
+    var column: Int
+
+    var body: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            let darkLine = Color.black.opacity(isLightSquare ? 0.07 : 0.12)
+            let lightLine = Color.white.opacity(isLightSquare ? 0.10 : 0.06)
+
+            ZStack {
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(isLightSquare ? 0.12 : 0.06),
+                        Color.black.opacity(isLightSquare ? 0.04 : 0.10),
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+
+                ForEach(0..<4, id: \.self) { index in
+                    Path { path in
+                        let y = size.height * (0.18 + CGFloat(index) * 0.22)
+                        let offset = CGFloat((row + column + index) % 3) * size.height * 0.025
+                        path.move(to: CGPoint(x: 0, y: y + offset))
+                        path.addCurve(
+                            to: CGPoint(x: size.width, y: y - offset),
+                            control1: CGPoint(x: size.width * 0.32, y: y + size.height * 0.05),
+                            control2: CGPoint(x: size.width * 0.66, y: y - size.height * 0.05)
+                        )
+                    }
+                    .stroke(index.isMultiple(of: 2) ? darkLine : lightLine, lineWidth: max(0.8, size.width * 0.018))
+                }
+            }
+        }
+    }
+}
+
+private struct ChessBoardMarbleTexture: View {
+    var isLightSquare: Bool
+    var row: Int
+    var column: Int
+
+    var body: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            let vein = isLightSquare ? Color.black.opacity(0.12) : Color.white.opacity(0.12)
+            let secondary = isLightSquare ? Color.white.opacity(0.20) : Color.black.opacity(0.10)
+
+            ZStack {
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(isLightSquare ? 0.22 : 0.08),
+                        Color.black.opacity(isLightSquare ? 0.04 : 0.12),
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+
+                ForEach(0..<3, id: \.self) { index in
+                    Path { path in
+                        let bias = CGFloat((row * 3 + column + index) % 5) * size.width * 0.04
+                        let startY = size.height * (0.16 + CGFloat(index) * 0.26)
+                        path.move(to: CGPoint(x: -size.width * 0.10, y: startY + bias))
+                        path.addCurve(
+                            to: CGPoint(x: size.width * 1.10, y: startY + size.height * 0.18 - bias),
+                            control1: CGPoint(x: size.width * 0.20, y: startY - size.height * 0.16),
+                            control2: CGPoint(x: size.width * 0.70, y: startY + size.height * 0.28)
+                        )
+                    }
+                    .stroke(index == 1 ? secondary : vein, lineWidth: max(0.7, size.width * 0.018))
+                }
+            }
+        }
+    }
+}
+
+private struct ChessBoardBlueprintTexture: View {
+    var isLightSquare: Bool
+
+    var body: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            let major = Color.white.opacity(isLightSquare ? 0.18 : 0.24)
+            let minor = Color.white.opacity(isLightSquare ? 0.10 : 0.14)
+
+            ZStack {
+                ForEach(1..<4, id: \.self) { index in
+                    Path { path in
+                        let position = CGFloat(index) * size.width / 4
+                        path.move(to: CGPoint(x: position, y: 0))
+                        path.addLine(to: CGPoint(x: position, y: size.height))
+                        path.move(to: CGPoint(x: 0, y: position))
+                        path.addLine(to: CGPoint(x: size.width, y: position))
+                    }
+                    .stroke(index == 2 ? major : minor, lineWidth: max(0.5, size.width * 0.012))
+                }
+            }
+        }
+    }
+}
+
+private struct ChessBoardArtDecoTexture: View {
+    var isLightSquare: Bool
+    var row: Int
+    var column: Int
+
+    var body: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            let line = isLightSquare ? Color.black.opacity(0.08) : Color.white.opacity(0.12)
+            let accent = isLightSquare ? Color.white.opacity(0.18) : Color.black.opacity(0.10)
+            let flipped = (row + column).isMultiple(of: 2)
+
+            ZStack {
+                Path { path in
+                    if flipped {
+                        path.move(to: CGPoint(x: size.width * 0.18, y: 0))
+                        path.addLine(to: CGPoint(x: size.width, y: size.height * 0.82))
+                        path.move(to: CGPoint(x: 0, y: size.height * 0.32))
+                        path.addLine(to: CGPoint(x: size.width * 0.68, y: size.height))
+                    } else {
+                        path.move(to: CGPoint(x: size.width * 0.82, y: 0))
+                        path.addLine(to: CGPoint(x: 0, y: size.height * 0.82))
+                        path.move(to: CGPoint(x: size.width, y: size.height * 0.32))
+                        path.addLine(to: CGPoint(x: size.width * 0.32, y: size.height))
+                    }
+                }
+                .stroke(line, lineWidth: max(0.8, size.width * 0.025))
+
+                Rectangle()
+                    .stroke(accent, lineWidth: max(0.5, size.width * 0.012))
+                    .padding(size.width * 0.18)
+            }
+        }
+    }
+}
+
+private struct ChessBoardCircuitTexture: View {
+    var isLightSquare: Bool
+    var row: Int
+    var column: Int
+
+    var body: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            let trace = isLightSquare ? Color.white.opacity(0.16) : Color(red: 0.55, green: 0.95, blue: 0.72).opacity(0.22)
+            let node = trace.opacity(0.85)
+            let horizontalFirst = (row + column).isMultiple(of: 2)
+
+            ZStack {
+                Path { path in
+                    if horizontalFirst {
+                        path.move(to: CGPoint(x: 0, y: size.height * 0.36))
+                        path.addLine(to: CGPoint(x: size.width * 0.58, y: size.height * 0.36))
+                        path.addLine(to: CGPoint(x: size.width * 0.58, y: size.height))
+                    } else {
+                        path.move(to: CGPoint(x: size.width * 0.36, y: 0))
+                        path.addLine(to: CGPoint(x: size.width * 0.36, y: size.height * 0.62))
+                        path.addLine(to: CGPoint(x: size.width, y: size.height * 0.62))
+                    }
+                }
+                .stroke(trace, lineWidth: max(0.8, size.width * 0.018))
+
+                Circle()
+                    .stroke(node, lineWidth: max(0.7, size.width * 0.014))
+                    .frame(width: size.width * 0.16, height: size.width * 0.16)
+                    .position(
+                        x: horizontalFirst ? size.width * 0.58 : size.width * 0.36,
+                        y: horizontalFirst ? size.height * 0.36 : size.height * 0.62
+                    )
+            }
+        }
+    }
+}
+
+private struct ChessBoardSportsCourtTexture: View {
+    var isLightSquare: Bool
+    var row: Int
+    var column: Int
+
+    var body: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            let grain = isLightSquare ? Color.white.opacity(0.12) : Color.black.opacity(0.10)
+            let courtLine = Color.white.opacity(isLightSquare ? 0.24 : 0.18)
+
+            ZStack {
+                ForEach(0..<3, id: \.self) { index in
+                    Path { path in
+                        let y = size.height * (0.24 + CGFloat(index) * 0.24)
+                        path.move(to: CGPoint(x: 0, y: y))
+                        path.addLine(to: CGPoint(x: size.width, y: y + CGFloat((row + column + index) % 2) * 1.4))
+                    }
+                    .stroke(grain, lineWidth: max(0.7, size.width * 0.014))
+                }
+
+                if row == 3 || row == 4 || column == 3 || column == 4 {
+                    Rectangle()
+                        .stroke(courtLine, lineWidth: max(0.8, size.width * 0.018))
+                        .padding(size.width * 0.22)
+                }
+            }
+        }
+    }
+}
+
 /// SwiftUI chessboard view backed by `ChessBoardModel`.
 ///
 /// The view renders the board, pieces, markers, move gestures, promotion UI,
@@ -580,6 +828,12 @@ public struct ChessBoardView: View {
             .onChange(of: geometry.size) { _, newSize in
                 updateBoardSize(newSize)
             }
+            .onChange(of: model.boardTheme) { _, _ in
+                updateBoardSize(geometry.size)
+            }
+            .onChange(of: model.pieceSet) { _, _ in
+                updateBoardSize(geometry.size)
+            }
             .task {
                 updateBoardSize(geometry.size)
             }
@@ -593,6 +847,9 @@ public struct ChessBoardView: View {
 
     private func updateBoardSize(_ geometrySize: CGSize) {
         let newSize = boardSize(from: geometrySize)
+        guard newSize > 0 else {
+            return
+        }
         model.size = newSize
     }
     
@@ -682,8 +939,12 @@ public struct ChessBoardView: View {
                 let column = index % 8
                 let isLightSquare = (row + column) % 2 == 0
                 
-                Rectangle()
-                    .fill(isLightSquare ? boardModel.colorScheme.light : boardModel.colorScheme.dark)
+                ChessBoardSquareBackground(
+                    theme: boardModel.boardTheme,
+                    isLightSquare: isLightSquare,
+                    row: row,
+                    column: column
+                )
                     .frame(width: boardModel.size / 8, height: boardModel.size / 8)
             }
         }
@@ -726,7 +987,7 @@ public struct ChessBoardView: View {
         
         return Text("\(displayRow + 1)")
             .font(.system(size: labelSize))
-            .foregroundColor(boardModel.colorScheme.label)
+            .foregroundColor(boardModel.boardTheme.label)
             .frame(width: labelSize, height: squareSize, alignment: .center)
             .position(
                 x: labelSize / 2 + 2,
@@ -741,7 +1002,7 @@ public struct ChessBoardView: View {
         
         return Text(["a", "b", "c", "d", "e", "f", "g", "h"][displayColumn])
             .font(.system(size: labelSize))
-            .foregroundColor(boardModel.colorScheme.label)
+            .foregroundColor(boardModel.boardTheme.label)
             .frame(width: squareSize, height: labelSize, alignment: .center)
             .position(
                 x: (CGFloat(column) * squareSize + squareSize) - 8,
@@ -790,7 +1051,7 @@ public struct ChessBoardView: View {
         ZStack {
             ForEach(Array(boardModel.legalMoveSquares), id: \.id) { square in
                 Circle()
-                    .fill(boardModel.colorScheme.legalMove)
+                    .fill(boardModel.boardTheme.legalMove)
                     .frame(width: boardModel.size / 24, height: boardModel.size / 24)
                     .position(position(for: square))
                     .accessibilityElement(children: .ignore)
@@ -863,17 +1124,17 @@ private struct ChessSquareView: View {
             {
                 $0.overlay {
                     RoundedRectangle(cornerRadius: 2)
-                        .stroke(boardModel.colorScheme.selected, lineWidth: 3.5)
+                        .stroke(boardModel.boardTheme.selected, lineWidth: 3.5)
                 }
             } else if isSelected {
                 $0.overlay {
                     RoundedRectangle(cornerRadius: 2)
-                        .stroke(boardModel.colorScheme.selected, lineWidth: 3.5)
+                        .stroke(boardModel.boardTheme.selected, lineWidth: 3.5)
                 }
             } else if isHinted {
                 $0.overlay {
                     RoundedRectangle(cornerRadius: 2)
-                        .stroke(boardModel.colorScheme.hinted, lineWidth: 3.5)
+                        .stroke(boardModel.boardTheme.hinted, lineWidth: 3.5)
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel("Hint \(coordinate)")
                         .accessibilityIdentifier("ChessUI.hint.\(coordinate)")

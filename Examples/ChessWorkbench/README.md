@@ -2,7 +2,8 @@
 
 ChessWorkbench is a small macOS SwiftUI workbench for the reusable chess UI and
 rules code in `SwiftChessTools`. It opens with the Art Deco Monochrome piece set
-selected so newly generated ChessUI artwork is visible immediately.
+and board theme selected so newly generated ChessUI artwork is visible
+immediately.
 
 It is not a product app. Keep it around as a quick place to exercise
 `ChessCore` and `ChessUI` behavior from inside this package; its Xcode project
@@ -14,8 +15,8 @@ also hosts focused macOS UI tests for those workbench flows.
 - Loading and editing a FEN position.
 - Applying legal board moves through `ChessCore`.
 - Updating the FEN field after board moves.
-- Piece-set selection, board sizing, hints, reset behavior, and the promotion
-  picker UI.
+- Piece-set selection, board-theme selection, board sizing, hints, reset
+  behavior, and the promotion picker UI.
 
 ## Local Dependency
 
@@ -78,7 +79,9 @@ Scripts/test-all.sh
 4. Confirm the FEN field updates.
 5. Select each built-in piece set from the `Pieces` menu and confirm the board
    re-renders.
-6. Try `Reset`, `Hint`, and `Show Promotion Picker`.
+6. Select each built-in board theme from the `Board` menu and confirm the board
+   re-renders.
+7. Try `Reset`, `Hint`, and `Show Promotion Picker`.
 
 Use this example app when you need a small, disposable workbench for future
 `SwiftChessTools` UI or rules changes.

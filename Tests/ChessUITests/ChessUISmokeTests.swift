@@ -57,6 +57,33 @@ import ChessUI
     }
 }
 
+@Test func builtInBoardThemesAreAvailableInDisplayOrder() {
+    #expect(ChessBoardTheme.availableThemes == [
+        .classicGreen,
+        .warmWalnut,
+        .blueStudy,
+        .marble,
+        .blueprint,
+        .artDecoMonochrome,
+        .circuitBoard,
+        .sportsCourt,
+    ])
+
+    for boardTheme in ChessBoardTheme.availableThemes {
+        #expect(boardTheme.displayName.isEmpty == false)
+    }
+}
+
+@Test func modelCanSelectEachBuiltInBoardTheme() {
+    let model = ChessBoardModel(fen: initialFEN)
+
+    for boardTheme in ChessBoardTheme.availableThemes {
+        model.boardTheme = boardTheme
+
+        #expect(model.boardTheme == boardTheme)
+    }
+}
+
 @Test func setFENWithAnimatedMoveRecordsFeedback() {
     let model = ChessBoardModel(fen: initialFEN)
     let move = try! Move(string: "e2e4")
@@ -186,6 +213,7 @@ import ChessUI
     let model = ChessBoardModel(
         fen: initialFEN,
         perspective: .black,
+        boardTheme: .blueStudy,
         allowsOpponentMoves: true,
         showsLegalMoveHighlights: false,
         moveAnimationDuration: -2,
@@ -194,6 +222,7 @@ import ChessUI
 
     #expect(model.perspective == .black)
     #expect(model.shouldFlipBoard)
+    #expect(model.boardTheme == .blueStudy)
     #expect(model.allowsOpponentMoves)
     #expect(model.showsLegalMoveHighlights == false)
     #expect(model.moveAnimationDuration == 0)

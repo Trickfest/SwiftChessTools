@@ -3,166 +3,195 @@
 //
 // See NOTICE.md for upstream attribution and license details.
 //
-// Copyright (C) 2025, Oğuzhan Eroğlu (https://meowingcat.io)
 // Licensed under the MIT License.
 // You may obtain a copy of the License at: https://opensource.org/licenses/MIT
 // See the LICENSE file for more information.
 //
 
-import Foundation
 import SwiftUI
 
-public protocol ChessBoardColorScheme: Sendable {
-    var light: Color { get }
-    var dark: Color { get }
-    var label: Color { get }
-    var selected: Color { get }
-    var hinted: Color { get }
-    var legalMove: Color { get }
-}
+/// Built-in visual themes for ChessUI boards.
+public enum ChessBoardTheme: String, CaseIterable, Identifiable, Sendable {
+    /// Ivory and tournament green squares.
+    case classicGreen
 
-public struct ChessBoardColorSchemes {
-    public struct Light: ChessBoardColorScheme {
-        public var light: Color = Color(red: 0.95, green: 0.95, blue: 0.95)
-        public var dark: Color = Color(red: 0.85, green: 0.85, blue: 0.85)
-        
-        public var label: Color = Color(red: 0.20, green: 0.20, blue: 0.20)
-        
-        public var selected: Color = Color(red: 0.20, green: 0.80, blue: 0.20)
-        public var hinted: Color = Color(red: 0.80, green: 0.20, blue: 0.20)
-        public var legalMove: Color = Color(red: 0.30, green: 0.30, blue: 0.30, opacity: 0.4)
-        
-        public init() {}
+    /// Cream and walnut-toned wood squares.
+    case warmWalnut
+
+    /// Quiet blue-gray analysis-board colors.
+    case blueStudy
+
+    /// Pale stone squares with subtle marble veining.
+    case marble
+
+    /// Drafting-board squares with fine blueprint grid marks.
+    case blueprint
+
+    /// Monochrome geometric board styling.
+    case artDecoMonochrome
+
+    /// Graphite circuit-board styling with restrained trace marks.
+    case circuitBoard
+
+    /// Hardwood sports-court styling with subtle court-line accents.
+    case sportsCourt
+
+    public var id: String { rawValue }
+
+    /// Built-in themes currently bundled with ChessUI.
+    public static var availableThemes: [ChessBoardTheme] {
+        Array(allCases)
     }
-    
-    public struct Dark: ChessBoardColorScheme {
-        public var light: Color = Color(red: 0.20, green: 0.20, blue: 0.20)
-        public var dark: Color = Color(red: 0.10, green: 0.10, blue: 0.10)
-        
-        public var label: Color = Color(red: 0.80, green: 0.80, blue: 0.80)
-        
-        public var selected: Color = Color(red: 0.20, green: 0.80, blue: 0.20)
-        public var hinted: Color = Color(red: 0.80, green: 0.20, blue: 0.20)
-        public var legalMove: Color = Color(red: 0.70, green: 0.70, blue: 0.70, opacity: 0.4)
-        
-        public init() {}
+
+    /// Human-readable name suitable for pickers and settings.
+    public var displayName: String {
+        switch self {
+        case .classicGreen:
+            "Classic Green"
+        case .warmWalnut:
+            "Warm Walnut"
+        case .blueStudy:
+            "Blue Study"
+        case .marble:
+            "Marble"
+        case .blueprint:
+            "Blueprint"
+        case .artDecoMonochrome:
+            "Art Deco Monochrome"
+        case .circuitBoard:
+            "Circuit Board"
+        case .sportsCourt:
+            "Sports Court"
+        }
     }
-    
-    public struct Orange: ChessBoardColorScheme {
-        public var light: Color = Color(red: 1.0, green: 0.85, blue: 0.60)
-        public var dark: Color = Color(red: 1.0, green: 0.65, blue: 0.25)
-        public var label: Color = Color(red: 0.20, green: 0.20, blue: 0.20)
-        
-        public var selected: Color = Color(red: 0.20, green: 0.80, blue: 0.20)
-        public var hinted: Color = Color(red: 0.80, green: 0.20, blue: 0.20)
-        public var legalMove: Color = Color(red: 0.30, green: 0.30, blue: 0.30, opacity: 0.4)
-        
-        public init() {}
+
+    var lightSquare: Color {
+        switch self {
+        case .classicGreen:
+            Color(red: 0.94, green: 0.92, blue: 0.82)
+        case .warmWalnut:
+            Color(red: 0.91, green: 0.78, blue: 0.57)
+        case .blueStudy:
+            Color(red: 0.84, green: 0.89, blue: 0.93)
+        case .marble:
+            Color(red: 0.90, green: 0.89, blue: 0.86)
+        case .blueprint:
+            Color(red: 0.79, green: 0.88, blue: 0.95)
+        case .artDecoMonochrome:
+            Color(red: 0.91, green: 0.91, blue: 0.89)
+        case .circuitBoard:
+            Color(red: 0.67, green: 0.73, blue: 0.69)
+        case .sportsCourt:
+            Color(red: 0.88, green: 0.68, blue: 0.42)
+        }
     }
-    
-    public struct Blue: ChessBoardColorScheme {
-        public var light: Color = Color(red: 0.85, green: 0.95, blue: 1.0)
-        public var dark: Color = Color(red: 0.55, green: 0.75, blue: 1.0)
-        
-        public var label: Color = Color(red: 0.20, green: 0.20, blue: 0.20)
-        
-        public var selected: Color = Color(red: 0.20, green: 0.80, blue: 0.20)
-        public var hinted: Color = Color(red: 0.80, green: 0.20, blue: 0.20)
-        public var legalMove: Color = Color(red: 0.30, green: 0.30, blue: 0.30, opacity: 0.4)
-        
-        public init() {}
+
+    var darkSquare: Color {
+        switch self {
+        case .classicGreen:
+            Color(red: 0.39, green: 0.58, blue: 0.41)
+        case .warmWalnut:
+            Color(red: 0.55, green: 0.35, blue: 0.18)
+        case .blueStudy:
+            Color(red: 0.36, green: 0.50, blue: 0.63)
+        case .marble:
+            Color(red: 0.55, green: 0.56, blue: 0.57)
+        case .blueprint:
+            Color(red: 0.25, green: 0.45, blue: 0.63)
+        case .artDecoMonochrome:
+            Color(red: 0.67, green: 0.67, blue: 0.65)
+        case .circuitBoard:
+            Color(red: 0.20, green: 0.28, blue: 0.25)
+        case .sportsCourt:
+            Color(red: 0.55, green: 0.31, blue: 0.14)
+        }
     }
-    
-    public struct Green: ChessBoardColorScheme {
-        public var light: Color = Color(red: 0.85, green: 1.0, blue: 0.85)
-        public var dark: Color = Color(red: 0.55, green: 1.0, blue: 0.55)
-        
-        public var label: Color = Color(red: 0.20, green: 0.20, blue: 0.20)
-        
-        public var selected: Color = Color(red: 0.20, green: 0.80, blue: 0.20)
-        public var hinted: Color = Color(red: 0.80, green: 0.20, blue: 0.20)
-        public var legalMove: Color = Color(red: 0.30, green: 0.30, blue: 0.30, opacity: 0.4)
-        
-        public init() {}
+
+    var label: Color {
+        switch self {
+        case .circuitBoard, .blueprint:
+            Color.white.opacity(0.82)
+        case .warmWalnut, .sportsCourt:
+            Color(red: 0.16, green: 0.10, blue: 0.06).opacity(0.78)
+        default:
+            Color.black.opacity(0.66)
+        }
     }
-    
-    public struct Red: ChessBoardColorScheme {
-        public var light: Color = Color(red: 1.0, green: 0.85, blue: 0.85)
-        public var dark: Color = Color(red: 1.0, green: 0.55, blue: 0.55)
-        
-        public var label: Color = Color(red: 0.20, green: 0.20, blue: 0.20)
-        
-        public var selected: Color = Color(red: 0.20, green: 0.80, blue: 0.20)
-        public var hinted: Color = Color(red: 0.80, green: 0.20, blue: 0.20)
-        public var legalMove: Color = Color(red: 0.30, green: 0.30, blue: 0.30, opacity: 0.4)
-        
-        public init() {}
+
+    var selected: Color {
+        switch self {
+        case .circuitBoard:
+            Color(red: 0.56, green: 0.95, blue: 0.76)
+        case .blueprint:
+            Color.white.opacity(0.92)
+        default:
+            Color(red: 0.13, green: 0.48, blue: 0.88)
+        }
     }
-    
-    public struct Yellow: ChessBoardColorScheme {
-        public var light: Color = Color(red: 1.0, green: 1.0, blue: 0.85)
-        public var dark: Color = Color(red: 1.0, green: 1.0, blue: 0.55)
-        
-        public var label: Color = Color(red: 0.20, green: 0.20, blue: 0.20)
-        
-        public var selected: Color = Color(red: 0.20, green: 0.80, blue: 0.20)
-        public var hinted: Color = Color(red: 0.80, green: 0.20, blue: 0.20)
-        public var legalMove: Color = Color(red: 0.30, green: 0.30, blue: 0.30, opacity: 0.4)
-        
-        public init() {}
+
+    var hinted: Color {
+        switch self {
+        case .circuitBoard:
+            Color(red: 0.96, green: 0.72, blue: 0.34)
+        case .blueprint:
+            Color(red: 0.98, green: 0.75, blue: 0.34)
+        default:
+            Color(red: 0.77, green: 0.22, blue: 0.18)
+        }
     }
-    
-    public struct Purple: ChessBoardColorScheme {
-        public var light: Color = Color(red: 0.85, green: 0.85, blue: 1.0)
-        public var dark: Color = Color(red: 0.55, green: 0.55, blue: 1.0)
-        
-        public var label: Color = Color(red: 0.20, green: 0.20, blue: 0.20)
-        
-        public var selected: Color = Color(red: 0.20, green: 0.80, blue: 0.20)
-        public var hinted: Color = Color(red: 0.80, green: 0.20, blue: 0.20)
-        public var legalMove: Color = Color(red: 0.30, green: 0.30, blue: 0.30, opacity: 0.4)
-        
-        public init() {}
+
+    var legalMove: Color {
+        switch self {
+        case .circuitBoard:
+            Color(red: 0.46, green: 0.95, blue: 0.72, opacity: 0.48)
+        case .blueprint:
+            Color.white.opacity(0.48)
+        case .sportsCourt:
+            Color(red: 0.13, green: 0.17, blue: 0.22, opacity: 0.34)
+        default:
+            Color.black.opacity(0.34)
+        }
     }
-    
-    public static let light = Light()
-    public static let dark = Dark()
-    public static let orange = Orange()
-    public static let blue = Blue()
-    public static let green = Green()
-    public static let red = Red()
-    public static let yellow = Yellow()
-    public static let purple = Purple()
+
+    var lastMoveHighlight: Color {
+        switch self {
+        case .circuitBoard:
+            Color(red: 0.44, green: 0.95, blue: 0.78, opacity: 0.38)
+        case .blueprint:
+            Color.white.opacity(0.34)
+        case .artDecoMonochrome:
+            Color(red: 0.98, green: 0.91, blue: 0.52, opacity: 0.48)
+        default:
+            Color(red: 1.0, green: 0.82, blue: 0.20, opacity: 0.50)
+        }
+    }
+
+    var texture: ChessBoardTexture {
+        switch self {
+        case .classicGreen, .blueStudy:
+            .none
+        case .warmWalnut:
+            .wood
+        case .marble:
+            .marble
+        case .blueprint:
+            .blueprint
+        case .artDecoMonochrome:
+            .artDeco
+        case .circuitBoard:
+            .circuit
+        case .sportsCourt:
+            .sportsCourt
+        }
+    }
 }
 
-public extension ChessBoardColorScheme where Self == ChessBoardColorSchemes.Light {
-    static var light: ChessBoardColorSchemes.Light { ChessBoardColorSchemes.light }
-}
-
-public extension ChessBoardColorScheme where Self == ChessBoardColorSchemes.Dark {
-    static var dark: ChessBoardColorSchemes.Dark { ChessBoardColorSchemes.dark }
-}
-
-public extension ChessBoardColorScheme where Self == ChessBoardColorSchemes.Orange {
-    static var orange: ChessBoardColorSchemes.Orange { ChessBoardColorSchemes.orange }
-}
-
-public extension ChessBoardColorScheme where Self == ChessBoardColorSchemes.Blue {
-    static var blue: ChessBoardColorSchemes.Blue { ChessBoardColorSchemes.blue }
-}
-
-public extension ChessBoardColorScheme where Self == ChessBoardColorSchemes.Green {
-    static var green: ChessBoardColorSchemes.Green { ChessBoardColorSchemes.green }
-}
-
-public extension ChessBoardColorScheme where Self == ChessBoardColorSchemes.Red {
-    static var red: ChessBoardColorSchemes.Red { ChessBoardColorSchemes.red }
-}
-
-public extension ChessBoardColorScheme where Self == ChessBoardColorSchemes.Yellow {
-    static var yellow: ChessBoardColorSchemes.Yellow { ChessBoardColorSchemes.yellow }
-}
-
-public extension ChessBoardColorScheme where Self == ChessBoardColorSchemes.Purple {
-    static var purple: ChessBoardColorSchemes.Purple { ChessBoardColorSchemes.purple }
+enum ChessBoardTexture: Sendable {
+    case none
+    case wood
+    case marble
+    case blueprint
+    case artDeco
+    case circuit
+    case sportsCourt
 }

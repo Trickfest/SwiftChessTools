@@ -20,11 +20,13 @@ private struct WorkbenchView: View {
     @State private var size: CGFloat = 360
     @State private var fen = Self.startingPosition
     @State private var didCopyFEN = false
+    @State private var pieceSet = ChessPieceSet.artDecoMonochrome
+    @State private var boardTheme = ChessBoardTheme.artDecoMonochrome
 
-    @Bindable private var boardModel = ChessBoardModel(
+    @State private var boardModel = ChessBoardModel(
         fen: startingPosition,
         perspective: .white,
-        colorScheme: .light,
+        boardTheme: .artDecoMonochrome,
         pieceSet: .artDecoMonochrome
     )
 
@@ -70,21 +72,7 @@ private struct WorkbenchView: View {
 
             Spacer(minLength: 0)
 
-            ChessBoardView(model: boardModel)
-                .onMove { move, isLegal, _, _, coordinateMove, _ in
-                    print("Move: FEN: \(boardModel.fen) - coordinate move: \(coordinateMove)")
-
-                    if !isLegal {
-                        print("Illegal move: \(coordinateMove)")
-                        return
-                    }
-
-                    boardModel.game.apply(move: move)
-                    boardModel.setFEN(
-                        FENSerializer().fen(from: boardModel.game.position),
-                        animatedMove: move
-                    )
-                }
+            boardView
                 .frame(width: size, height: size)
                 .padding(14)
                 .background {
@@ -102,6 +90,13 @@ private struct WorkbenchView: View {
         }
         .padding(26)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var boardView: some View {
+        ChessBoardView(model: boardModel)
+            .onMove { move, isLegal, _, _, coordinateMove, _ in
+                handleBoardMove(move: move, isLegal: isLegal, coordinateMove: coordinateMove)
+            }
     }
 
     private var inspectorPane: some View {
@@ -222,14 +217,37 @@ private struct WorkbenchView: View {
     private var displaySection: some View {
         WorkbenchSection("Display") {
             VStack(alignment: .leading, spacing: 10) {
-                Picker("Pieces", selection: $boardModel.pieceSet) {
-                    ForEach(ChessPieceSet.availableSets) { pieceSet in
-                        Text(pieceSet.displayName).tag(pieceSet)
+                displayPickerRow("Pieces") {
+                    WorkbenchMenuPicker(
+                        title: "Pieces",
+                        options: ChessPieceSet.availableSets,
+                        selection: $pieceSet,
+                        displayName: { $0.displayName },
+                        accessibilityIdentifier: "Workbench.pieceSetPicker"
+                    )
+                    .frame(width: 200, height: 24)
+                    .onChange(of: pieceSet) { _, newValue in
+                        boardModel.pieceSet = newValue
+                        boardModel.size = size
                     }
+                    .accessibilityValue(pieceSet.displayName)
                 }
-                .pickerStyle(.menu)
-                .accessibilityIdentifier("Workbench.pieceSetPicker")
-                .accessibilityValue(boardModel.pieceSet.displayName)
+
+                displayPickerRow("Board") {
+                    WorkbenchMenuPicker(
+                        title: "Board",
+                        options: ChessBoardTheme.availableThemes,
+                        selection: $boardTheme,
+                        displayName: { $0.displayName },
+                        accessibilityIdentifier: "Workbench.boardThemePicker"
+                    )
+                    .frame(width: 200, height: 24)
+                    .onChange(of: boardTheme) { _, newValue in
+                        boardModel.boardTheme = newValue
+                        boardModel.size = size
+                    }
+                    .accessibilityValue(boardTheme.displayName)
+                }
 
                 HStack {
                     Text("Board size")
@@ -242,11 +260,35 @@ private struct WorkbenchView: View {
                 .font(.callout)
 
                 Slider(value: $size, in: 220...420, step: 10)
+                    .onChange(of: size) { _, newValue in
+                        boardModel.size = newValue
+                    }
             }
         }
     }
 
+    private func displayPickerRow<Content: View>(
+        _ title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(spacing: 8) {
+            Text(title)
+                .frame(width: 44, alignment: .leading)
+
+            Spacer(minLength: 0)
+
+            content()
+        }
+        .font(.callout)
+    }
+
     private func updatePosition(with newValue: String) {
+        if newValue == boardModel.fen {
+            showError = false
+            errorMessage = ""
+            return
+        }
+
         if !FENValidator.isValid(newValue) {
             showError = true
             errorMessage = "Invalid FEN notation."
@@ -256,6 +298,21 @@ private struct WorkbenchView: View {
         showError = false
         errorMessage = ""
         boardModel.setFEN(newValue)
+    }
+
+    private func handleBoardMove(move: Move, isLegal: Bool, coordinateMove: String) {
+        print("Move: FEN: \(boardModel.fen) - coordinate move: \(coordinateMove)")
+
+        if !isLegal {
+            print("Illegal move: \(coordinateMove)")
+            return
+        }
+
+        boardModel.game.apply(move: move)
+        boardModel.setFEN(
+            FENSerializer().fen(from: boardModel.game.position),
+            animatedMove: move
+        )
     }
 
     private func copyFENToPasteboard() {
@@ -268,6 +325,60 @@ private struct WorkbenchView: View {
             try? await Task.sleep(for: .seconds(1.4))
             didCopyFEN = false
         }
+    }
+}
+
+private struct WorkbenchMenuPicker<Option: Hashable>: View {
+    let title: String
+    let options: [Option]
+    @Binding var selection: Option
+    let displayName: (Option) -> String
+    let accessibilityIdentifier: String
+
+    var body: some View {
+        Menu {
+            ForEach(options, id: \.self) { option in
+                Button {
+                    selection = option
+                } label: {
+                    HStack {
+                        if option == selection {
+                            Image(systemName: "checkmark")
+                        }
+
+                        Text(displayName(option))
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Text(displayName(selection))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+
+                Spacer(minLength: 8)
+
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 9)
+            .frame(width: 200, height: 24)
+            .background {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.white.opacity(0.56))
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(Color.black.opacity(0.10), lineWidth: 1)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 6))
+            .accessibilityElement(children: .ignore)
+            .accessibilityIdentifier(accessibilityIdentifier)
+            .accessibilityLabel(title)
+            .accessibilityValue(displayName(selection))
+        }
+        .buttonStyle(.plain)
     }
 }
 

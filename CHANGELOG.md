@@ -14,8 +14,14 @@ release. Replace `TBD` with the release date when a release is tagged.
   Circuit Board Monochrome, Blueprint Monochrome, and Sports Monochrome.
 - Added `ChessPieceSet.availableSets` so apps can query the bundled piece-set
   registry at runtime.
+- Added selectable built-in ChessUI board themes: Classic Green, Warm Walnut,
+  Blue Study, Marble, Blueprint, Art Deco Monochrome, Circuit Board, and Sports
+  Court.
+- Added `ChessBoardTheme.availableThemes` so apps can query the bundled board
+  theme registry at runtime.
 - Added `ChessPieceSet` asset resolution coverage, per-piece-set ChessUI
-  snapshots, and ChessWorkbench UI coverage for selecting each built-in set.
+  snapshots, per-board-theme ChessUI snapshots, and ChessWorkbench UI coverage
+  for selecting each built-in set and theme.
 
 ### Changed
 
@@ -67,7 +73,7 @@ Initial public-ready release.
   `Move.init(string:)`, and `Game.apply(move:)` for coordinate strings now
   report malformed input with thrown errors instead of trapping.
 - Renamed the primary ChessUI public board API to `ChessBoardView`,
-  `ChessBoardModel`, and `ChessBoardColorScheme`.
+  `ChessBoardModel`, and the current board styling types.
 - Renamed inherited ChessCore APIs and internals for the current package shape,
   including `FENSerializer`, `SANSerializer`, `Game.apply(move:)`, and the
   move-generation types.

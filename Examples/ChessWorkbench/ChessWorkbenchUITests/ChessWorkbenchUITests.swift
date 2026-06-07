@@ -1,4 +1,6 @@
+import CoreGraphics
 import ChessUI
+import ImageIO
 import XCTest
 
 final class ChessWorkbenchUITests: XCTestCase {
@@ -9,12 +11,17 @@ final class ChessWorkbenchUITests: XCTestCase {
         ChessPieceSet.availableSets.map(\.displayName)
     }
 
+    private var boardThemeNames: [String] {
+        ChessBoardTheme.availableThemes.map(\.displayName)
+    }
+
     private var app: XCUIApplication!
 
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
         app.launch()
+        openWindowIfNeeded()
         waitForFEN(Self.startingFEN, timeout: 8)
     }
 
@@ -32,7 +39,7 @@ final class ChessWorkbenchUITests: XCTestCase {
     }
 
     func testPieceSetPickerSelectsEveryBuiltInSet() {
-        let picker = app.popUpButtons["Workbench.pieceSetPicker"]
+        let picker = element("Workbench.pieceSetPicker")
 
         assertExists(picker)
         XCTAssertEqual(picker.value as? String, ChessPieceSet.artDecoMonochrome.displayName)
@@ -42,8 +49,38 @@ final class ChessWorkbenchUITests: XCTestCase {
             let menuItem = app.menuItems[pieceSetName]
             assertExists(menuItem, message: "Missing piece set menu item \(pieceSetName)")
             menuItem.click()
-            XCTAssertEqual(picker.value as? String, pieceSetName)
+            waitForValue(pieceSetName, in: picker)
         }
+    }
+
+    func testBoardThemePickerSelectsEveryBuiltInTheme() {
+        let picker = element("Workbench.boardThemePicker")
+
+        assertExists(picker)
+        XCTAssertEqual(picker.value as? String, ChessBoardTheme.artDecoMonochrome.displayName)
+
+        for boardThemeName in boardThemeNames {
+            picker.click()
+            let menuItem = app.menuItems[boardThemeName]
+            assertExists(menuItem, message: "Missing board theme menu item \(boardThemeName)")
+            menuItem.click()
+            waitForValue(boardThemeName, in: picker)
+            assertBoardScreenshotIsNotBlank(square("b1"), themeName: boardThemeName)
+        }
+
+        tapSquare("d3")
+        assertExists(element("ChessUI.legalMove.d7"))
+    }
+
+    func testDisplayPickersHaveAlignedFrames() {
+        let piecePicker = element("Workbench.pieceSetPicker")
+        let boardPicker = element("Workbench.boardThemePicker")
+
+        assertExists(piecePicker)
+        assertExists(boardPicker)
+        XCTAssertEqual(piecePicker.frame.minX, boardPicker.frame.minX, accuracy: 1)
+        XCTAssertEqual(piecePicker.frame.width, boardPicker.frame.width, accuracy: 1)
+        XCTAssertEqual(piecePicker.frame.height, boardPicker.frame.height, accuracy: 1)
     }
 
     func testSourceSquareClickSelectsPieceAndShowsLegalDestinations() {
@@ -74,6 +111,8 @@ final class ChessWorkbenchUITests: XCTestCase {
 
         waitForFEN(Self.queenD7FEN)
         XCTAssertTrue(square("d7").label.contains("White queen d7"))
+        assertExists(element("ChessUI.lastMove.d3"))
+        assertExists(element("ChessUI.lastMove.d7"))
     }
 
     func testInvalidMoveDoesNotUpdateFEN() {
@@ -138,6 +177,14 @@ final class ChessWorkbenchUITests: XCTestCase {
         waitForFEN(Self.startingFEN)
     }
 
+    private func openWindowIfNeeded() {
+        if element("Workbench.fenEditor").waitForExistence(timeout: 1) {
+            return
+        }
+
+        app.typeKey("n", modifierFlags: .command)
+    }
+
     private func tapSquare(_ coordinate: String, offset: CGVector = CGVector(dx: 0.5, dy: 0.5)) {
         square(coordinate).coordinate(withNormalizedOffset: offset).tap()
     }
@@ -195,6 +242,85 @@ final class ChessWorkbenchUITests: XCTestCase {
         }
     }
 
+    private func waitForValue(
+        _ expected: String,
+        in element: XCUIElement,
+        timeout: TimeInterval = 2,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let predicate = NSPredicate { element, _ in
+            guard let element = element as? XCUIElement else {
+                return false
+            }
+            return element.value as? String == expected
+        }
+
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
+        XCTAssertEqual(
+            result,
+            .completed,
+            "Expected value \(expected), got \((element.value as? String) ?? "<nil>")",
+            file: file,
+            line: line
+        )
+    }
+
+    private func assertBoardScreenshotIsNotBlank(
+        _ board: XCUIElement,
+        themeName: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        do {
+            waitForNonEmptyFrame(board, file: file, line: line)
+            let bitmap = try Self.rgbaBitmap(from: board.screenshot().pngRepresentation)
+            let pixelCount = bitmap.width * bitmap.height
+            var nonWhitePixels = 0
+
+            for index in stride(from: 0, to: bitmap.pixels.count, by: 4) {
+                let red = bitmap.pixels[index]
+                let green = bitmap.pixels[index + 1]
+                let blue = bitmap.pixels[index + 2]
+                let alpha = bitmap.pixels[index + 3]
+
+                if alpha > 0 && !(red > 245 && green > 245 && blue > 245) {
+                    nonWhitePixels += 1
+                }
+            }
+
+            let nonWhiteRatio = Double(nonWhitePixels) / Double(pixelCount)
+            XCTAssertGreaterThan(
+                nonWhiteRatio,
+                0.20,
+                "Board screenshot was mostly white after selecting \(themeName)",
+                file: file,
+                line: line
+            )
+        } catch {
+            XCTFail("Could not inspect board screenshot after selecting \(themeName): \(error)", file: file, line: line)
+        }
+    }
+
+    private func waitForNonEmptyFrame(
+        _ element: XCUIElement,
+        timeout: TimeInterval = 2,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let predicate = NSPredicate { element, _ in
+            guard let element = element as? XCUIElement else {
+                return false
+            }
+            return !element.frame.isEmpty
+        }
+
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
+        XCTAssertEqual(result, .completed, "Expected non-empty frame", file: file, line: line)
+    }
+
     private static func normalizedText(from element: XCUIElement) -> String {
         let rawValue = (element.value as? String) ?? element.label
         return rawValue.split(whereSeparator: \.isWhitespace).joined(separator: " ")
@@ -211,5 +337,39 @@ final class ChessWorkbenchUITests: XCTestCase {
         XCTAssertEqual(actual.origin.y, expected.origin.y, accuracy: accuracy, file: file, line: line)
         XCTAssertEqual(actual.size.width, expected.size.width, accuracy: accuracy, file: file, line: line)
         XCTAssertEqual(actual.size.height, expected.size.height, accuracy: accuracy, file: file, line: line)
+    }
+
+    private static func rgbaBitmap(from png: Data) throws -> (width: Int, height: Int, pixels: [UInt8]) {
+        guard let source = CGImageSourceCreateWithData(png as CFData, nil),
+              let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
+        else {
+            throw ScreenshotError.imageDecodingFailed
+        }
+
+        let width = image.width
+        let height = image.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
+
+        guard let context = CGContext(
+            data: &pixels,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width * 4,
+            space: colorSpace,
+            bitmapInfo: bitmapInfo
+        ) else {
+            throw ScreenshotError.bitmapCreationFailed
+        }
+
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return (width, height, pixels)
+    }
+
+    private enum ScreenshotError: Error {
+        case imageDecodingFailed
+        case bitmapCreationFailed
     }
 }

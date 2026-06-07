@@ -119,6 +119,7 @@ private let startingFEN =
 struct BoardDemoView: View {
     @Bindable private var model = ChessBoardModel(
         fen: startingFEN,
+        boardTheme: .artDecoMonochrome,
         pieceSet: .sashiteMerida
     )
 
@@ -127,6 +128,12 @@ struct BoardDemoView: View {
             Picker("Pieces", selection: $model.pieceSet) {
                 ForEach(ChessPieceSet.availableSets) { pieceSet in
                     Text(pieceSet.displayName).tag(pieceSet)
+                }
+            }
+
+            Picker("Board", selection: $model.boardTheme) {
+                ForEach(ChessBoardTheme.availableThemes) { boardTheme in
+                    Text(boardTheme.displayName).tag(boardTheme)
                 }
             }
 
@@ -152,11 +159,9 @@ struct BoardDemoView: View {
 `Examples/ChessWorkbench` is the runnable integration example for these APIs.
 `ChessBoardModel.setFEN(_:animatedMove:)` returns `false` and records
 `fenError` when a FEN update fails, leaving the current board unchanged.
-ChessUI includes seven built-in piece sets: `sashiteMerida`,
-`artDecoMonochrome`, `brutalistMonochrome`, `origamiMonochrome`,
-`circuitBoardMonochrome`, `blueprintMonochrome`, and `sportsMonochrome`.
-Use `ChessPieceSet.availableSets` to build a runtime picker for the sets
-bundled by the current package version.
+ChessUI includes runtime registries for bundled piece sets and board themes.
+Use `ChessPieceSet.availableSets` and `ChessBoardTheme.availableThemes` to build
+pickers for the options bundled by the current package version.
 
 ### Managing Piece Sets
 
@@ -174,13 +179,29 @@ imagesets from `Sources/ChessUI/Assets/Pieces.xcassets`, remove its snapshot
 reference, and refresh the ChessUI snapshots. Callers that use
 `ChessPieceSet.availableSets` automatically stop presenting the removed set.
 
+### Managing Board Themes
+
+Each bundled board theme is intentionally self-contained:
+
+- one `ChessBoardTheme` case,
+- theme-provided square, label, selected, legal-move, hint, and last-move
+  styling,
+- optional lightweight texture rendering in `ChessBoardView`,
+- one board-theme snapshot reference named `board-theme-<themeName>.png`.
+
+To remove a bundled board theme, delete its enum case, remove any matching
+texture rendering branch, remove its snapshot reference, and refresh the
+ChessUI snapshots. Callers that use `ChessBoardTheme.availableThemes`
+automatically stop presenting the removed theme.
+
 ## Scope
 
 SwiftChessTools provides:
 
 - Board state, pieces, moves, legal move generation, FEN, and SAN helpers.
-- A reusable SwiftUI chessboard with selectable piece assets, move interaction,
-  highlighting, hints, promotion UI, and board perspective support.
+- A reusable SwiftUI chessboard with selectable piece assets, selectable board
+  themes, move interaction, highlighting, hints, promotion UI, and board
+  perspective support.
 - A small macOS workbench and automated tests for package behavior.
 
 SwiftChessTools does not provide:
@@ -193,8 +214,8 @@ SwiftChessTools does not provide:
 `Examples/ChessWorkbench` is a small macOS SwiftUI app for manually exercising
 `ChessCore` and `ChessUI` from inside this package. It renders a real
 `ChessBoardView`, lets you edit the current FEN, applies legal board moves, and
-exposes quick controls for reset, hints, board sizing, piece-set selection, and
-promotion UI.
+exposes quick controls for reset, hints, board sizing, piece-set selection,
+board-theme selection, and promotion UI.
 
 Open the app in Xcode:
 
