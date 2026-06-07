@@ -314,7 +314,3 @@ projects. This repository is independent and is not affiliated with or endorsed
 by the original maintainers.
 
 See `NOTICE.md` for preserved MIT license notices and bundled asset provenance.
-
-## Roadmap
-
-See `ROADMAP.md`.
