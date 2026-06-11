@@ -1,5 +1,5 @@
 //
-// ChessUI provides reusable SwiftUI chess board views and supporting helpers.
+// SwiftChessTools provides reusable chess rules, notation, and SwiftUI board UI.
 //
 // See NOTICE.md for upstream attribution and license details.
 //

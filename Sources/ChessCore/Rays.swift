@@ -1,10 +1,11 @@
 //
-//  Rays.swift
-//  ChessCore
+// SwiftChessTools provides reusable chess rules, notation, and SwiftUI board UI.
 //
-//  Created by Alexander Perechnev, 2021.
-//  Modified by Alexander Perechnev, 2025.
-//  Copyright © 2021-2025 Päike Mikrosüsteemid OÜ. All rights reserved.
+// See NOTICE.md for upstream attribution and license details.
+//
+// Licensed under the MIT License.
+// You may obtain a copy of the License at: https://opensource.org/licenses/MIT
+// See the LICENSE file for more information.
 //
 
 import Foundation

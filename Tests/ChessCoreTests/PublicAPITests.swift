@@ -1,8 +1,11 @@
 //
-//  PublicAPITests.swift
-//  ChessCoreTests
+// SwiftChessTools provides reusable chess rules, notation, and SwiftUI board UI.
 //
-//  Copyright © 2026 Päike Mikrosüsteemid OÜ. All rights reserved.
+// See NOTICE.md for upstream attribution and license details.
+//
+// Licensed under the MIT License.
+// You may obtain a copy of the License at: https://opensource.org/licenses/MIT
+// See the LICENSE file for more information.
 //
 
 import Testing

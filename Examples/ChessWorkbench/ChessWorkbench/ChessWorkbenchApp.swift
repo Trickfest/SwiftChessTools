@@ -1,8 +1,11 @@
 //
-//  ChessWorkbenchApp.swift
-//  ChessWorkbench
+// SwiftChessTools provides reusable chess rules, notation, and SwiftUI board UI.
 //
-//  Created by Mark Harris on 11/19/25.
+// See NOTICE.md for upstream attribution and license details.
+//
+// Licensed under the MIT License.
+// You may obtain a copy of the License at: https://opensource.org/licenses/MIT
+// See the LICENSE file for more information.
 //
 
 import SwiftUI
