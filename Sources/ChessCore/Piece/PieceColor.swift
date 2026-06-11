@@ -7,7 +7,7 @@
 //
 
 /// The side a piece belongs to.
-public enum PieceColor {
+public enum PieceColor: Equatable, Sendable {
 
     /// The white side.
     case white

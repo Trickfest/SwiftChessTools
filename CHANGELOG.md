@@ -22,11 +22,19 @@ release. Replace `TBD` with the release date when a release is tagged.
 - Added `ChessPieceSet` asset resolution coverage, per-piece-set ChessUI
   snapshots, per-board-theme ChessUI snapshots, and ChessWorkbench UI coverage
   for selecting each built-in set and theme.
+- Added `ChessEvaluation`, `ChessEvaluationBar`, and normalized display-state
+  helpers so apps can render caller-supplied centipawn, mate, or unavailable
+  evaluation states without wiring an engine into ChessUI.
+- Added ChessUI evaluation-bar mapping tests and ChessWorkbench UI coverage for
+  evaluation samples, placement, orientation, White-side selection, label
+  visibility, and centipawn scale controls.
 
 ### Changed
 
 - Replaced the bundled legacy piece PNGs with self-contained prefixed piece
   asset families that can be added or removed one set at a time.
+- Marked `PieceColor` as `Equatable` and `Sendable` so it can be used in
+  concurrent, value-semantic ChessUI evaluation state.
 
 ## 1.0.0 - TBD
 

@@ -17,6 +17,8 @@ also hosts focused macOS UI tests for those workbench flows.
 - Updating the FEN field after board moves.
 - Piece-set selection, board-theme selection, board sizing, hints, reset
   behavior, and the promotion picker UI.
+- `ChessEvaluationBar` samples, placement, White-side orientation, label
+  visibility, and centipawn scale controls.
 
 ## Local Dependency
 
@@ -81,7 +83,11 @@ Scripts/test-all.sh
    re-renders.
 6. Select each built-in board theme from the `Board` menu and confirm the board
    re-renders.
-7. Try `Reset`, `Hint`, and `Show Promotion Picker`.
+7. Change the evaluation sample and confirm the evaluation bar and status text
+   update.
+8. Change the evaluation placement and White-side controls and confirm the bar
+   moves between the board edges.
+9. Try `Reset`, `Hint`, and `Show Promotion Picker`.
 
 Use this example app when you need a small, disposable workbench for future
 `SwiftChessTools` UI or rules changes.

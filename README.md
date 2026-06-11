@@ -163,6 +163,35 @@ ChessUI includes runtime registries for bundled piece sets and board themes.
 Use `ChessPieceSet.availableSets` and `ChessBoardTheme.availableThemes` to build
 pickers for the options bundled by the current package version.
 
+### Evaluation Bar
+
+`ChessEvaluationBar` is a standalone SwiftUI view for app-provided evaluation
+data. It is not tied to `ChessBoardView`; place it next to a board, above or
+below a board, or in a separate layout region.
+
+```swift
+ChessEvaluationBar(
+    evaluation: .centipawns(85),
+    orientation: .vertical,
+    whiteSide: .bottom,
+    maximumCentipawns: 800
+)
+.frame(width: 28, height: 320)
+```
+
+Centipawn values are White-positive: `+100` means White is ahead by about one
+pawn, `-100` means Black is ahead by about one pawn, and `0` is equal. Forced
+mate values use the side that is delivering mate:
+
+```swift
+ChessEvaluationBar(evaluation: .mate(moves: 3, side: .white))
+```
+
+Apps that consume UCI engines such as Stockfish should parse and normalize
+engine output before passing values into ChessUI. ChessUI only renders the
+current value; it does not start an engine, run analysis, choose moves, or
+interpret search output.
+
 ### Managing Piece Sets
 
 Each bundled piece set is intentionally self-contained:
@@ -202,11 +231,13 @@ SwiftChessTools provides:
 - A reusable SwiftUI chessboard with selectable piece assets, selectable board
   themes, move interaction, highlighting, hints, promotion UI, and board
   perspective support.
+- A standalone SwiftUI evaluation bar for caller-supplied centipawn, mate, or
+  unavailable evaluation states.
 - A small macOS workbench and automated tests for package behavior.
 
 SwiftChessTools does not provide:
 
-- A chess engine, AI opponent, Stockfish integration, or analysis UI.
+- A chess engine, AI opponent, Stockfish integration, or analysis pipeline.
 - PGN import/export, opening books, clocks, online play, accounts, or sync.
 
 ## Manual Workbench
@@ -215,7 +246,7 @@ SwiftChessTools does not provide:
 `ChessCore` and `ChessUI` from inside this package. It renders a real
 `ChessBoardView`, lets you edit the current FEN, applies legal board moves, and
 exposes quick controls for reset, hints, board sizing, piece-set selection,
-board-theme selection, and promotion UI.
+board-theme selection, evaluation-bar samples, and promotion UI.
 
 Open the app in Xcode:
 
@@ -242,7 +273,8 @@ Manual smoke test:
 2. Confirm the board renders from the starting FEN.
 3. Drag a legal move on the board.
 4. Confirm the FEN field updates.
-5. Try `Reset`, `Hint`, and `Show Promotion Picker`.
+5. Change the evaluation value, placement, and White side controls.
+6. Try `Reset`, `Hint`, and `Show Promotion Picker`.
 
 ## Testing
 

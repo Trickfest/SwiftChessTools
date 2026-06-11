@@ -21,6 +21,11 @@ private struct WorkbenchView: View {
     @State private var didCopyFEN = false
     @State private var pieceSet = ChessPieceSet.artDecoMonochrome
     @State private var boardTheme = ChessBoardTheme.artDecoMonochrome
+    @State private var evaluationSample = WorkbenchEvaluationSample.whiteEdge
+    @State private var evaluationPlacement = WorkbenchEvaluationPlacement.leading
+    @State private var evaluationWhiteSide = ChessEvaluationBarWhiteSide.bottom
+    @State private var evaluationMaximumCentipawns = Double(ChessEvaluationBarDisplayState.defaultMaximumCentipawns)
+    @State private var showsEvaluationLabel = true
 
     @State private var boardModel = ChessBoardModel(
         fen: startingPosition,
@@ -31,6 +36,17 @@ private struct WorkbenchView: View {
 
     private var isResetDisabled: Bool {
         boardModel.fen == Self.startingPosition && fen == Self.startingPosition
+    }
+
+    private var evaluationMaximumCentipawnsValue: Int {
+        max(1, Int(evaluationMaximumCentipawns.rounded()))
+    }
+
+    private var evaluationDisplayState: ChessEvaluationBarDisplayState {
+        ChessEvaluationBarDisplayState(
+            evaluation: evaluationSample.evaluation,
+            maximumCentipawns: evaluationMaximumCentipawnsValue
+        )
     }
 
     var body: some View {
@@ -71,18 +87,7 @@ private struct WorkbenchView: View {
 
             Spacer(minLength: 0)
 
-            boardView
-                .frame(width: size, height: size)
-                .padding(14)
-                .background {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.white.opacity(0.76))
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.black.opacity(0.14), lineWidth: 1)
-                }
-                .shadow(color: Color.black.opacity(0.08), radius: 14, y: 6)
+            boardStage
                 .frame(maxWidth: .infinity)
 
             Spacer(minLength: 0)
@@ -98,6 +103,73 @@ private struct WorkbenchView: View {
             }
     }
 
+    private var boardStage: some View {
+        Group {
+            switch evaluationPlacement {
+            case .leading:
+                HStack(spacing: 10) {
+                    evaluationBar
+                        .frame(width: 24, height: boardCardSide)
+                    boardCard
+                }
+
+            case .trailing:
+                HStack(spacing: 10) {
+                    boardCard
+                    evaluationBar
+                        .frame(width: 24, height: boardCardSide)
+                }
+
+            case .top:
+                VStack(spacing: 10) {
+                    evaluationBar
+                        .frame(width: boardCardSide, height: 24)
+                    boardCard
+                }
+
+            case .bottom:
+                VStack(spacing: 10) {
+                    boardCard
+                    evaluationBar
+                        .frame(width: boardCardSide, height: 24)
+                }
+            }
+        }
+    }
+
+    private var boardCard: some View {
+        boardView
+            .frame(width: size, height: size)
+            .padding(14)
+            .background {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.white.opacity(0.76))
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.black.opacity(0.14), lineWidth: 1)
+            }
+            .shadow(color: Color.black.opacity(0.08), radius: 14, y: 6)
+    }
+
+    private var boardCardSide: CGFloat {
+        size + 28
+    }
+
+    private var evaluationBar: some View {
+        ChessEvaluationBar(
+            evaluation: evaluationSample.evaluation,
+            orientation: evaluationPlacement.orientation,
+            whiteSide: evaluationWhiteSide,
+            maximumCentipawns: evaluationMaximumCentipawnsValue,
+            showsLabel: showsEvaluationLabel
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityIdentifier("Workbench.evaluationBar")
+        .accessibilityLabel("Workbench evaluation")
+        .accessibilityValue(evaluationDisplayState.accessibilityValue)
+    }
+
     private var inspectorPane: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
@@ -105,6 +177,7 @@ private struct WorkbenchView: View {
                 actionSection
                 positionSection
                 displaySection
+                evaluationSection
             }
             .padding(18)
         }
@@ -266,6 +339,75 @@ private struct WorkbenchView: View {
         }
     }
 
+    private var evaluationSection: some View {
+        WorkbenchSection("Evaluation") {
+            VStack(alignment: .leading, spacing: 10) {
+                displayPickerRow("Value") {
+                    WorkbenchMenuPicker(
+                        title: "Evaluation",
+                        options: WorkbenchEvaluationSample.allCases,
+                        selection: $evaluationSample,
+                        displayName: { $0.displayName },
+                        accessibilityIdentifier: "Workbench.evaluationSamplePicker"
+                    )
+                    .frame(width: 200, height: 24)
+                    .accessibilityValue(evaluationSample.displayName)
+                }
+
+                displayPickerRow("Place") {
+                    WorkbenchMenuPicker(
+                        title: "Evaluation placement",
+                        options: WorkbenchEvaluationPlacement.allCases,
+                        selection: $evaluationPlacement,
+                        displayName: { $0.displayName },
+                        accessibilityIdentifier: "Workbench.evaluationPlacementPicker"
+                    )
+                    .frame(width: 200, height: 24)
+                    .onChange(of: evaluationPlacement) { _, newValue in
+                        if !evaluationWhiteSide.isCompatible(with: newValue.orientation) {
+                            evaluationWhiteSide = newValue.defaultWhiteSide
+                        }
+                    }
+                    .accessibilityValue(evaluationPlacement.displayName)
+                }
+
+                displayPickerRow("White") {
+                    WorkbenchMenuPicker(
+                        title: "White side",
+                        options: evaluationPlacement.compatibleWhiteSides,
+                        selection: $evaluationWhiteSide,
+                        displayName: { $0.displayName },
+                        accessibilityIdentifier: "Workbench.evaluationWhiteSidePicker"
+                    )
+                    .frame(width: 200, height: 24)
+                    .accessibilityValue(evaluationWhiteSide.displayName)
+                }
+
+                Toggle("Show label", isOn: $showsEvaluationLabel)
+                    .toggleStyle(.checkbox)
+                    .accessibilityIdentifier("Workbench.evaluationLabelToggle")
+
+                HStack {
+                    Text("Max cp")
+                    Spacer()
+                    Text("\(evaluationMaximumCentipawnsValue)")
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("Workbench.evaluationScaleValue")
+                }
+                .font(.callout)
+
+                Slider(value: $evaluationMaximumCentipawns, in: 200...1_200, step: 100)
+                    .accessibilityIdentifier("Workbench.evaluationScaleSlider")
+
+                Text(evaluationDisplayState.accessibilityValue)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("Workbench.evaluationStatus")
+            }
+        }
+    }
+
     private func displayPickerRow<Content: View>(
         _ title: String,
         @ViewBuilder content: () -> Content
@@ -326,12 +468,112 @@ private struct WorkbenchView: View {
     }
 }
 
+private enum WorkbenchEvaluationSample: String, CaseIterable, Identifiable {
+    case unavailable
+    case equal
+    case whiteEdge
+    case blackEdge
+    case whiteWinning
+    case blackWinning
+    case whiteMate
+    case blackMate
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .unavailable:
+            "Unavailable"
+        case .equal:
+            "Equal"
+        case .whiteEdge:
+            "White +0.9"
+        case .blackEdge:
+            "Black -1.4"
+        case .whiteWinning:
+            "White +6.2"
+        case .blackWinning:
+            "Black -6.2"
+        case .whiteMate:
+            "White mate in 3"
+        case .blackMate:
+            "Black mate in 2"
+        }
+    }
+
+    var evaluation: ChessEvaluation {
+        switch self {
+        case .unavailable:
+            .unavailable
+        case .equal:
+            .centipawns(0)
+        case .whiteEdge:
+            .centipawns(85)
+        case .blackEdge:
+            .centipawns(-135)
+        case .whiteWinning:
+            .centipawns(620)
+        case .blackWinning:
+            .centipawns(-620)
+        case .whiteMate:
+            .mate(moves: 3, side: .white)
+        case .blackMate:
+            .mate(moves: 2, side: .black)
+        }
+    }
+}
+
+private enum WorkbenchEvaluationPlacement: String, CaseIterable, Identifiable {
+    case leading
+    case trailing
+    case top
+    case bottom
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .leading:
+            "Left"
+        case .trailing:
+            "Right"
+        case .top:
+            "Top"
+        case .bottom:
+            "Bottom"
+        }
+    }
+
+    var orientation: ChessEvaluationBarOrientation {
+        switch self {
+        case .leading, .trailing:
+            .vertical
+        case .top, .bottom:
+            .horizontal
+        }
+    }
+
+    var compatibleWhiteSides: [ChessEvaluationBarWhiteSide] {
+        switch orientation {
+        case .vertical:
+            [.bottom, .top]
+        case .horizontal:
+            [.leading, .trailing]
+        }
+    }
+
+    var defaultWhiteSide: ChessEvaluationBarWhiteSide {
+        ChessEvaluationBarWhiteSide.defaultSide(for: orientation)
+    }
+}
+
 private struct WorkbenchMenuPicker<Option: Hashable>: View {
     let title: String
     let options: [Option]
     @Binding var selection: Option
     let displayName: (Option) -> String
     let accessibilityIdentifier: String
+    var width: CGFloat = 200
 
     var body: some View {
         Menu {
@@ -361,7 +603,7 @@ private struct WorkbenchMenuPicker<Option: Hashable>: View {
                     .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 9)
-            .frame(width: 200, height: 24)
+            .frame(width: width, height: 24)
             .background {
                 RoundedRectangle(cornerRadius: 6)
                     .fill(Color.white.opacity(0.56))

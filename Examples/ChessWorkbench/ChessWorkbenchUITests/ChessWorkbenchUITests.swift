@@ -83,6 +83,37 @@ final class ChessWorkbenchUITests: XCTestCase {
         XCTAssertEqual(piecePicker.frame.height, boardPicker.frame.height, accuracy: 1)
     }
 
+    func testEvaluationBarControlsDemoSamplesAndPlacement() {
+        let bar = element("Workbench.evaluationBar")
+        let samplePicker = element("Workbench.evaluationSamplePicker")
+        let placementPicker = element("Workbench.evaluationPlacementPicker")
+        let whiteSidePicker = element("Workbench.evaluationWhiteSidePicker")
+        let status = element("Workbench.evaluationStatus")
+
+        assertExists(bar)
+        assertExists(samplePicker)
+        assertExists(placementPicker)
+        assertExists(whiteSidePicker)
+        assertExists(status)
+        assertExists(element("Workbench.evaluationLabelToggle"))
+        assertExists(element("Workbench.evaluationScaleSlider"))
+
+        waitForFrameOrientation(bar, isHorizontal: false)
+        waitForText("White advantage 0.9 pawns", in: status)
+        assertEvaluationBarScreenshotHasLightAndDarkSegments(bar)
+
+        samplePicker.click()
+        menuActionItem("Black mate in 2").click()
+        waitForValue("Black mate in 2", in: samplePicker)
+        waitForText("Black mate in 2", in: status)
+
+        placementPicker.click()
+        menuActionItem("Top").click()
+        waitForValue("Top", in: placementPicker)
+        waitForValue("White at leading", in: whiteSidePicker)
+        waitForFrameOrientation(bar, isHorizontal: true)
+    }
+
     func testSourceSquareClickSelectsPieceAndShowsLegalDestinations() {
         tapSquare("d3")
 
@@ -230,6 +261,11 @@ final class ChessWorkbenchUITests: XCTestCase {
         app.descendants(matching: .any)[identifier]
     }
 
+    private func menuActionItem(_ title: String) -> XCUIElement {
+        let predicate = NSPredicate(format: "title == %@", title)
+        return app.menuItems.matching(predicate).firstMatch
+    }
+
     private func assertExists(
         _ element: XCUIElement,
         timeout: TimeInterval = 2,
@@ -265,6 +301,67 @@ final class ChessWorkbenchUITests: XCTestCase {
             file: file,
             line: line
         )
+    }
+
+    private func waitForText(
+        _ expected: String,
+        in element: XCUIElement,
+        timeout: TimeInterval = 2,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let predicate = NSPredicate { element, _ in
+            guard let element = element as? XCUIElement else {
+                return false
+            }
+            return Self.normalizedText(from: element) == expected
+        }
+
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
+        XCTAssertEqual(
+            result,
+            .completed,
+            "Expected text \(expected), got \(Self.normalizedText(from: element))",
+            file: file,
+            line: line
+        )
+    }
+
+    private func assertEvaluationBarScreenshotHasLightAndDarkSegments(
+        _ bar: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        do {
+            waitForNonEmptyFrame(bar, file: file, line: line)
+            let bitmap = try Self.rgbaBitmap(from: bar.screenshot().pngRepresentation)
+            let pixelCount = bitmap.width * bitmap.height
+            var lightPixels = 0
+            var darkPixels = 0
+
+            for index in stride(from: 0, to: bitmap.pixels.count, by: 4) {
+                let red = bitmap.pixels[index]
+                let green = bitmap.pixels[index + 1]
+                let blue = bitmap.pixels[index + 2]
+                let alpha = bitmap.pixels[index + 3]
+
+                guard alpha > 0 else { continue }
+
+                if red > 210 && green > 210 && blue > 210 {
+                    lightPixels += 1
+                } else if red < 80 && green < 80 && blue < 80 {
+                    darkPixels += 1
+                }
+            }
+
+            let lightRatio = Double(lightPixels) / Double(pixelCount)
+            let darkRatio = Double(darkPixels) / Double(pixelCount)
+            XCTAssertGreaterThan(lightRatio, 0.10, "Evaluation bar screenshot had too little light segment", file: file, line: line)
+            XCTAssertGreaterThan(darkRatio, 0.10, "Evaluation bar screenshot had too little dark segment", file: file, line: line)
+        } catch {
+            XCTFail("Could not inspect evaluation bar screenshot: \(error)", file: file, line: line)
+        }
     }
 
     private func assertBoardScreenshotIsNotBlank(
@@ -319,6 +416,36 @@ final class ChessWorkbenchUITests: XCTestCase {
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
         let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
         XCTAssertEqual(result, .completed, "Expected non-empty frame", file: file, line: line)
+    }
+
+    private func waitForFrameOrientation(
+        _ element: XCUIElement,
+        isHorizontal: Bool,
+        timeout: TimeInterval = 2,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let predicate = NSPredicate { element, _ in
+            guard let element = element as? XCUIElement else {
+                return false
+            }
+
+            if isHorizontal {
+                return element.frame.width > element.frame.height
+            }
+
+            return element.frame.height > element.frame.width
+        }
+
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
+        XCTAssertEqual(
+            result,
+            .completed,
+            "Expected \(isHorizontal ? "horizontal" : "vertical") frame, got \(element.frame)",
+            file: file,
+            line: line
+        )
     }
 
     private static func normalizedText(from element: XCUIElement) -> String {
