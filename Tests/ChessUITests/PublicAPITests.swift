@@ -9,9 +9,18 @@
 //
 
 import Testing
+import SwiftUI
 
 import ChessUI
 
-@Test func moveListLayoutAPIsArePubliclyUsable() {
+@MainActor
+@Test func moveListAPIsArePubliclyUsable() {
     #expect(ChessMoveListLayout.allCases == [.vertical, .horizontal])
+
+    let hiddenIndicatorMoveList = ChessMoveListView(
+        records: [],
+        layout: .horizontal,
+        scrollIndicatorVisibility: .hidden
+    )
+    #expect(type(of: hiddenIndicatorMoveList) == ChessMoveListView.self)
 }

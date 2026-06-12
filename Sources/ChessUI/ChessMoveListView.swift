@@ -39,6 +39,7 @@ public struct ChessMoveListView: View {
     private let records: [ChessMoveRecord]
     private let selectedPly: Int?
     private let layout: ChessMoveListLayout
+    private let scrollIndicatorVisibility: ScrollIndicatorVisibility
     private let onSelectRecord: ((ChessMoveRecord) -> Void)?
 
     /// Creates a move-list view.
@@ -56,18 +57,21 @@ public struct ChessMoveListView: View {
     ///   - selectedPly: Optional ply to render as selected.
     ///   - title: Optional section title. Pass `nil` to hide the title.
     ///   - layout: Move-list layout direction.
+    ///   - scrollIndicatorVisibility: Visibility for the active scroll axis.
     ///   - onSelectRecord: Optional callback invoked when a move is selected.
     public init(
         records: [ChessMoveRecord],
         selectedPly: Int? = nil,
         title: String? = "Moves",
         layout: ChessMoveListLayout = .vertical,
+        scrollIndicatorVisibility: ScrollIndicatorVisibility = .automatic,
         onSelectRecord: ((ChessMoveRecord) -> Void)? = nil
     ) {
         self.records = records.sorted { $0.ply < $1.ply }
         self.selectedPly = selectedPly
         self.title = title
         self.layout = layout
+        self.scrollIndicatorVisibility = scrollIndicatorVisibility
         self.onSelectRecord = onSelectRecord
     }
 
@@ -105,6 +109,7 @@ public struct ChessMoveListView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .defaultScrollAnchor(.top)
+                .scrollIndicators(scrollIndicatorVisibility, axes: .vertical)
                 .accessibilityIdentifier("ChessUI.moveList.scrollView")
                 .task(id: verticalScrollViewIdentity(for: viewportHeight)) {
                     guard shouldAnchorToBottom(in: viewportHeight) else {
@@ -132,6 +137,7 @@ public struct ChessMoveListView: View {
                         .frame(minWidth: viewportWidth, maxHeight: .infinity, alignment: .leading)
                 }
                 .defaultScrollAnchor(.leading)
+                .scrollIndicators(scrollIndicatorVisibility, axes: .horizontal)
                 .accessibilityIdentifier("ChessUI.moveList.scrollView")
                 .task(id: horizontalScrollViewIdentity(for: viewportWidth)) {
                     guard shouldAnchorToTrailing(in: viewportWidth) else {

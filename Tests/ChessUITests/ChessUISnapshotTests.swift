@@ -137,6 +137,24 @@ import ChessUI
 }
 
 @MainActor
+@Test func moveListViewRendersLongHistoryWithHiddenScrollIndicators() throws {
+    let actualPNG = try renderPNG(
+        ChessMoveListView(
+            records: sampleLongMoveRecords(),
+            selectedPly: 40,
+            title: "Moves",
+            scrollIndicatorVisibility: .hidden
+        ) { _ in }
+        .frame(width: 240, height: 120)
+        .padding(12)
+        .background(Color.white),
+        size: CGSize(width: 264, height: 144)
+    )
+
+    try assertRenderedImageIsNotBlank(actualPNG, name: "move-list-hidden-scroll-indicators")
+}
+
+@MainActor
 @Test func moveListViewRendersHorizontalMoveRows() throws {
     let actualPNG = try renderPNG(
         ChessMoveListView(
@@ -170,6 +188,25 @@ import ChessUI
     )
 
     try assertRenderedImageIsNotBlank(actualPNG, name: "move-list-horizontal-long-history")
+}
+
+@MainActor
+@Test func moveListViewRendersHorizontalWithHiddenScrollIndicators() throws {
+    let actualPNG = try renderPNG(
+        ChessMoveListView(
+            records: sampleLongMoveRecords(),
+            selectedPly: 40,
+            title: "Moves",
+            layout: .horizontal,
+            scrollIndicatorVisibility: .hidden
+        ) { _ in }
+        .frame(width: 260, height: 56)
+        .padding(12)
+        .background(Color.white),
+        size: CGSize(width: 284, height: 80)
+    )
+
+    try assertRenderedImageIsNotBlank(actualPNG, name: "move-list-horizontal-hidden-scroll-indicators")
 }
 
 @MainActor

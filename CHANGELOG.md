@@ -36,6 +36,8 @@ release. Replace `TBD` with the release date when a release is tagged.
 - Added horizontal `ChessMoveListView` layout support and ChessWorkbench
   controls/tests for switching between vertical and horizontal move-list
   presentations.
+- Added consumer-controlled `ChessMoveListView` scroll indicator visibility and
+  a ChessWorkbench toggle for showing or hiding move-list scroll bars.
 
 ### Changed
 

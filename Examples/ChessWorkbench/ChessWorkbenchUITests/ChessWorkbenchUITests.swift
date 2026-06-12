@@ -88,10 +88,12 @@ final class ChessWorkbenchUITests: XCTestCase {
         let piecePicker = element("Workbench.pieceSetPicker")
         let boardPicker = element("Workbench.boardThemePicker")
         let moveListPicker = element("Workbench.moveListLayoutPicker")
+        let scrollBarsToggle = element("Workbench.moveListScrollBarsToggle")
 
         assertExists(piecePicker)
         assertExists(boardPicker)
         assertExists(moveListPicker)
+        assertExists(scrollBarsToggle)
         XCTAssertEqual(piecePicker.frame.minX, boardPicker.frame.minX, accuracy: 1)
         XCTAssertEqual(piecePicker.frame.width, boardPicker.frame.width, accuracy: 1)
         XCTAssertEqual(piecePicker.frame.height, boardPicker.frame.height, accuracy: 1)
@@ -216,6 +218,25 @@ final class ChessWorkbenchUITests: XCTestCase {
         assertExists(element("ChessUI.moveList.empty"))
     }
 
+    func testMoveListScrollBarsTogglePreservesMoveListBehavior() {
+        toggleMoveListScrollBars()
+
+        moveQueenToD7()
+        waitForFEN(Self.queenD7FEN)
+        assertExists(element("ChessUI.moveList"))
+        assertExists(element("ChessUI.moveList.move.1"))
+
+        resetPosition()
+        toggleMoveListScrollBars()
+        selectMoveListLayout("Horizontal")
+
+        moveQueenToD7()
+        waitForFEN(Self.queenD7FEN)
+        assertExists(element("ChessUI.moveList"))
+        assertExists(element("ChessUI.moveList.move.1"))
+        assertHorizontalMoveListStripAlignsWithBoardCard()
+    }
+
     func testHorizontalMoveListKeepsNewestMoveVisibleForLongHistory() {
         selectMoveListLayout("Horizontal")
         setFEN(Self.knightCycleFEN)
@@ -296,6 +317,12 @@ final class ChessWorkbenchUITests: XCTestCase {
             tapSquare("f6")
             tapSquare("g8")
         }
+    }
+
+    private func toggleMoveListScrollBars() {
+        let toggle = element("Workbench.moveListScrollBarsToggle")
+        assertExists(toggle)
+        toggle.click()
     }
 
     private func resetPosition() {

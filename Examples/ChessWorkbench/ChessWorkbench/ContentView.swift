@@ -38,6 +38,7 @@ private struct WorkbenchView: View {
     @State private var evaluationMaximumCentipawns = Double(ChessEvaluationBarDisplayState.defaultMaximumCentipawns)
     @State private var showsEvaluationLabel = true
     @State private var moveListLayout = ChessMoveListLayout.vertical
+    @State private var showsMoveListScrollIndicators = false
     @State private var moveRecords: [ChessMoveRecord] = []
     @State private var selectedMovePly: Int?
 
@@ -61,6 +62,10 @@ private struct WorkbenchView: View {
             evaluation: evaluationSample.evaluation,
             maximumCentipawns: evaluationMaximumCentipawnsValue
         )
+    }
+
+    private var moveListScrollIndicatorVisibility: ScrollIndicatorVisibility {
+        showsMoveListScrollIndicators ? .automatic : .hidden
     }
 
     var body: some View {
@@ -169,7 +174,8 @@ private struct WorkbenchView: View {
             records: moveRecords,
             selectedPly: selectedMovePly,
             title: nil,
-            layout: .horizontal
+            layout: .horizontal,
+            scrollIndicatorVisibility: moveListScrollIndicatorVisibility
         ) { record in
             selectedMovePly = record.ply
         }
@@ -394,6 +400,11 @@ private struct WorkbenchView: View {
                     .accessibilityValue(moveListLayout.workbenchDisplayName)
                 }
 
+                Toggle("Scroll bars", isOn: $showsMoveListScrollIndicators)
+                    .toggleStyle(.checkbox)
+                    .accessibilityIdentifier("Workbench.moveListScrollBarsToggle")
+                    .accessibilityValue(showsMoveListScrollIndicators ? "On" : "Off")
+
                 HStack {
                     Text("Board size")
                     Spacer()
@@ -418,7 +429,8 @@ private struct WorkbenchView: View {
                 records: moveRecords,
                 selectedPly: selectedMovePly,
                 title: nil,
-                layout: .vertical
+                layout: .vertical,
+                scrollIndicatorVisibility: moveListScrollIndicatorVisibility
             ) { record in
                 selectedMovePly = record.ply
             }

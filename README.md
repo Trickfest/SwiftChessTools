@@ -222,7 +222,8 @@ Use horizontal layout for a compact left-to-right move strip:
 ChessMoveListView(
     records: records,
     selectedPly: selectedPly,
-    layout: .horizontal
+    layout: .horizontal,
+    scrollIndicatorVisibility: .hidden
 ) { record in
     selectedPly = record.ply
 }
@@ -231,6 +232,17 @@ ChessMoveListView(
 
 Horizontal lists grow from the leading edge, then scroll horizontally once the
 move strip exceeds its viewport.
+
+Scroll indicators are consumer-controlled. The default is `.automatic`, which
+uses the platform-standard behavior. Pass `.hidden` to keep the move list
+scrollable without showing vertical or horizontal indicators:
+
+```swift
+ChessMoveListView(
+    records: records,
+    scrollIndicatorVisibility: .hidden
+)
+```
 
 The move list is intentionally not a PGN viewer. It does not render tag pairs,
 comments, NAGs, variations, or game results yet; add full PGN modeling in
