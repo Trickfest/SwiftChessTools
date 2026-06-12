@@ -9,7 +9,7 @@
 //
 
 /// The type of chess piece, independent of color.
-public enum PieceKind: String, CustomStringConvertible {
+public enum PieceKind: String, CustomStringConvertible, Sendable {
 
     /// King.
     case king = "k"

@@ -90,6 +90,53 @@ import ChessUI
 }
 
 @MainActor
+@Test func moveListViewRendersEmptyState() throws {
+    let actualPNG = try renderPNG(
+        ChessMoveListView(records: [])
+            .frame(width: 240, height: 120)
+            .padding(12)
+            .background(Color.white),
+        size: CGSize(width: 264, height: 144)
+    )
+
+    try assertRenderedImageIsNotBlank(actualPNG, name: "move-list-empty")
+}
+
+@MainActor
+@Test func moveListViewRendersMoveRows() throws {
+    let actualPNG = try renderPNG(
+        ChessMoveListView(
+            records: sampleMoveRecords(),
+            selectedPly: 2,
+            title: "Moves"
+        ) { _ in }
+        .frame(width: 240, height: 160)
+        .padding(12)
+        .background(Color.white),
+        size: CGSize(width: 264, height: 184)
+    )
+
+    try assertRenderedImageIsNotBlank(actualPNG, name: "move-list-rows")
+}
+
+@MainActor
+@Test func moveListViewRendersLongHistoryInFixedViewport() throws {
+    let actualPNG = try renderPNG(
+        ChessMoveListView(
+            records: sampleLongMoveRecords(),
+            selectedPly: 40,
+            title: "Moves"
+        ) { _ in }
+        .frame(width: 240, height: 120)
+        .padding(12)
+        .background(Color.white),
+        size: CGSize(width: 264, height: 144)
+    )
+
+    try assertRenderedImageIsNotBlank(actualPNG, name: "move-list-long-history")
+}
+
+@MainActor
 private func assertBoardSnapshot<Content: View>(
     named name: String,
     @ViewBuilder content: () -> Content
@@ -174,6 +221,52 @@ private func assertImagesMatch(_ expectedPNG: Data, _ actualPNG: Data, snapshotN
 
     let mismatchRatio = Double(differingPixels) / Double(pixelCount)
     #expect(mismatchRatio <= 0.002, "\(snapshotName) pixel mismatch ratio: \(mismatchRatio)")
+}
+
+private func assertRenderedImageIsNotBlank(_ actualPNG: Data, name: String) throws {
+    let bitmap = try rgbaBitmap(from: actualPNG)
+    let pixelCount = bitmap.width * bitmap.height
+    var nonWhitePixels = 0
+
+    for index in stride(from: 0, to: bitmap.pixels.count, by: 4) {
+        let red = bitmap.pixels[index]
+        let green = bitmap.pixels[index + 1]
+        let blue = bitmap.pixels[index + 2]
+        let alpha = bitmap.pixels[index + 3]
+
+        if alpha > 0 && !(red > 245 && green > 245 && blue > 245) {
+            nonWhitePixels += 1
+        }
+    }
+
+    let nonWhiteRatio = Double(nonWhitePixels) / Double(pixelCount)
+    #expect(nonWhiteRatio > 0.002, "\(name) rendered image was effectively blank")
+}
+
+private func sampleMoveRecords() throws -> [ChessMoveRecord] {
+    try ChessMoveRecordBuilder().records(
+        initialPosition: FENSerializer().position(from: initialFEN),
+        moves: [
+            Move(from: Square(coordinate: "e2"), to: Square(coordinate: "e4")),
+            Move(from: Square(coordinate: "e7"), to: Square(coordinate: "e5")),
+            Move(from: Square(coordinate: "g1"), to: Square(coordinate: "f3")),
+        ]
+    )
+}
+
+private func sampleLongMoveRecords() -> [ChessMoveRecord] {
+    (1...40).map { ply in
+        ChessMoveRecord(
+            ply: ply,
+            fullMoveNumber: (ply + 1) / 2,
+            side: ply.isMultiple(of: 2) ? .black : .white,
+            move: Move(
+                from: Square(coordinate: ply.isMultiple(of: 2) ? "e7" : "e2"),
+                to: Square(coordinate: ply.isMultiple(of: 2) ? "e5" : "e4")
+            ),
+            san: ply.isMultiple(of: 2) ? "e5" : "e4"
+        )
+    }
 }
 
 private func rgbaBitmap(from png: Data) throws -> (width: Int, height: Int, pixels: [UInt8]) {

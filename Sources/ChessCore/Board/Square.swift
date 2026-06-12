@@ -9,7 +9,7 @@
 //
 
 /// A square on the board.
-public struct Square: Hashable {
+public struct Square: Hashable, Sendable {
 
     private(set) var index: Int
     let bitboardMask: Bitboard

@@ -28,13 +28,18 @@ release. Replace `TBD` with the release date when a release is tagged.
 - Added ChessUI evaluation-bar mapping tests and ChessWorkbench UI coverage for
   evaluation samples, placement, orientation, White-side selection, label
   visibility, and centipawn scale controls.
+- Added `ChessMoveRecord`, `ChessMoveRecordBuilder`, and `ChessMoveListView`
+  so apps can render scrollable caller-supplied SAN move records without adding
+  PGN parsing or game-history ownership to ChessUI.
+- Added move-record builder tests, ChessUI move-list render coverage, and
+  ChessWorkbench UI coverage for move-list updates after legal board moves.
 
 ### Changed
 
 - Replaced the bundled legacy piece PNGs with self-contained prefixed piece
   asset families that can be added or removed one set at a time.
-- Marked `PieceColor` as `Equatable` and `Sendable` so it can be used in
-  concurrent, value-semantic ChessUI evaluation state.
+- Marked `PieceColor`, `PieceKind`, `Square`, and `Move` as `Sendable` so they
+  can be used in concurrent, value-semantic ChessUI display state.
 
 ## 1.0.0 - TBD
 

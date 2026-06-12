@@ -192,6 +192,32 @@ engine output before passing values into ChessUI. ChessUI only renders the
 current value; it does not start an engine, run analysis, choose moves, or
 interpret search output.
 
+### Move List
+
+`ChessMoveListView` renders caller-supplied move records as a compact SAN move
+list. Build the records from `ChessCore` moves so SAN is captured in the
+correct pre-move position:
+
+```swift
+let startingPosition = try FENSerializer().position(from: startingFEN)
+let records = try ChessMoveRecordBuilder().records(
+    initialPosition: startingPosition,
+    moves: game.moveHistory
+)
+
+ChessMoveListView(records: records, selectedPly: selectedPly) { record in
+    selectedPly = record.ply
+}
+.frame(height: 160)
+```
+
+Give the list a fixed height in the surrounding layout. Populated move lists
+scroll inside that viewport and follow the newest move as records are appended.
+
+The move list is intentionally not a PGN viewer. It does not render tag pairs,
+comments, NAGs, variations, or game results yet; add full PGN modeling in
+`ChessCore` before layering PGN export-style UI on top of it.
+
 ### Managing Piece Sets
 
 Each bundled piece set is intentionally self-contained:
@@ -233,6 +259,7 @@ SwiftChessTools provides:
   perspective support.
 - A standalone SwiftUI evaluation bar for caller-supplied centipawn, mate, or
   unavailable evaluation states.
+- A compact SwiftUI move list for caller-supplied SAN move records.
 - A small macOS workbench and automated tests for package behavior.
 
 SwiftChessTools does not provide:
@@ -246,7 +273,8 @@ SwiftChessTools does not provide:
 `ChessCore` and `ChessUI` from inside this package. It renders a real
 `ChessBoardView`, lets you edit the current FEN, applies legal board moves, and
 exposes quick controls for reset, hints, board sizing, piece-set selection,
-board-theme selection, evaluation-bar samples, and promotion UI.
+board-theme selection, move-list display, evaluation-bar samples, and promotion
+UI.
 
 Open the app in Xcode:
 
@@ -273,8 +301,9 @@ Manual smoke test:
 2. Confirm the board renders from the starting FEN.
 3. Drag a legal move on the board.
 4. Confirm the FEN field updates.
-5. Change the evaluation value, placement, and White side controls.
-6. Try `Reset`, `Hint`, and `Show Promotion Picker`.
+5. Confirm the move list records the move in SAN.
+6. Change the evaluation value, placement, and White side controls.
+7. Try `Reset`, `Hint`, and `Show Promotion Picker`.
 
 ## Testing
 

@@ -23,6 +23,7 @@ struct ContentView: View {
 
 private struct WorkbenchView: View {
     private static let startingPosition = "5k2/1P2bn2/8/8/8/3Q4/3K4/8 w - - 0 1"
+    private let moveRecordBuilder = ChessMoveRecordBuilder()
 
     @State private var showError = false
     @State private var errorMessage = ""
@@ -36,6 +37,8 @@ private struct WorkbenchView: View {
     @State private var evaluationWhiteSide = ChessEvaluationBarWhiteSide.bottom
     @State private var evaluationMaximumCentipawns = Double(ChessEvaluationBarDisplayState.defaultMaximumCentipawns)
     @State private var showsEvaluationLabel = true
+    @State private var moveRecords: [ChessMoveRecord] = []
+    @State private var selectedMovePly: Int?
 
     @State private var boardModel = ChessBoardModel(
         fen: startingPosition,
@@ -108,8 +111,11 @@ private struct WorkbenchView: View {
 
     private var boardView: some View {
         ChessBoardView(model: boardModel)
-            .onMove { move, isLegal, _, _, coordinateMove, _ in
-                handleBoardMove(move: move, isLegal: isLegal, coordinateMove: coordinateMove)
+            .onMove { move, isLegal, _, _, _, promotion in
+                let appliedMove = promotion.map {
+                    Move(from: move.from, to: move.to, promotion: $0)
+                } ?? move
+                handleBoardMove(move: appliedMove, isLegal: isLegal)
             }
     }
 
@@ -186,6 +192,7 @@ private struct WorkbenchView: View {
                 inspectorHeader
                 actionSection
                 positionSection
+                movesSection
                 displaySection
                 evaluationSection
             }
@@ -231,6 +238,7 @@ private struct WorkbenchView: View {
                     withAnimation {
                         fen = Self.startingPosition
                         boardModel.setFEN(Self.startingPosition)
+                        clearMoveRecords()
                     }
                 } label: {
                     Label("Reset Position", systemImage: "arrow.counterclockwise")
@@ -349,6 +357,19 @@ private struct WorkbenchView: View {
         }
     }
 
+    private var movesSection: some View {
+        WorkbenchSection("Moves") {
+            ChessMoveListView(
+                records: moveRecords,
+                selectedPly: selectedMovePly,
+                title: nil
+            ) { record in
+                selectedMovePly = record.ply
+            }
+            .frame(height: 150)
+        }
+    }
+
     private var evaluationSection: some View {
         WorkbenchSection("Evaluation") {
             VStack(alignment: .leading, spacing: 10) {
@@ -449,13 +470,19 @@ private struct WorkbenchView: View {
         showError = false
         errorMessage = ""
         boardModel.setFEN(newValue)
+        clearMoveRecords()
     }
 
-    private func handleBoardMove(move: Move, isLegal: Bool, coordinateMove: String) {
-        print("Move: FEN: \(boardModel.fen) - coordinate move: \(coordinateMove)")
+    private func handleBoardMove(move: Move, isLegal: Bool) {
+        guard isLegal else {
+            return
+        }
 
-        if !isLegal {
-            print("Illegal move: \(coordinateMove)")
+        do {
+            try appendMoveRecord(for: move)
+        } catch {
+            showError = true
+            errorMessage = error.localizedDescription
             return
         }
 
@@ -464,6 +491,21 @@ private struct WorkbenchView: View {
             FENSerializer().fen(from: boardModel.game.position),
             animatedMove: move
         )
+    }
+
+    private func appendMoveRecord(for move: Move) throws {
+        let record = try moveRecordBuilder.record(
+            for: move,
+            in: boardModel.game,
+            ply: moveRecords.count + 1
+        )
+        moveRecords.append(record)
+        selectedMovePly = record.ply
+    }
+
+    private func clearMoveRecords() {
+        moveRecords.removeAll()
+        selectedMovePly = nil
     }
 
     private func copyFENToPasteboard() {

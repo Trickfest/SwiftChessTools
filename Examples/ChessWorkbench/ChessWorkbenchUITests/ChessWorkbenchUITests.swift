@@ -16,6 +16,8 @@ import XCTest
 final class ChessWorkbenchUITests: XCTestCase {
     private static let startingFEN = "5k2/1P2bn2/8/8/8/3Q4/3K4/8 w - - 0 1"
     private static let queenD7FEN = "5k2/1P1Qbn2/8/8/8/8/3K4/8 b - - 1 1"
+    private static let knightCycleFEN = "6nk/8/8/8/8/8/8/K5N1 w - - 0 1"
+    private static let knightCycleFinalFEN = "6nk/8/8/8/8/8/8/K5N1 w - - 20 11"
 
     private var pieceSetNames: [String] {
         ChessPieceSet.availableSets.map(\.displayName)
@@ -156,6 +158,48 @@ final class ChessWorkbenchUITests: XCTestCase {
         assertExists(element("ChessUI.lastMove.d7"))
     }
 
+    func testMoveListUpdatesAfterLegalMoveAndClearsOnReset() {
+        assertExists(element("ChessUI.moveList.empty"))
+
+        moveQueenToD7()
+        waitForFEN(Self.queenD7FEN)
+
+        let moveList = element("ChessUI.moveList")
+        let firstMove = element("ChessUI.moveList.move.1")
+        assertExists(moveList)
+        assertExists(firstMove)
+        XCTAssertTrue(firstMove.label.contains("1. White Qd7"))
+        assertElementIsNearTop(firstMove, of: moveList)
+
+        resetPosition()
+
+        assertExists(element("ChessUI.moveList.empty"))
+    }
+
+    func testMoveListKeepsNewestMoveVisibleForLongHistory() {
+        setFEN(Self.knightCycleFEN)
+
+        for _ in 0..<5 {
+            tapSquare("g1")
+            tapSquare("f3")
+            tapSquare("g8")
+            tapSquare("f6")
+            tapSquare("f3")
+            tapSquare("g1")
+            tapSquare("f6")
+            tapSquare("g8")
+        }
+
+        waitForFEN(Self.knightCycleFinalFEN, timeout: 4)
+
+        let moveList = element("ChessUI.moveList")
+        let newestMove = element("ChessUI.moveList.move.20")
+        assertExists(moveList)
+        waitForHittable(newestMove, timeout: 3, message: "Newest move should be visible after long history")
+        XCTAssertGreaterThanOrEqual(newestMove.frame.minY, moveList.frame.minY - 1)
+        XCTAssertLessThanOrEqual(newestMove.frame.maxY, moveList.frame.maxY + 1)
+    }
+
     func testInvalidMoveDoesNotUpdateFEN() {
         tapSquare("d3")
         tapSquare("e5")
@@ -216,6 +260,14 @@ final class ChessWorkbenchUITests: XCTestCase {
         XCTAssertTrue(resetButton.isEnabled)
         resetButton.tap()
         waitForFEN(Self.startingFEN)
+    }
+
+    private func setFEN(_ fen: String) {
+        let editor = fenEditor()
+        editor.click()
+        app.typeKey("a", modifierFlags: .command)
+        app.typeText(fen)
+        waitForFEN(fen)
     }
 
     private func openWindowIfNeeded() {
@@ -286,6 +338,43 @@ final class ChessWorkbenchUITests: XCTestCase {
         if !element.exists {
             XCTAssertTrue(element.waitForExistence(timeout: timeout), message, file: file, line: line)
         }
+    }
+
+    private func waitForHittable(
+        _ element: XCUIElement,
+        timeout: TimeInterval = 2,
+        message: String = "Expected element to be hittable",
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let predicate = NSPredicate { element, _ in
+            guard let element = element as? XCUIElement else {
+                return false
+            }
+
+            return element.exists && element.isHittable
+        }
+
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
+        XCTAssertEqual(result, .completed, message, file: file, line: line)
+    }
+
+    private func assertElementIsNearTop(
+        _ element: XCUIElement,
+        of container: XCUIElement,
+        maximumTopPadding: CGFloat = 24,
+        minimumBottomPadding: CGFloat = 72,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        waitForNonEmptyFrame(container, file: file, line: line)
+        waitForNonEmptyFrame(element, file: file, line: line)
+
+        let topPadding = element.frame.minY - container.frame.minY
+        let bottomPadding = container.frame.maxY - element.frame.maxY
+        XCTAssertLessThanOrEqual(topPadding, maximumTopPadding, "Expected move to start near the top of the list", file: file, line: line)
+        XCTAssertGreaterThanOrEqual(bottomPadding, minimumBottomPadding, "Expected unused space below short move history", file: file, line: line)
     }
 
     private func waitForValue(

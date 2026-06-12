@@ -36,7 +36,7 @@ public enum MoveParsingError: Error, Equatable, CustomStringConvertible, Localiz
 }
 
 /// A move from one square to another, with an optional promotion piece.
-public struct Move: CustomStringConvertible, Hashable {
+public struct Move: CustomStringConvertible, Hashable, Sendable {
 
     /// Source square.
     public let from: Square

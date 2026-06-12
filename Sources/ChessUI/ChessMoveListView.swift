@@ -1,0 +1,266 @@
+//
+// SwiftChessTools provides reusable chess rules, notation, and SwiftUI board UI.
+//
+// See NOTICE.md for upstream attribution and license details.
+//
+// Licensed under the MIT License.
+// You may obtain a copy of the License at: https://opensource.org/licenses/MIT
+// See the LICENSE file for more information.
+//
+
+import SwiftUI
+
+import ChessCore
+
+/// Displays a compact, selectable list of game moves.
+public struct ChessMoveListView: View {
+    private static let moveRowMinimumHeight: CGFloat = 26
+    private static let moveRowSpacing: CGFloat = 3
+    private static let moveRowsVerticalPadding: CGFloat = 1
+    private static let bottomAnchorID = "ChessUI.moveList.bottom"
+
+    private let title: String?
+    private let records: [ChessMoveRecord]
+    private let selectedPly: Int?
+    private let onSelectRecord: ((ChessMoveRecord) -> Void)?
+
+    /// Creates a move-list view.
+    ///
+    /// Pass records that already contain SAN and move numbering. `ChessUI`
+    /// renders the supplied data; it does not parse PGN or own game history. To
+    /// keep a stable viewport, constrain the view with a fixed height. Content
+    /// grows from the top until it exceeds the viewport, then scrolls to the
+    /// newest move as records change.
+    ///
+    /// - Parameters:
+    ///   - records: Display-ready move records in ply order.
+    ///   - selectedPly: Optional ply to render as selected.
+    ///   - title: Optional section title. Pass `nil` to hide the title.
+    ///   - onSelectRecord: Optional callback invoked when a move is selected.
+    public init(
+        records: [ChessMoveRecord],
+        selectedPly: Int? = nil,
+        title: String? = "Moves",
+        onSelectRecord: ((ChessMoveRecord) -> Void)? = nil
+    ) {
+        self.records = records.sorted { $0.ply < $1.ply }
+        self.selectedPly = selectedPly
+        self.title = title
+        self.onSelectRecord = onSelectRecord
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let title {
+                Text(title)
+                    .font(.headline)
+                    .accessibilityIdentifier("ChessUI.moveList.title")
+            }
+
+            if records.isEmpty {
+                emptyState
+            } else {
+                scrollableMoveRows
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("ChessUI.moveList")
+    }
+
+    private var scrollableMoveRows: some View {
+        GeometryReader { geometry in
+            let viewportHeight = geometry.size.height
+
+            ScrollViewReader { proxy in
+                ScrollView {
+                    moveRows
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .defaultScrollAnchor(.top)
+                .accessibilityIdentifier("ChessUI.moveList.scrollView")
+                .task(id: scrollViewIdentity(for: viewportHeight)) {
+                    guard shouldAnchorToBottom(in: viewportHeight) else {
+                        return
+                    }
+
+                    // Let SwiftUI lay out the inserted row before targeting the bottom anchor.
+                    try? await Task.sleep(for: .milliseconds(50))
+                    withAnimation(.easeOut(duration: 0.16)) {
+                        proxy.scrollTo(Self.bottomAnchorID, anchor: .bottom)
+                    }
+                }
+            }
+        }
+    }
+
+    private var moveRows: some View {
+        VStack(alignment: .leading, spacing: Self.moveRowSpacing) {
+            ForEach(Self.rows(from: records)) { row in
+                moveRow(row)
+            }
+
+            bottomAnchor
+        }
+        .padding(.vertical, Self.moveRowsVerticalPadding)
+    }
+
+    private var bottomAnchor: some View {
+        Color.clear
+            .frame(height: 1)
+            .id(Self.bottomAnchorID)
+            .accessibilityHidden(true)
+    }
+
+    private var emptyState: some View {
+        Text("No moves yet")
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 8)
+            .accessibilityIdentifier("ChessUI.moveList.empty")
+    }
+
+    private func moveRow(_ row: MoveListRow) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text("\(row.fullMoveNumber).")
+                .font(.callout.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .frame(width: 32, alignment: .trailing)
+
+            moveCell(row.white, placeholder: row.white == nil && row.black != nil ? "..." : "")
+
+            moveCell(row.black, placeholder: "")
+        }
+    }
+
+    @ViewBuilder
+    private func moveCell(_ record: ChessMoveRecord?, placeholder: String) -> some View {
+        Group {
+            if let record {
+                if let onSelectRecord {
+                    Button {
+                        onSelectRecord(record)
+                    } label: {
+                        moveLabel(record)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityIdentifier("ChessUI.moveList.move.\(record.ply)")
+                    .accessibilityLabel(accessibilityLabel(for: record))
+                    .accessibilityValue(record.move.description)
+                } else {
+                    moveLabel(record)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityIdentifier("ChessUI.moveList.move.\(record.ply)")
+                        .accessibilityLabel(accessibilityLabel(for: record))
+                        .accessibilityValue(record.move.description)
+                }
+            } else {
+                Text(placeholder)
+                    .font(.callout)
+                    .foregroundStyle(.tertiary)
+                    .frame(minHeight: Self.moveRowMinimumHeight, alignment: .leading)
+                    .accessibilityHidden(placeholder.isEmpty)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func moveLabel(_ record: ChessMoveRecord) -> some View {
+        Text(record.san)
+            .font(.callout.weight(record.ply == selectedPly ? .semibold : .regular))
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .padding(.horizontal, 7)
+            .frame(minHeight: Self.moveRowMinimumHeight, alignment: .leading)
+            .background {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(record.ply == selectedPly ? Color.accentColor.opacity(0.16) : Color.clear)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(record.ply == selectedPly ? Color.accentColor.opacity(0.28) : Color.clear, lineWidth: 1)
+            }
+    }
+
+    private func accessibilityLabel(for record: ChessMoveRecord) -> String {
+        "\(record.fullMoveNumber). \(record.side.accessibilityName) \(record.san)"
+    }
+
+    private var latestPly: Int? {
+        records.last?.ply
+    }
+
+    private func scrollViewIdentity(for viewportHeight: CGFloat) -> MoveListScrollViewIdentity {
+        let latestPly = latestPly ?? 0
+        let roundedViewportHeight = Int(viewportHeight.rounded(.toNearestOrAwayFromZero))
+        return shouldAnchorToBottom(in: viewportHeight)
+            ? .overflowing(latestPly, roundedViewportHeight)
+            : .fitting(latestPly, roundedViewportHeight)
+    }
+
+    private func shouldAnchorToBottom(in viewportHeight: CGFloat) -> Bool {
+        viewportHeight > 0 && estimatedMoveRowsHeight > viewportHeight + 1
+    }
+
+    private var estimatedMoveRowsHeight: CGFloat {
+        let rowCount = CGFloat(Self.rows(from: records).count)
+        guard rowCount > 0 else {
+            return 0
+        }
+
+        return rowCount * Self.moveRowMinimumHeight
+            + max(0, rowCount - 1) * Self.moveRowSpacing
+            + Self.moveRowsVerticalPadding * 2
+    }
+
+    private static func rows(from records: [ChessMoveRecord]) -> [MoveListRow] {
+        var rows: [MoveListRow] = []
+
+        for record in records {
+            if let index = rows.firstIndex(where: { $0.fullMoveNumber == record.fullMoveNumber }) {
+                rows[index].update(with: record)
+            } else {
+                var row = MoveListRow(fullMoveNumber: record.fullMoveNumber)
+                row.update(with: record)
+                rows.append(row)
+            }
+        }
+
+        return rows.sorted { $0.fullMoveNumber < $1.fullMoveNumber }
+    }
+}
+
+private enum MoveListScrollViewIdentity: Hashable {
+    case fitting(Int, Int)
+    case overflowing(Int, Int)
+}
+
+private struct MoveListRow: Identifiable {
+    let fullMoveNumber: Int
+    var white: ChessMoveRecord?
+    var black: ChessMoveRecord?
+
+    var id: Int { fullMoveNumber }
+
+    mutating func update(with record: ChessMoveRecord) {
+        switch record.side {
+        case .white:
+            white = record
+        case .black:
+            black = record
+        }
+    }
+}
+
+private extension PieceColor {
+    var accessibilityName: String {
+        switch self {
+        case .white:
+            "White"
+        case .black:
+            "Black"
+        }
+    }
+}
