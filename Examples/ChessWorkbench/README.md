@@ -17,8 +17,8 @@ also hosts focused macOS UI tests for those workbench flows.
 - Updating the FEN field after board moves.
 - Piece-set selection, board-theme selection, board sizing, hints, reset
   behavior, and the promotion picker UI.
-- Fixed-height, scrolling `ChessMoveListView` display for legal moves made on
-  the board.
+- Fixed-size, scrolling `ChessMoveListView` display for legal moves made on the
+  board, including vertical and horizontal layouts.
 - `ChessEvaluationBar` samples, placement, White-side orientation, label
   visibility, and centipawn scale controls.
 
@@ -81,17 +81,19 @@ Scripts/test-all.sh
 2. Confirm the board renders with the starting FEN.
 3. Drag a legal piece move on the board.
 4. Confirm the FEN field updates.
-5. Confirm the move list records the legal move in SAN and stays at a fixed
-   height as moves are added.
-6. Select each built-in piece set from the `Pieces` menu and confirm the board
+5. Confirm the vertical move list records the legal move in SAN and stays at a
+   fixed height as moves are added.
+6. Change `Moves` from `Vertical` to `Horizontal` and confirm the move list
+   appears above the board as a left-to-right strip.
+7. Select each built-in piece set from the `Pieces` menu and confirm the board
    re-renders.
-7. Select each built-in board theme from the `Board` menu and confirm the board
+8. Select each built-in board theme from the `Board` menu and confirm the board
    re-renders.
-8. Change the evaluation sample and confirm the evaluation bar and status text
+9. Change the evaluation sample and confirm the evaluation bar and status text
    update.
-9. Change the evaluation placement and White-side controls and confirm the bar
+10. Change the evaluation placement and White-side controls and confirm the bar
    moves between the board edges.
-10. Try `Reset`, `Hint`, and `Show Promotion Picker`.
+11. Try `Reset`, `Hint`, and `Show Promotion Picker`.
 
 Use this example app when you need a small, disposable workbench for future
 `SwiftChessTools` UI or rules changes.

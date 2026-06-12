@@ -211,8 +211,26 @@ ChessMoveListView(records: records, selectedPly: selectedPly) { record in
 .frame(height: 160)
 ```
 
-Give the list a fixed height in the surrounding layout. Populated move lists
-scroll inside that viewport and follow the newest move as records are appended.
+The default layout is vertical: full moves render as rows, with White and Black
+shown on the same row. Give vertical lists a fixed height in the surrounding
+layout. Populated vertical lists grow downward, then scroll inside that viewport
+and follow the newest move as records are appended.
+
+Use horizontal layout for a compact left-to-right move strip:
+
+```swift
+ChessMoveListView(
+    records: records,
+    selectedPly: selectedPly,
+    layout: .horizontal
+) { record in
+    selectedPly = record.ply
+}
+.frame(height: 48)
+```
+
+Horizontal lists grow from the leading edge, then scroll horizontally once the
+move strip exceeds its viewport.
 
 The move list is intentionally not a PGN viewer. It does not render tag pairs,
 comments, NAGs, variations, or game results yet; add full PGN modeling in

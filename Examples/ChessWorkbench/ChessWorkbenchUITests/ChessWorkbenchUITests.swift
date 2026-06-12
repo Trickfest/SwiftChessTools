@@ -87,12 +87,17 @@ final class ChessWorkbenchUITests: XCTestCase {
     func testDisplayPickersHaveAlignedFrames() {
         let piecePicker = element("Workbench.pieceSetPicker")
         let boardPicker = element("Workbench.boardThemePicker")
+        let moveListPicker = element("Workbench.moveListLayoutPicker")
 
         assertExists(piecePicker)
         assertExists(boardPicker)
+        assertExists(moveListPicker)
         XCTAssertEqual(piecePicker.frame.minX, boardPicker.frame.minX, accuracy: 1)
         XCTAssertEqual(piecePicker.frame.width, boardPicker.frame.width, accuracy: 1)
         XCTAssertEqual(piecePicker.frame.height, boardPicker.frame.height, accuracy: 1)
+        XCTAssertEqual(piecePicker.frame.minX, moveListPicker.frame.minX, accuracy: 1)
+        XCTAssertEqual(piecePicker.frame.width, moveListPicker.frame.width, accuracy: 1)
+        XCTAssertEqual(piecePicker.frame.height, moveListPicker.frame.height, accuracy: 1)
     }
 
     func testEvaluationBarControlsDemoSamplesAndPlacement() {
@@ -179,16 +184,7 @@ final class ChessWorkbenchUITests: XCTestCase {
     func testMoveListKeepsNewestMoveVisibleForLongHistory() {
         setFEN(Self.knightCycleFEN)
 
-        for _ in 0..<5 {
-            tapSquare("g1")
-            tapSquare("f3")
-            tapSquare("g8")
-            tapSquare("f6")
-            tapSquare("f3")
-            tapSquare("g1")
-            tapSquare("f6")
-            tapSquare("g8")
-        }
+        playKnightCycleHistory()
 
         waitForFEN(Self.knightCycleFinalFEN, timeout: 4)
 
@@ -198,6 +194,41 @@ final class ChessWorkbenchUITests: XCTestCase {
         waitForHittable(newestMove, timeout: 3, message: "Newest move should be visible after long history")
         XCTAssertGreaterThanOrEqual(newestMove.frame.minY, moveList.frame.minY - 1)
         XCTAssertLessThanOrEqual(newestMove.frame.maxY, moveList.frame.maxY + 1)
+    }
+
+    func testHorizontalMoveListUpdatesAfterLegalMoveAndClearsOnReset() {
+        selectMoveListLayout("Horizontal")
+        assertExists(element("ChessUI.moveList.empty"))
+        assertHorizontalMoveListStripAlignsWithBoardCard()
+
+        moveQueenToD7()
+        waitForFEN(Self.queenD7FEN)
+
+        let moveList = element("ChessUI.moveList")
+        let firstMove = element("ChessUI.moveList.move.1")
+        assertExists(moveList)
+        assertExists(firstMove)
+        XCTAssertTrue(firstMove.label.contains("1. White Qd7"))
+        assertElementIsNearLeading(firstMove, of: moveList)
+
+        resetPosition()
+
+        assertExists(element("ChessUI.moveList.empty"))
+    }
+
+    func testHorizontalMoveListKeepsNewestMoveVisibleForLongHistory() {
+        selectMoveListLayout("Horizontal")
+        setFEN(Self.knightCycleFEN)
+
+        playKnightCycleHistory()
+
+        waitForFEN(Self.knightCycleFinalFEN, timeout: 4)
+
+        let moveList = element("ChessUI.moveList")
+        let newestMove = element("ChessUI.moveList.move.20")
+        assertExists(moveList)
+        waitForHittable(newestMove, timeout: 3, message: "Newest horizontal move should be visible after long history")
+        assertElementIsHorizontallyInside(newestMove, of: moveList)
     }
 
     func testInvalidMoveDoesNotUpdateFEN() {
@@ -254,6 +285,19 @@ final class ChessWorkbenchUITests: XCTestCase {
         tapSquare("d7", offset: targetOffset)
     }
 
+    private func playKnightCycleHistory() {
+        for _ in 0..<5 {
+            tapSquare("g1")
+            tapSquare("f3")
+            tapSquare("g8")
+            tapSquare("f6")
+            tapSquare("f3")
+            tapSquare("g1")
+            tapSquare("f6")
+            tapSquare("g8")
+        }
+    }
+
     private func resetPosition() {
         let resetButton = app.buttons["Workbench.resetPosition"]
         assertExists(resetButton)
@@ -268,6 +312,21 @@ final class ChessWorkbenchUITests: XCTestCase {
         app.typeKey("a", modifierFlags: .command)
         app.typeText(fen)
         waitForFEN(fen)
+    }
+
+    private func selectMoveListLayout(_ layoutName: String) {
+        let picker = element("Workbench.moveListLayoutPicker")
+        assertExists(picker)
+
+        if picker.value as? String == layoutName {
+            return
+        }
+
+        picker.click()
+        let menuItem = app.menuItems[layoutName]
+        assertExists(menuItem, message: "Missing move-list layout menu item \(layoutName)")
+        menuItem.click()
+        waitForValue(layoutName, in: picker)
     }
 
     private func openWindowIfNeeded() {
@@ -375,6 +434,68 @@ final class ChessWorkbenchUITests: XCTestCase {
         let bottomPadding = container.frame.maxY - element.frame.maxY
         XCTAssertLessThanOrEqual(topPadding, maximumTopPadding, "Expected move to start near the top of the list", file: file, line: line)
         XCTAssertGreaterThanOrEqual(bottomPadding, minimumBottomPadding, "Expected unused space below short move history", file: file, line: line)
+    }
+
+    private func assertElementIsNearLeading(
+        _ element: XCUIElement,
+        of container: XCUIElement,
+        maximumLeadingPadding: CGFloat = 24,
+        minimumTrailingPadding: CGFloat = 120,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        waitForNonEmptyFrame(container, file: file, line: line)
+        waitForNonEmptyFrame(element, file: file, line: line)
+
+        let leadingPadding = element.frame.minX - container.frame.minX
+        let trailingPadding = container.frame.maxX - element.frame.maxX
+        XCTAssertLessThanOrEqual(leadingPadding, maximumLeadingPadding, "Expected move to start near the leading edge of the list", file: file, line: line)
+        XCTAssertGreaterThanOrEqual(trailingPadding, minimumTrailingPadding, "Expected unused space after short horizontal move history", file: file, line: line)
+    }
+
+    private func assertElementIsHorizontallyInside(
+        _ element: XCUIElement,
+        of container: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        waitForNonEmptyFrame(container, file: file, line: line)
+        waitForNonEmptyFrame(element, file: file, line: line)
+
+        XCTAssertGreaterThanOrEqual(element.frame.minX, container.frame.minX - 1, file: file, line: line)
+        XCTAssertLessThanOrEqual(element.frame.maxX, container.frame.maxX + 1, file: file, line: line)
+    }
+
+    private func assertHorizontalMoveListStripAlignsWithBoardCard(
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let strip = element("Workbench.horizontalMoveListStrip")
+        let topLeftSquare = square("a8", file: file, line: line)
+        let topRightSquare = square("h8", file: file, line: line)
+        let boardCardPadding: CGFloat = 14
+
+        assertExists(strip, message: "Missing horizontal move-list strip", file: file, line: line)
+        waitForNonEmptyFrame(strip, file: file, line: line)
+        waitForNonEmptyFrame(topLeftSquare, file: file, line: line)
+        waitForNonEmptyFrame(topRightSquare, file: file, line: line)
+
+        XCTAssertEqual(
+            strip.frame.minX,
+            topLeftSquare.frame.minX - boardCardPadding,
+            accuracy: 2,
+            "Horizontal move-list strip should align with the board card leading edge",
+            file: file,
+            line: line
+        )
+        XCTAssertEqual(
+            strip.frame.maxX,
+            topRightSquare.frame.maxX + boardCardPadding,
+            accuracy: 2,
+            "Horizontal move-list strip should align with the board card trailing edge",
+            file: file,
+            line: line
+        )
     }
 
     private func waitForValue(

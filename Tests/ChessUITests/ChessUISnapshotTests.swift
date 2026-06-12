@@ -137,6 +137,42 @@ import ChessUI
 }
 
 @MainActor
+@Test func moveListViewRendersHorizontalMoveRows() throws {
+    let actualPNG = try renderPNG(
+        ChessMoveListView(
+            records: sampleMoveRecords(),
+            selectedPly: 2,
+            title: "Moves",
+            layout: .horizontal
+        ) { _ in }
+        .frame(width: 260, height: 56)
+        .padding(12)
+        .background(Color.white),
+        size: CGSize(width: 284, height: 80)
+    )
+
+    try assertRenderedImageIsNotBlank(actualPNG, name: "move-list-horizontal-rows")
+}
+
+@MainActor
+@Test func moveListViewRendersHorizontalLongHistoryInFixedViewport() throws {
+    let actualPNG = try renderPNG(
+        ChessMoveListView(
+            records: sampleLongMoveRecords(),
+            selectedPly: 40,
+            title: "Moves",
+            layout: .horizontal
+        ) { _ in }
+        .frame(width: 260, height: 56)
+        .padding(12)
+        .background(Color.white),
+        size: CGSize(width: 284, height: 80)
+    )
+
+    try assertRenderedImageIsNotBlank(actualPNG, name: "move-list-horizontal-long-history")
+}
+
+@MainActor
 private func assertBoardSnapshot<Content: View>(
     named name: String,
     @ViewBuilder content: () -> Content

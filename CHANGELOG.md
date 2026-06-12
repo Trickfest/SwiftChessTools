@@ -33,6 +33,9 @@ release. Replace `TBD` with the release date when a release is tagged.
   PGN parsing or game-history ownership to ChessUI.
 - Added move-record builder tests, ChessUI move-list render coverage, and
   ChessWorkbench UI coverage for move-list updates after legal board moves.
+- Added horizontal `ChessMoveListView` layout support and ChessWorkbench
+  controls/tests for switching between vertical and horizontal move-list
+  presentations.
 
 ### Changed
 

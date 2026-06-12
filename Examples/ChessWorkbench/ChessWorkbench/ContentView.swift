@@ -37,6 +37,7 @@ private struct WorkbenchView: View {
     @State private var evaluationWhiteSide = ChessEvaluationBarWhiteSide.bottom
     @State private var evaluationMaximumCentipawns = Double(ChessEvaluationBarDisplayState.defaultMaximumCentipawns)
     @State private var showsEvaluationLabel = true
+    @State private var moveListLayout = ChessMoveListLayout.vertical
     @State private var moveRecords: [ChessMoveRecord] = []
     @State private var selectedMovePly: Int?
 
@@ -123,15 +124,15 @@ private struct WorkbenchView: View {
         Group {
             switch evaluationPlacement {
             case .leading:
-                HStack(spacing: 10) {
+                HStack(alignment: .bottom, spacing: 10) {
                     evaluationBar
                         .frame(width: 24, height: boardCardSide)
-                    boardCard
+                    boardColumn
                 }
 
             case .trailing:
-                HStack(spacing: 10) {
-                    boardCard
+                HStack(alignment: .bottom, spacing: 10) {
+                    boardColumn
                     evaluationBar
                         .frame(width: 24, height: boardCardSide)
                 }
@@ -140,16 +141,56 @@ private struct WorkbenchView: View {
                 VStack(spacing: 10) {
                     evaluationBar
                         .frame(width: boardCardSide, height: 24)
-                    boardCard
+                    boardColumn
                 }
 
             case .bottom:
                 VStack(spacing: 10) {
-                    boardCard
+                    boardColumn
                     evaluationBar
                         .frame(width: boardCardSide, height: 24)
                 }
             }
+        }
+    }
+
+    private var boardColumn: some View {
+        VStack(spacing: 10) {
+            if moveListLayout == .horizontal {
+                horizontalMovesStrip
+            }
+
+            boardCard
+        }
+    }
+
+    private var horizontalMovesStrip: some View {
+        ChessMoveListView(
+            records: moveRecords,
+            selectedPly: selectedMovePly,
+            title: nil,
+            layout: .horizontal
+        ) { record in
+            selectedMovePly = record.ply
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .frame(width: boardCardSide, height: 38)
+        .background {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.white.opacity(0.68))
+
+                Color.clear
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Horizontal move list strip")
+                    .accessibilityIdentifier("Workbench.horizontalMoveListStrip")
+            }
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.black.opacity(0.12), lineWidth: 1)
         }
     }
 
@@ -192,7 +233,9 @@ private struct WorkbenchView: View {
                 inspectorHeader
                 actionSection
                 positionSection
-                movesSection
+                if moveListLayout == .vertical {
+                    movesSection
+                }
                 displaySection
                 evaluationSection
             }
@@ -339,6 +382,18 @@ private struct WorkbenchView: View {
                     .accessibilityValue(boardTheme.displayName)
                 }
 
+                displayPickerRow("Moves") {
+                    WorkbenchMenuPicker(
+                        title: "Move list",
+                        options: ChessMoveListLayout.allCases,
+                        selection: $moveListLayout,
+                        displayName: { $0.workbenchDisplayName },
+                        accessibilityIdentifier: "Workbench.moveListLayoutPicker"
+                    )
+                    .frame(width: 200, height: 24)
+                    .accessibilityValue(moveListLayout.workbenchDisplayName)
+                }
+
                 HStack {
                     Text("Board size")
                     Spacer()
@@ -362,7 +417,8 @@ private struct WorkbenchView: View {
             ChessMoveListView(
                 records: moveRecords,
                 selectedPly: selectedMovePly,
-                title: nil
+                title: nil,
+                layout: .vertical
             ) { record in
                 selectedMovePly = record.ply
             }
@@ -516,6 +572,17 @@ private struct WorkbenchView: View {
         Task {
             try? await Task.sleep(for: .seconds(1.4))
             didCopyFEN = false
+        }
+    }
+}
+
+private extension ChessMoveListLayout {
+    var workbenchDisplayName: String {
+        switch self {
+        case .vertical:
+            "Vertical"
+        case .horizontal:
+            "Horizontal"
         }
     }
 }
