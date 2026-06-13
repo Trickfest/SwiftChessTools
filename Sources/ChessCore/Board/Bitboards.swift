@@ -10,7 +10,7 @@
 
 typealias Bitboard = UInt64
 
-struct Bitboards: Hashable {
+struct Bitboards: Hashable, Sendable {
 
     var white = Bitboard.zero
     var black = Bitboard.zero

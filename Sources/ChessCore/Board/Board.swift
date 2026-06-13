@@ -9,7 +9,7 @@
 //
 
 /// Stores the pieces on a chess board.
-public struct Board: Hashable {
+public struct Board: Hashable, Sendable {
 
     internal var bitboards: Bitboards
 

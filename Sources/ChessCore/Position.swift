@@ -9,10 +9,10 @@
 //
 
 /// Complete board state for a single point in a game.
-public struct Position: Hashable {
+public struct Position: Hashable, Sendable {
 
     /// State that belongs to a position but is not stored directly on the board.
-    public struct State: Hashable {
+    public struct State: Hashable, Sendable {
         /// Side to move.
         public var turn: PieceColor
 
@@ -25,7 +25,7 @@ public struct Position: Hashable {
     }
 
     /// Move counters stored in FEN.
-    public struct Counter: Hashable {
+    public struct Counter: Hashable, Sendable {
         /// Half-moves since the last capture or pawn advance.
         public var halfMoves: Int
 

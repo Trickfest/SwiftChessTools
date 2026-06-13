@@ -36,6 +36,7 @@ let testables: [(String, String, String)] = [
     // Pawn captures.
     ("exd4", "e5d4", "r1bqkbnr/pppp1ppp/2n5/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R b KQkq - 0 3"),
     ("exf6", "e5f6", "r1bqkb1r/pppppppp/2n2n2/4P3/8/8/PPPP1PPP/RNBQKBNR w KQkq - 1 3"),
+    ("exd6", "e5d6", "rnbqkbnr/pp2pppp/8/2ppP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3"),
     ("bxc6", "b7c6", "4kb1r/1p1n1pp1/1qR1p1n1/p2p4/3P3p/1P3N1P/P2N1PPB/3Q1RK1 b k - 0 17"),
     ("exd5", "e6d5", "r1bqkb1r/pp1n1ppp/2p1pn2/3P2B1/3P4/2N1P3/PP3PPP/R2QKBNR b KQkq - 0 6"),
 
@@ -114,6 +115,15 @@ func move(from san: String, in fen: String) -> String {
     ))
 
     #expect(try! SANSerializer().move(for: "0-0", in: game).description == "e1g1")
+}
+
+@Test func deserializationKeepsPawnFilesDistinctFromPieceLetters() {
+    let game = Game(position: try! FENSerializer().position(
+        from: "8/rP6/np2p2k/1PR2p2/Pb6/5P2/q7/2K5 b - - 0 66"
+    ))
+
+    #expect(try! SANSerializer().move(for: "Bxc5", in: game).description == "b4c5")
+    #expect(try! SANSerializer().move(for: "bxc5", in: game).description == "b6c5")
 }
 
 @Test func deserializationFailureIsReported() {

@@ -41,7 +41,10 @@ let package = Package(
         ),
         .testTarget(
             name: "ChessCoreTests",
-            dependencies: ["ChessCore"]
+            dependencies: ["ChessCore"],
+            exclude: [
+                "Fixtures/PGN/README.md",
+            ]
         ),
         .testTarget(
             name: "ChessUITests",

@@ -64,8 +64,11 @@ public class SANSerializer {
 
     private func sanForPawnMove(_ move: Move, in game: Game) -> String {
         let targetSquare = game.position.board[move.to]
+        let isEnPassantCapture =
+            move.to == game.position.state.enPassant
+            && move.from.file != move.to.file
         var san =
-            targetSquare?.kind != nil
+            targetSquare?.kind != nil || isEnPassantCapture
             ? "\(move.from.coordinate.first!)x\(move.to)" : move.to.coordinate
         if let promotion = move.promotion {
             san += "=\(promotion)".uppercased()
@@ -94,12 +97,17 @@ public class SANSerializer {
             .filter { $0.to == move.to && $0 != move }
             .filter { game.position.board[$0.from]?.kind == sourceSquare.kind }
 
-        if !candidates.filter({ $0.from.file == move.from.file }).isEmpty {
-            san.append(move.from.coordinate.last!)
-        } else if !candidates.filter({ $0.from.rank == move.from.rank }).isEmpty {
-            san.append(move.from.coordinate.first!)
-        } else if !candidates.isEmpty {
-            san.append(move.from.coordinate.first!)
+        if !candidates.isEmpty {
+            let hasCandidateFromSameFile = candidates.contains { $0.from.file == move.from.file }
+            let hasCandidateFromSameRank = candidates.contains { $0.from.rank == move.from.rank }
+
+            if !hasCandidateFromSameFile {
+                san.append(move.from.coordinate.first!)
+            } else if !hasCandidateFromSameRank {
+                san.append(move.from.coordinate.last!)
+            } else {
+                san.append(move.from.coordinate)
+            }
         }
 
         if targetSquare != nil {
@@ -157,7 +165,6 @@ public class SANSerializer {
             .replacingOccurrences(of: "0", with: "O")
             .replacingOccurrences(of: "+", with: "")
             .replacingOccurrences(of: "#", with: "")
-            .uppercased()
     }
 
 }

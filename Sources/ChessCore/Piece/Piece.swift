@@ -9,7 +9,7 @@
 //
 
 /// A chess piece with a kind and color.
-public struct Piece: Hashable, CustomStringConvertible {
+public struct Piece: Hashable, CustomStringConvertible, Sendable {
 
     /// The kind of piece, such as king, rook, or pawn.
     public let kind: PieceKind

@@ -16,6 +16,7 @@ import ChessCore
     _ = FENSerializer()
     _ = SANSerializer()
     _ = ChessMoveRecordBuilder()
+    _ = PGNSerializer()
 }
 
 @Test func parserAPIsArePubliclyUsable() {
@@ -29,6 +30,7 @@ import ChessCore
     #expect(FENParsingError.invalidFieldCount(expected: 6, actual: 1).description.isEmpty == false)
     #expect(MoveParsingError.invalidLength("e2").description.isEmpty == false)
     #expect(SANParsingError.emptySAN.description.isEmpty == false)
+    #expect(PGNParsingError.emptyInput.description.isEmpty == false)
 }
 
 @Test func moveRecordAPIsArePubliclyUsable() {
@@ -48,4 +50,43 @@ import ChessCore
         ),
     ])
     #expect(ChessMoveRecordBuilderError.illegalMove(move: move, ply: 2).description.isEmpty == false)
+}
+
+@Test func pgnAPIsArePubliclyUsable() {
+    let serializer = PGNSerializer()
+    let pgn = """
+        [Event "Public API"]
+        [Site "?"]
+        [Date "????.??.??"]
+        [Round "?"]
+        [White "White"]
+        [Black "Black"]
+        [Result "*"]
+
+        1. e4 *
+        """
+    let game = try! serializer.game(from: pgn)
+    let startingPosition = try! FENSerializer().position(from: PGNSerializer.standardStartingFEN)
+    let expectedGame = Game(position: startingPosition)
+    let move = try! Move(string: "e2e4")
+    expectedGame.apply(move: move)
+
+    #expect(game.tagPairs.first == PGNTagPair(name: "Event", value: "Public API"))
+    #expect(game.moveRecords == [
+        PGNMoveRecord(
+            ply: 1,
+            moveNumber: 1,
+            color: .white,
+            san: "e4",
+            sourceSAN: "e4",
+            move: move
+        ),
+    ])
+    #expect(game.initialPosition == startingPosition)
+    #expect(game.finalPosition == expectedGame.position)
+    #expect(game.mainlineMoves == [move])
+    #expect(game.tagValue(for: "Event") == "Public API")
+    #expect(PGNResult(marker: "1/2-1/2") == .draw)
+    #expect(PGNNumericAnnotationGlyph(rawValue: 1)?.description == "$1")
+    #expect(try! serializer.pgn(moves: [move]).contains("1. e4 *"))
 }

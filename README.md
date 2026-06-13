@@ -100,6 +100,37 @@ do {
 }
 ```
 
+### PGN Import And Export
+
+`PGNSerializer` parses Portable Game Notation in `ChessCore`. It lexes PGN
+syntax first, then semantically replays SAN through `Game` and `SANSerializer`
+so parsed move records contain concrete, validated `Move` values.
+
+```swift
+let pgnText = """
+    [Event "Example"]
+    [Site "?"]
+    [Date "????.??.??"]
+    [Round "?"]
+    [White "White"]
+    [Black "Black"]
+    [Result "1-0"]
+
+    1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0
+    """
+
+let pgnGame = try PGNSerializer().game(from: pgnText)
+let moves = pgnGame.mainlineMoves
+let finalFEN = FENSerializer().fen(from: pgnGame.finalPosition)
+let exported = PGNSerializer().pgn(from: pgnGame)
+```
+
+Use `games(from:)` for PGN database text containing multiple games. FEN-backed
+PGNs with `[SetUp "1"]` and `[FEN "..."]` are supported. Comments, including
+Lichess clock and evaluation comments, and numeric annotation glyphs are
+preserved on move records. Recursive annotation variations are intentionally
+reported as unsupported in the first PGN milestone.
+
 ## ChessUI Quick Start
 
 Use `ChessUI` when you want a reusable SwiftUI board. The view reports moves;
@@ -244,9 +275,10 @@ ChessMoveListView(
 )
 ```
 
-The move list is intentionally not a PGN viewer. It does not render tag pairs,
-comments, NAGs, variations, or game results yet; add full PGN modeling in
-`ChessCore` before layering PGN export-style UI on top of it.
+The move list is intentionally not a full PGN viewer. It does not render tag
+pairs, comments, NAGs, variations, or game results (yet). Apps that need PGN
+records should parse them with `ChessCore` and pass the move records they want
+to display into ChessUI.
 
 ### Managing Piece Sets
 
@@ -283,7 +315,7 @@ automatically stop presenting the removed theme.
 
 SwiftChessTools provides:
 
-- Board state, pieces, moves, legal move generation, FEN, and SAN helpers.
+- Board state, pieces, moves, legal move generation, FEN, SAN, and PGN helpers.
 - A reusable SwiftUI chessboard with selectable piece assets, selectable board
   themes, move interaction, highlighting, hints, promotion UI, and board
   perspective support.
@@ -295,7 +327,7 @@ SwiftChessTools provides:
 SwiftChessTools does not provide:
 
 - A chess engine, AI opponent, Stockfish integration, or analysis pipeline.
-- PGN import/export, opening books, clocks, online play, accounts, or sync.
+- Opening books, clocks, online play, accounts, or sync.
 
 ## Manual Workbench
 

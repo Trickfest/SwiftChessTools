@@ -38,6 +38,18 @@ release. Replace `TBD` with the release date when a release is tagged.
   presentations.
 - Added consumer-controlled `ChessMoveListView` scroll indicator visibility and
   a ChessWorkbench toggle for showing or hiding move-list scroll bars.
+- Added `PGNSerializer`, `PGNGame`, `PGNTagPair`, `PGNResult`,
+  `PGNMoveRecord`, `PGNNumericAnnotationGlyph`, and typed PGN parser/exporter
+  errors to `ChessCore`.
+- Added validated mainline PGN parsing, multi-game database parsing,
+  FEN-backed PGN support, comment and NAG preservation, and deterministic PGN
+  export.
+- Added PGN coverage for Lichess-style comments, a Lichess CC0 sample, result
+  mismatches, malformed syntax, invalid SAN, FEN-backed games, castling,
+  promotion, underpromotion, en passant, disambiguation, and export round trips.
+- Expanded PGN coverage with a Lichess CC0 mini-corpus, deterministic generated
+  legal-game round trips, 10 long generated stress games, compact movetext and
+  escape-line tolerance, and additional SAN ambiguity fixtures.
 
 ### Changed
 
@@ -45,6 +57,15 @@ release. Replace `TBD` with the release date when a release is tagged.
   asset families that can be added or removed one set at a time.
 - Marked `PieceColor`, `PieceKind`, `Square`, and `Move` as `Sendable` so they
   can be used in concurrent, value-semantic ChessUI display state.
+- Marked `Board`, `Bitboards`, `Piece`, and `Position` as `Sendable` so
+  validated PGN game records can remain concurrency-safe value types.
+
+### Fixed
+
+- Fixed SAN serialization for en-passant captures so PGN import/export can
+  round trip en-passant SAN such as `exd6`.
+- Fixed SAN parsing normalization so pawn-file SAN such as `bxc5` remains
+  distinct from piece SAN such as `Bxc5`.
 
 ## 1.0.0 - TBD
 
