@@ -8,6 +8,8 @@
 // See the LICENSE file for more information.
 //
 
+import Foundation
+
 /// Claimable draw rules available to the player to move.
 public enum GameDrawClaim: Hashable, Sendable {
     /// The halfmove clock has reached 100 halfmoves.
@@ -17,7 +19,7 @@ public enum GameDrawClaim: Hashable, Sendable {
     case threefoldRepetition
 }
 
-/// Automatic draw reasons that end a game.
+/// Draw reasons that end a game.
 public enum GameDrawReason: Equatable, Sendable {
     /// The player to move has no legal moves and is not in check.
     case stalemate
@@ -31,6 +33,12 @@ public enum GameDrawReason: Equatable, Sendable {
 
     /// The current repetition key has occurred at least five times.
     case fivefoldRepetition
+
+    /// The fifty-move rule was claimed.
+    case fiftyMoveRule
+
+    /// Threefold repetition was claimed.
+    case threefoldRepetition
 }
 
 /// High-level status for the current game position.
@@ -64,6 +72,40 @@ public enum GameOutcome: Equatable, Sendable {
 
     /// The game ended in a draw.
     case draw
+}
+
+/// Errors thrown while replaying a concrete move list.
+public enum GameReplayError: Error, Equatable, CustomStringConvertible, LocalizedError {
+    case illegalMove(move: Move, ply: Int)
+
+    /// Human-readable error text.
+    public var description: String {
+        switch self {
+        case let .illegalMove(move, ply):
+            return "Illegal replay move \(move) at ply \(ply)."
+        }
+    }
+
+    public var errorDescription: String? {
+        description
+    }
+}
+
+/// Errors thrown when claiming a draw.
+public enum GameDrawClaimError: Error, Equatable, CustomStringConvertible, LocalizedError {
+    case unavailable(GameDrawClaim)
+
+    /// Human-readable error text.
+    public var description: String {
+        switch self {
+        case let .unavailable(claim):
+            return "Draw claim is not available: \(claim)."
+        }
+    }
+
+    public var errorDescription: String? {
+        description
+    }
 }
 
 /// Position identity used for threefold and fivefold repetition.

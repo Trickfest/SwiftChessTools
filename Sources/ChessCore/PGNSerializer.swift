@@ -104,6 +104,7 @@ public enum PGNParsingError: Error, Equatable, CustomStringConvertible, Localize
     case missingFEN(PGNParsingContext)
     case fenParsingFailed(String, FENParsingError, PGNParsingContext)
     case sanParsingFailed(String, SANParsingError, PGNParsingContext)
+    case resultConflictsWithFinalStatus(result: PGNResult, status: GameStatus, PGNParsingContext)
     case unsupportedRecursiveVariation(PGNParsingContext)
 
     /// Human-readable error text.
@@ -137,6 +138,8 @@ public enum PGNParsingError: Error, Equatable, CustomStringConvertible, Localize
             return "Invalid PGN FEN '\(value)' at \(context): \(error.description)"
         case let .sanParsingFailed(value, error, context):
             return "Invalid PGN SAN '\(value)' at \(context): \(error.description)"
+        case let .resultConflictsWithFinalStatus(result, status, context):
+            return "PGN result \(result) conflicts with final status \(status) at \(context)."
         case let .unsupportedRecursiveVariation(context):
             return "PGN recursive annotation variations are not supported yet at \(context)."
         }
@@ -150,12 +153,15 @@ public enum PGNParsingError: Error, Equatable, CustomStringConvertible, Localize
 /// Errors thrown while building PGN from move lists.
 public enum PGNSerializationError: Error, Equatable, CustomStringConvertible, LocalizedError {
     case illegalMove(Move, PGNParsingContext)
+    case resultConflictsWithFinalStatus(result: PGNResult, status: GameStatus, PGNParsingContext)
 
     /// Human-readable error text.
     public var description: String {
         switch self {
         case let .illegalMove(move, context):
             return "Cannot serialize illegal move \(move) at \(context)."
+        case let .resultConflictsWithFinalStatus(result, status, context):
+            return "Cannot serialize result \(result) because final status is \(status) at \(context)."
         }
     }
 
@@ -419,6 +425,8 @@ public final class PGNSerializer {
             game.apply(move: move)
         }
 
+        try self.validateSerializedResult(result, against: game.status)
+
         return PGNGame(
             tagPairs: self.tagsWithResult(tags, result: result),
             initialPosition: initialPosition,
@@ -506,6 +514,12 @@ public final class PGNSerializer {
             game.apply(move: move)
         }
 
+        try self.validateParsedResult(
+            result,
+            against: game.status,
+            context: PGNParsingContext(gameIndex: gameIndex)
+        )
+
         return PGNGame(
             tagPairs: parsedGame.tags,
             initialPosition: initialPosition,
@@ -537,6 +551,47 @@ public final class PGNSerializer {
         }
 
         return movetextResult
+    }
+
+    private func validateParsedResult(
+        _ result: PGNResult,
+        against status: GameStatus,
+        context: PGNParsingContext
+    ) throws {
+        guard let expectedResult = self.expectedPGNResult(for: status) else {
+            return
+        }
+        guard result == expectedResult else {
+            throw PGNParsingError.resultConflictsWithFinalStatus(
+                result: result,
+                status: status,
+                context
+            )
+        }
+    }
+
+    private func validateSerializedResult(_ result: PGNResult, against status: GameStatus) throws {
+        guard let expectedResult = self.expectedPGNResult(for: status) else {
+            return
+        }
+        guard result == expectedResult else {
+            throw PGNSerializationError.resultConflictsWithFinalStatus(
+                result: result,
+                status: status,
+                PGNParsingContext()
+            )
+        }
+    }
+
+    private func expectedPGNResult(for status: GameStatus) -> PGNResult? {
+        switch status {
+        case .ongoing:
+            return nil
+        case let .checkmate(winner):
+            return winner == .white ? .whiteWins : .blackWins
+        case .draw:
+            return .draw
+        }
     }
 
     private func initialPosition(from parsedGame: PGNParsedGame, gameIndex: Int) throws -> Position {

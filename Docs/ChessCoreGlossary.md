@@ -17,6 +17,9 @@ engine-analysis, and product-specific concepts belong in app-level docs.
 - **Parser Error**: A typed error thrown for malformed input or semantic
   validation failure. Examples include `FENParsingError`, `SANParsingError`,
   `MoveParsingError`, and `PGNParsingError`.
+- **Position Validator**: `PositionValidator`, the ChessCore API that checks
+  whether a syntactically parsed `Position` satisfies strict semantic position
+  constraints.
 - **Serialization Error**: A typed error thrown while exporting values, such as
   attempting to export an illegal concrete move list as PGN.
 - **Sendable**: A Swift concurrency marker used by value types that can safely
@@ -44,6 +47,14 @@ engine-analysis, and product-specific concepts belong in app-level docs.
 - **Game Outcome**: The final result of a completed game: a win for one side or
   a draw.
 - **Move History**: The concrete sequence of moves applied through `Game`.
+- **Metadata-Only Move History**: Move history passed to
+  `Game(position:moveHistory:)` or `reset(to:moveHistory:)` without replaying
+  the moves. It is stored for consumers, but does not rebuild counters or
+  repetition state.
+- **Replay**: Reconstructing a `Game` by applying a concrete move list from an
+  initial position, exposed as `Game.replay(initialPosition:moves:)`.
+- **Reset**: Replacing a `Game` object's current position and derived state with
+  `Game.reset(to:moveHistory:)`.
 - **Initial Position**: The position before replaying a move list or PGN
   mainline. This is usually the standard starting position, but can come from a
   FEN tag.
@@ -65,6 +76,8 @@ engine-analysis, and product-specific concepts belong in app-level docs.
   repetition.
 - **Draw Claim**: A draw rule available for a player to claim, such as the
   fifty-move rule or threefold repetition.
+- **Claimed Draw**: A draw claim that has been applied with `Game.claimDraw`.
+  Once claimed, `Game.status` reports a draw with the claimed reason.
 - **Insufficient Material**: A position where neither side has enough material
   to produce checkmate under ChessCore's standard insufficient-material model.
 - **Fifty-Move Rule**: A claimable draw when 100 halfmoves have passed without a
@@ -126,6 +139,12 @@ engine-analysis, and product-specific concepts belong in app-level docs.
   `Move.description`, with promotion pieces normalized to lowercase, such as
   `e7e8q`.
 - **FEN**: Forsyth-Edwards Notation, a text format for a single chess position.
+- **Syntax-Only FEN Parsing**: `FENSerializer.position(from:)`, which checks
+  FEN field syntax and returns a `Position`.
+- **Semantic FEN Validation**: `FENSerializer.validatedPosition(from:)`, which
+  parses FEN syntax and then rejects impossible or inconsistent positions such
+  as missing kings, invalid castling rights, invalid en-passant targets, pawns
+  on invalid ranks, or inactive-side check.
 - **SAN**: Standard Algebraic Notation, the human-readable move notation used in
   movetext, such as `Nf3`, `exd5`, `O-O`, or `Qxf7#`.
 - **PGN**: Portable Game Notation, a text format for complete game records.
@@ -168,6 +187,9 @@ engine-analysis, and product-specific concepts belong in app-level docs.
 - **Symbolic Annotation**: A shorthand annotation suffix such as `!`, `?`, `!?`,
   or `?!` in PGN movetext.
 - **Result Marker**: One of `1-0`, `0-1`, `1/2-1/2`, or `*`.
+- **Result/Status Conflict**: A PGN validation failure where replay reaches a
+  terminal final status that is incompatible with the PGN result marker, such as
+  checkmate for Black with a `1-0` result.
 - **FEN-Backed PGN**: A PGN that starts from a non-standard position using
   `[SetUp "1"]` and `[FEN "..."]`.
 - **PGN Database**: Text containing one or more PGN games.
@@ -204,3 +226,6 @@ engine-analysis, and product-specific concepts belong in app-level docs.
 - **Board-Based Position Counts**: `Game.positionCounts` tracks board
   occurrences by piece placement. Draw-claim repetition uses
   `Game.repetitionCounts` and `GameRepetitionKey` instead.
+- **Dead Position Boundary**: ChessCore currently covers standard
+  insufficient-material automatic draws, but does not yet implement the full
+  FIDE dead-position reachability rule for blocked structures.

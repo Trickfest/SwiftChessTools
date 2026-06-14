@@ -352,6 +352,118 @@ import Testing
     }
 }
 
+@Test func pgnRejectsResultsThatConflictWithTerminalCheckmateStatus() throws {
+    expectPGNParsingError("""
+        [Event "Unfinished Checkmate"]
+        [Site "?"]
+        [Date "????.??.??"]
+        [Round "?"]
+        [White "White"]
+        [Black "Black"]
+        [Result "*"]
+
+        1. f3 e5 2. g4 Qh4# *
+        """) { error in
+        if case let .resultConflictsWithFinalStatus(result, status, context) = error {
+            return result == .unfinished
+                && status == .checkmate(winner: .black)
+                && context.gameIndex == 0
+        }
+        return false
+    }
+
+    expectPGNParsingError("""
+        [Event "Wrong Winner"]
+        [Site "?"]
+        [Date "????.??.??"]
+        [Round "?"]
+        [White "White"]
+        [Black "Black"]
+        [Result "1-0"]
+
+        1. f3 e5 2. g4 Qh4# 1-0
+        """) { error in
+        if case let .resultConflictsWithFinalStatus(result, status, context) = error {
+            return result == .whiteWins
+                && status == .checkmate(winner: .black)
+                && context.gameIndex == 0
+        }
+        return false
+    }
+}
+
+@Test func pgnValidatesTerminalDrawResultsButAllowsOngoingExternalResults() throws {
+    expectPGNParsingError("""
+        [Event "Wrong Stalemate Result"]
+        [Site "?"]
+        [Date "????.??.??"]
+        [Round "?"]
+        [White "White"]
+        [Black "Black"]
+        [Result "0-1"]
+        [SetUp "1"]
+        [FEN "7k/5K2/6Q1/8/8/8/8/8 b - - 0 1"]
+
+        0-1
+        """) { error in
+        if case let .resultConflictsWithFinalStatus(result, status, context) = error {
+            return result == .blackWins
+                && status == .draw(.stalemate)
+                && context.gameIndex == 0
+        }
+        return false
+    }
+
+    let terminalDraw = try PGNSerializer().game(from: """
+        [Event "Correct Stalemate Result"]
+        [Site "?"]
+        [Date "????.??.??"]
+        [Round "?"]
+        [White "White"]
+        [Black "Black"]
+        [Result "1/2-1/2"]
+        [SetUp "1"]
+        [FEN "7k/5K2/6Q1/8/8/8/8/8 b - - 0 1"]
+
+        1/2-1/2
+        """)
+    #expect(terminalDraw.result == .draw)
+    #expect(Game(position: terminalDraw.finalPosition).status == .draw(.stalemate))
+
+    let resignation = try PGNSerializer().game(from: """
+        [Event "External Result"]
+        [Site "?"]
+        [Date "????.??.??"]
+        [Round "?"]
+        [White "White"]
+        [Black "Black"]
+        [Result "1-0"]
+
+        1. e4 1-0
+        """)
+    #expect(resignation.result == .whiteWins)
+    #expect(Game(position: resignation.finalPosition).status == .ongoing(drawClaims: Set<GameDrawClaim>()))
+
+    let claimableDraw = try PGNSerializer().game(from: """
+        [Event "Claimable Draw Not Claimed"]
+        [Site "?"]
+        [Date "????.??.??"]
+        [Round "?"]
+        [White "White"]
+        [Black "Black"]
+        [Result "*"]
+        [SetUp "1"]
+        [FEN "4k3/8/8/8/8/8/Q7/4K3 w - - 100 1"]
+
+        *
+        """)
+    #expect(claimableDraw.result == .unfinished)
+    #expect(
+        Game(position: claimableDraw.finalPosition).status
+            == .ongoing(drawClaims: Set<GameDrawClaim>([.fiftyMoveRule]))
+    )
+}
+
 @Test func pgnRejectsInvalidSANWithContext() throws {
     expectPGNParsingError("""
         [Event "Invalid SAN"]
@@ -546,6 +658,48 @@ import Testing
     }
 }
 
+@Test func pgnRejectsExportedResultsThatConflictWithFinalStatus() throws {
+    let serializer = PGNSerializer()
+    let foolsMate = try ["f2f3", "e7e5", "g2g4", "d8h4"].map { try Move(string: $0) }
+
+    do {
+        _ = try serializer.pgn(moves: foolsMate, result: .whiteWins)
+        Issue.record("Expected checkmate result conflict to fail")
+    } catch let error as PGNSerializationError {
+        if case let .resultConflictsWithFinalStatus(result, status, _) = error {
+            #expect(result == .whiteWins)
+            #expect(status == .checkmate(winner: .black))
+        } else {
+            Issue.record("Expected resultConflictsWithFinalStatus, got: \(error)")
+        }
+    } catch {
+        Issue.record("Expected PGNSerializationError, got: \(error)")
+    }
+
+    let checkmateExport = try serializer.pgn(moves: foolsMate, result: .blackWins)
+    #expect(checkmateExport.contains("Qh4# 0-1"))
+
+    let stalemate = try FENSerializer().position(
+        from: "7k/5K2/6Q1/8/8/8/8/8 b - - 0 1"
+    )
+    do {
+        _ = try serializer.pgn(initialPosition: stalemate, moves: [], result: .blackWins)
+        Issue.record("Expected stalemate result conflict to fail")
+    } catch let error as PGNSerializationError {
+        if case let .resultConflictsWithFinalStatus(result, status, _) = error {
+            #expect(result == .blackWins)
+            #expect(status == .draw(.stalemate))
+        } else {
+            Issue.record("Expected resultConflictsWithFinalStatus, got: \(error)")
+        }
+    } catch {
+        Issue.record("Expected PGNSerializationError, got: \(error)")
+    }
+
+    let stalemateExport = try serializer.pgn(initialPosition: stalemate, moves: [], result: .draw)
+    #expect(stalemateExport.contains("1/2-1/2"))
+}
+
 @Test func pgnParsesLichessStandardDatabaseSample() throws {
     let game = try PGNSerializer().game(from: lichessStandardDatabaseSample)
 
@@ -593,7 +747,8 @@ import Testing
 func pgnGeneratedLegalGamesRoundTrip(seed: Int) throws {
     let serializer = PGNSerializer()
     let moves = generatedLegalMainline(seed: seed, maxPlies: 48)
-    let result: PGNResult = seed.isMultiple(of: 3) ? .draw : .unfinished
+    let fallbackResult: PGNResult = seed.isMultiple(of: 3) ? .draw : .unfinished
+    let result = try compatiblePGNResult(for: moves, fallback: fallbackResult)
     let tags = [
         PGNTagPair(name: "Event", value: "Generated Round Trip \(seed)"),
         PGNTagPair(name: "Round", value: "\(seed + 1)"),
@@ -664,11 +819,11 @@ func pgnGeneratedLegalGamesRoundTrip(seed: Int) throws {
             [Round "?"]
             [White "White"]
             [Black "Black"]
-            [Result "*"]
+            [Result "1/2-1/2"]
             [SetUp "1"]
             [FEN "\(fen)"]
 
-            1. \(san) *
+            1. \(san) 1/2-1/2
             """
         let game = try PGNSerializer().game(from: pgn)
         #expect(game.moveRecords.map(\.san) == [san])
@@ -707,7 +862,8 @@ func pgnGeneratedLegalGamesRoundTrip(seed: Int) throws {
 func pgnLongGeneratedGamesStressRoundTrip(seed: Int) throws {
     let serializer = PGNSerializer()
     let moves = generatedLegalMainline(seed: seed, maxPlies: 160)
-    let result: PGNResult = seed.isMultiple(of: 2) ? .whiteWins : .blackWins
+    let fallbackResult: PGNResult = seed.isMultiple(of: 2) ? .whiteWins : .blackWins
+    let result = try compatiblePGNResult(for: moves, fallback: fallbackResult)
     let tags = [
         PGNTagPair(name: "Event", value: "Long Generated Stress \(seed)"),
         PGNTagPair(name: "Site", value: "Local"),
@@ -758,6 +914,20 @@ private func generatedLegalMainline(seed: Int, maxPlies: Int) -> [Move] {
     }
 
     return moves
+}
+
+private func compatiblePGNResult(for moves: [Move], fallback: PGNResult) throws -> PGNResult {
+    let startingPosition = try FENSerializer().position(from: PGNSerializer.standardStartingFEN)
+    let game = try Game.replay(initialPosition: startingPosition, moves: moves)
+
+    switch game.status {
+    case .ongoing:
+        return fallback
+    case let .checkmate(winner):
+        return winner == .white ? .whiteWins : .blackWins
+    case .draw:
+        return .draw
+    }
 }
 
 private struct DeterministicGenerator {

@@ -77,6 +77,17 @@ public class FENSerializer {
             counter: counter)
     }
 
+    /// Parses and semantically validates a FEN string.
+    ///
+    /// This method first applies normal FEN syntax parsing, then validates
+    /// playable-position constraints such as king counts, castling rights, pawn
+    /// ranks, en-passant availability, and inactive-side check.
+    public func validatedPosition(from fen: String) throws -> Position {
+        let position = try self.position(from: fen)
+        try PositionValidator().validate(position)
+        return position
+    }
+
     /// Formats a position as a full six-field FEN string.
     ///
     /// - Parameter position: The position to serialize.

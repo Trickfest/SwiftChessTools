@@ -13,9 +13,15 @@ display.
 - Concrete `Move` values, canonical SAN, source SAN, move number, side, and ply
   on each `PGNMoveRecord`.
 - Results: `1-0`, `0-1`, `1/2-1/2`, and `*`.
+- Result/status validation for terminal final positions: checkmate must match
+  the winning side, and automatic draws must use `1/2-1/2`.
 - FEN-backed games with `[SetUp "1"]` and `[FEN "..."]`.
 - Brace comments, semicolon comments, Lichess clock/eval comments, and NAGs.
 - Deterministic PGN export with the seven tag roster first.
+
+Ongoing final positions may still carry decisive or drawn results because real
+PGNs can end by resignation, timeout, adjudication, or draw agreement before the
+board position itself is terminal.
 
 ## Deferred
 

@@ -77,6 +77,19 @@ release. Replace `TBD` with the release date when a release is tagged.
 - Added hardened GameStatus coverage for material edge cases, real-move draw
   threshold transitions, halfmove resets, illegal en-passant repetition keys,
   status precedence, and game-like knight repetitions.
+- Added `Game.replay(initialPosition:moves:)`, `Game.reset(to:moveHistory:)`,
+  `Game.claimDraw(_:)`, `GameReplayError`, and `GameDrawClaimError` so
+  consumers can rebuild game state from concrete moves, reuse game objects, and
+  model explicit fifty-move or threefold draw claims.
+- Added `PositionValidator`, `PositionValidationIssue`,
+  `PositionValidationError`, and `FENSerializer.validatedPosition(from:)` for
+  strict semantic validation of syntactically parsed FEN positions.
+- Added PGN result/status validation so terminal checkmate and automatic-draw
+  final positions reject incompatible PGN result markers during import and
+  export.
+- Added coverage for game replay/reset, explicit draw claims, semantic FEN
+  validation, PGN terminal result/status conflicts, and result-aware generated
+  PGN stress games.
 
 ### Changed
 
@@ -86,6 +99,13 @@ release. Replace `TBD` with the release date when a release is tagged.
   can be used in concurrent, value-semantic ChessUI display state.
 - Marked `Board`, `Bitboards`, `Piece`, and `Position` as `Sendable` so
   validated PGN game records can remain concurrency-safe value types.
+- Made `Game.position` publicly read-only; use `Game.apply(move:)`,
+  `Game.replay(initialPosition:moves:)`, or `Game.reset(to:moveHistory:)` to
+  change game state.
+- Clarified that `Game(position:moveHistory:)` stores move history as metadata
+  only and does not replay moves or rebuild counters/repetition state.
+- Changed `Game.drawClaims` so terminal positions and already-claimed draws no
+  longer expose claimable draw rules.
 
 ### Fixed
 
@@ -104,6 +124,9 @@ release. Replace `TBD` with the release date when a release is tagged.
 - Fixed repetition tracking for draw rules by adding a rules-relevant
   repetition key that includes board layout, side to move, castling rights, and
   legal en-passant availability.
+- Fixed draw-claim precedence so checkmate, stalemate, insufficient material,
+  seventy-five-move automatic draws, and fivefold repetition remain authoritative
+  over claimable draw rules.
 
 ## 1.0.0 - TBD
 

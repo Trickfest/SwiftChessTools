@@ -92,6 +92,22 @@ Export a position back to FEN:
 let fen = fenSerializer.fen(from: position)
 ```
 
+`position(from:)` validates FEN syntax. Use `validatedPosition(from:)` when
+accepting external FEN that should also satisfy ChessCore's semantic position
+checks:
+
+```swift
+let validated = try fenSerializer.validatedPosition(
+    from: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+)
+```
+
+Semantic validation rejects positions with missing or multiple kings, pawns on
+the first or eighth rank, castling rights without the matching king and rook,
+invalid en-passant targets, or a non-active side whose king is already in
+check. Keep using `position(from:)` when you intentionally need syntax-only FEN
+parsing.
+
 Inspect pieces by square or coordinate:
 
 ```swift
@@ -192,6 +208,18 @@ let finalPosition = game.position
 let moveHistory = game.moveHistory
 ```
 
+Replay an already-known concrete move list when you want ChessCore to rebuild
+the resulting position, move counters, move history, and repetition state:
+
+```swift
+let moves = try ["e2e4", "e7e5", "g1f3"].map { try Move(string: $0) }
+let replayed = try Game.replay(initialPosition: startingPosition, moves: moves)
+```
+
+`Game(position:moveHistory:)` stores `moveHistory` as metadata only. It does not
+replay moves or rebuild counters. Use `Game.replay(initialPosition:moves:)` for
+validated reconstruction.
+
 Inspect status and outcome after moves:
 
 ```swift
@@ -227,6 +255,29 @@ if let outcome = game.outcome {
 the fifty-move rule or threefold repetition. `Game.status` reports automatic
 draws such as stalemate, insufficient material, the seventy-five-move rule, and
 fivefold repetition.
+
+Claim an available draw explicitly:
+
+```swift
+if game.drawClaims.contains(.fiftyMoveRule) {
+    try game.claimDraw(.fiftyMoveRule)
+}
+```
+
+After a successful claim, `game.status` becomes `.draw(.fiftyMoveRule)` or
+`.draw(.threefoldRepetition)`. Terminal positions such as checkmate, stalemate,
+insufficient material, seventy-five-move automatic draws, and fivefold
+repetition do not expose claimable draws. A claimed draw is also terminal for
+`drawClaims`; use `claimedDraw` to inspect which claim was made.
+
+Reset a reusable game object to a new position:
+
+```swift
+game.reset(to: startingPosition)
+```
+
+`reset(to:)` replaces the position, clears derived repetition state, clears any
+claimed draw, and optionally stores metadata-only move history.
 
 ## 5. SAN Notation
 
@@ -333,6 +384,12 @@ The first PGN milestone supports validated mainlines, tag pairs, comments, NAGs,
 FEN-backed games, UTF-8 BOM input, and multi-game database parsing. Recursive
 annotation variations are detected and reported as unsupported until ChessCore
 grows a PGN tree model.
+
+PGN result markers are checked against terminal final positions. If replay ends
+in checkmate, the result must name the winning side. If replay ends in an
+automatic draw, the result must be `1/2-1/2`. Ongoing positions can still carry a
+decisive or drawn result because real PGNs may end by resignation, timeout, or
+agreement before the board position is terminal.
 
 ## 7. PGN Move Records
 
@@ -528,9 +585,15 @@ Common errors:
 
 - `MoveParsingError`: malformed coordinate move text.
 - `FENParsingError`: malformed FEN.
+- `PositionValidationError`: syntactically valid FEN that fails strict semantic
+  position validation.
 - `SANParsingError`: SAN cannot be parsed in the current game context.
 - `PGNParsingError`: malformed PGN or semantic replay failure.
 - `PGNSerializationError`: an invalid move list was supplied for export.
+- `GameReplayError`: an illegal move was supplied while replaying a concrete
+  move list.
+- `GameDrawClaimError`: a draw claim was requested when it is not currently
+  available.
 
 Catch PGN parser errors:
 
@@ -554,6 +617,8 @@ do {
     print("Variations are not supported yet: \(context)")
 } catch PGNParsingError.resultMismatch(let tag, let movetext, let context) {
     print("Result tag \(tag) does not match \(movetext) at \(context)")
+} catch PGNParsingError.resultConflictsWithFinalStatus(let result, let status, let context) {
+    print("Result \(result) conflicts with final status \(status) at \(context)")
 } catch {
     print(error)
 }
@@ -686,16 +751,15 @@ let displayedPosition = pgnGame.finalPosition
 let moveRows = pgnGame.moveRecords
 ```
 
-For interactive playback, start from `initialPosition` and replay
-`mainlineMoves` up to the ply the user selected:
+For interactive playback, replay `mainlineMoves` up to the ply the user
+selected:
 
 ```swift
-let playback = Game(position: pgnGame.initialPosition)
 let selectedPly = 12
-
-for move in pgnGame.mainlineMoves.prefix(selectedPly) {
-    playback.apply(move: move)
-}
+let playback = try Game.replay(
+    initialPosition: pgnGame.initialPosition,
+    moves: Array(pgnGame.mainlineMoves.prefix(selectedPly))
+)
 
 let positionToDisplay = playback.position
 ```
@@ -748,6 +812,24 @@ let coordinateMoves = game.mainlineMoves.map(\.description)
 
 ```swift
 let finalFEN = FENSerializer().fen(from: game.finalPosition)
+```
+
+### Strictly Validate A FEN Position
+
+```swift
+let position = try FENSerializer().validatedPosition(from: fen)
+```
+
+### Replay Concrete Moves
+
+```swift
+let game = try Game.replay(initialPosition: startingPosition, moves: moves)
+```
+
+### Claim A Draw
+
+```swift
+try game.claimDraw(.threefoldRepetition)
 ```
 
 ### Export A PGNGame

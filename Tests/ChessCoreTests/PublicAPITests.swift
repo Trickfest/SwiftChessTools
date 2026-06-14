@@ -17,6 +17,7 @@ import ChessCore
     _ = SANSerializer()
     _ = ChessMoveRecordBuilder()
     _ = PGNSerializer()
+    _ = PositionValidator()
 }
 
 @Test func parserAPIsArePubliclyUsable() {
@@ -54,7 +55,7 @@ import ChessCore
 
 @Test func gameStatusAPIsArePubliclyUsable() {
     let position = try! FENSerializer().position(
-        from: "4k3/8/8/8/8/8/4Q3/4K3 w - - 100 1"
+        from: "4k3/8/8/8/8/8/Q7/4K3 w - - 100 1"
     )
     let game = Game(position: position)
     let repetitionKey = GameRepetitionKey(position: position)
@@ -69,6 +70,36 @@ import ChessCore
     #expect(GameStatus.draw(.stalemate).outcome == .draw)
     #expect(GameStatus.checkmate(winner: .black).outcome == .win(.black))
     #expect(GameDrawReason.insufficientMaterial == .insufficientMaterial)
+    #expect(GameDrawReason.fiftyMoveRule == .fiftyMoveRule)
+
+    try! game.claimDraw(.fiftyMoveRule)
+    #expect(game.claimedDraw == .fiftyMoveRule)
+    #expect(game.status == .draw(.fiftyMoveRule))
+
+    game.reset(to: position)
+    #expect(game.claimedDraw == nil)
+    #expect(game.moveHistory.isEmpty)
+
+    let startingPosition = try! FENSerializer().position(from: PGNSerializer.standardStartingFEN)
+    let move = try! Move(string: "e2e4")
+    let replayed = try! Game.replay(initialPosition: startingPosition, moves: [move])
+    #expect(replayed.moveHistory == [move])
+    #expect(GameReplayError.illegalMove(move: move, ply: 1).description.isEmpty == false)
+    #expect(GameDrawClaimError.unavailable(.threefoldRepetition).description.isEmpty == false)
+}
+
+@Test func positionValidationAPIsArePubliclyUsable() {
+    let serializer = FENSerializer()
+    let position = try! serializer.validatedPosition(from: PGNSerializer.standardStartingFEN)
+    let issues = PositionValidator().issues(in: position)
+
+    #expect(issues.isEmpty)
+    #expect(PositionValidationIssue.missingKing(.white).description.isEmpty == false)
+    #expect(
+        PositionValidationError.invalidPosition([.missingKing(.white)])
+            .description
+            .isEmpty == false
+    )
 }
 
 @Test func pgnAPIsArePubliclyUsable() {

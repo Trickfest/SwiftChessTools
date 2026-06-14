@@ -89,41 +89,41 @@ import Testing
 }
 
 @Test func halfmoveClockCreatesFiftyMoveClaimsAndSeventyFiveMoveDraws() {
-    let beforeClaim = game(from: "4k3/8/8/8/8/8/4Q3/4K3 w - - 99 1")
+    let beforeClaim = game(from: "4k3/8/8/8/8/8/Q7/4K3 w - - 99 1")
     #expect(beforeClaim.drawClaims == Set<GameDrawClaim>())
     #expect(beforeClaim.status == .ongoing(drawClaims: Set<GameDrawClaim>()))
     #expect(beforeClaim.outcome == nil)
 
-    let fiftyMoveClaim = game(from: "4k3/8/8/8/8/8/4Q3/4K3 w - - 100 1")
+    let fiftyMoveClaim = game(from: "4k3/8/8/8/8/8/Q7/4K3 w - - 100 1")
     #expect(fiftyMoveClaim.drawClaims == Set<GameDrawClaim>([.fiftyMoveRule]))
     #expect(fiftyMoveClaim.status == .ongoing(drawClaims: Set<GameDrawClaim>([.fiftyMoveRule])))
     #expect(fiftyMoveClaim.outcome == nil)
 
-    let stillClaimable = game(from: "4k3/8/8/8/8/8/4Q3/4K3 w - - 149 1")
+    let stillClaimable = game(from: "4k3/8/8/8/8/8/Q7/4K3 w - - 149 1")
     #expect(stillClaimable.drawClaims == Set<GameDrawClaim>([.fiftyMoveRule]))
     #expect(stillClaimable.status == .ongoing(drawClaims: Set<GameDrawClaim>([.fiftyMoveRule])))
 
-    let automaticDraw = game(from: "4k3/8/8/8/8/8/4Q3/4K3 w - - 150 1")
-    #expect(automaticDraw.drawClaims == Set<GameDrawClaim>([.fiftyMoveRule]))
+    let automaticDraw = game(from: "4k3/8/8/8/8/8/Q7/4K3 w - - 150 1")
+    #expect(automaticDraw.drawClaims == Set<GameDrawClaim>())
     #expect(automaticDraw.status == .draw(.seventyFiveMoveRule))
     #expect(automaticDraw.outcome == .draw)
     #expect(automaticDraw.isDraw)
 }
 
 @Test func halfmoveDrawRulesUpdateWhenQuietMovesCrossThresholds() throws {
-    let claim = game(from: "4k3/8/8/8/8/8/4Q3/4K3 w - - 99 1")
-    try applyLegalCoordinate("e2a2", to: claim)
+    let claim = game(from: "4k3/8/8/8/8/8/Q7/4K3 w - - 99 1")
+    try applyLegalCoordinate("a2b2", to: claim)
 
     #expect(claim.position.counter.halfMoves == 100)
     #expect(claim.drawClaims == Set<GameDrawClaim>([.fiftyMoveRule]))
     #expect(claim.status == .ongoing(drawClaims: Set<GameDrawClaim>([.fiftyMoveRule])))
     #expect(claim.outcome == nil)
 
-    let automaticDraw = game(from: "4k3/8/8/8/8/8/4Q3/4K3 w - - 149 1")
-    try applyLegalCoordinate("e2a2", to: automaticDraw)
+    let automaticDraw = game(from: "4k3/8/8/8/8/8/Q7/4K3 w - - 149 1")
+    try applyLegalCoordinate("a2b2", to: automaticDraw)
 
     #expect(automaticDraw.position.counter.halfMoves == 150)
-    #expect(automaticDraw.drawClaims == Set<GameDrawClaim>([.fiftyMoveRule]))
+    #expect(automaticDraw.drawClaims == Set<GameDrawClaim>())
     #expect(automaticDraw.status == .draw(.seventyFiveMoveRule))
     #expect(automaticDraw.outcome == .draw)
 }
@@ -137,8 +137,8 @@ import Testing
     #expect(pawnMove.status == .ongoing(drawClaims: Set<GameDrawClaim>()))
     #expect(pawnMove.outcome == nil)
 
-    let capture = game(from: "4k3/8/8/8/8/8/r3Q3/4K3 w - - 149 1")
-    try applyLegalCoordinate("e2a2", to: capture)
+    let capture = game(from: "4k3/8/8/8/8/8/rQ6/4K3 w - - 149 1")
+    try applyLegalCoordinate("b2a2", to: capture)
 
     #expect(capture.position.counter.halfMoves == 0)
     #expect(capture.drawClaims == Set<GameDrawClaim>())
@@ -158,6 +158,80 @@ import Testing
     #expect(game.drawClaims == expectedClaims)
     #expect(game.status == .ongoing(drawClaims: expectedClaims))
     #expect(game.outcome == nil)
+}
+
+@Test func drawClaimsCanBeClaimedAndBecomeDrawStatus() throws {
+    let fiftyMove = game(from: "4k3/8/8/8/8/8/Q7/4K3 w - - 100 1")
+
+    try fiftyMove.claimDraw(.fiftyMoveRule)
+
+    #expect(fiftyMove.claimedDraw == .fiftyMoveRule)
+    #expect(fiftyMove.drawClaims == Set<GameDrawClaim>())
+    #expect(fiftyMove.status == .draw(.fiftyMoveRule))
+    #expect(fiftyMove.outcome == .draw)
+    #expect(fiftyMove.isDraw)
+
+    let copy = fiftyMove.copy()
+    #expect(copy.claimedDraw == .fiftyMoveRule)
+    #expect(copy.drawClaims == Set<GameDrawClaim>())
+    #expect(copy.status == .draw(.fiftyMoveRule))
+
+    try applyLegalCoordinate("a2b2", to: fiftyMove)
+
+    #expect(fiftyMove.claimedDraw == nil)
+    #expect(fiftyMove.drawClaims == Set<GameDrawClaim>([.fiftyMoveRule]))
+    #expect(fiftyMove.status == .ongoing(drawClaims: Set<GameDrawClaim>([.fiftyMoveRule])))
+
+    let threefold = game(from: "8/8/8/8/8/6k1/8/R3K3 w - - 0 1")
+    try applyQuietKingCycle(to: threefold)
+    try applyQuietKingCycle(to: threefold)
+
+    try threefold.claimDraw(.threefoldRepetition)
+
+    #expect(threefold.claimedDraw == .threefoldRepetition)
+    #expect(threefold.drawClaims == Set<GameDrawClaim>())
+    #expect(threefold.status == .draw(.threefoldRepetition))
+    #expect(threefold.outcome == .draw)
+}
+
+@Test func unavailableDrawClaimsThrowAndTerminalStatusesTakePrecedence() throws {
+    let noClaim = game(from: "4k3/8/8/8/8/8/Q7/4K3 w - - 99 1")
+    do {
+        try noClaim.claimDraw(.fiftyMoveRule)
+        Issue.record("Expected unavailable draw claim to throw")
+    } catch let error as GameDrawClaimError {
+        #expect(error == .unavailable(.fiftyMoveRule))
+    } catch {
+        Issue.record("Expected GameDrawClaimError, got: \(error)")
+    }
+
+    let checkmateWithFiftyMoveClock = game(
+        from: "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 100 3"
+    )
+    #expect(checkmateWithFiftyMoveClock.drawClaims == Set<GameDrawClaim>())
+    #expect(checkmateWithFiftyMoveClock.status == .checkmate(winner: .black))
+
+    do {
+        try checkmateWithFiftyMoveClock.claimDraw(.fiftyMoveRule)
+        Issue.record("Expected checkmate to make draw claim unavailable")
+    } catch let error as GameDrawClaimError {
+        #expect(error == .unavailable(.fiftyMoveRule))
+    } catch {
+        Issue.record("Expected GameDrawClaimError, got: \(error)")
+    }
+
+    let automaticDraw = game(from: "4k3/8/8/8/8/8/Q7/4K3 w - - 150 1")
+    #expect(automaticDraw.drawClaims == Set<GameDrawClaim>())
+    #expect(automaticDraw.status == .draw(.seventyFiveMoveRule))
+
+    do {
+        try automaticDraw.claimDraw(.fiftyMoveRule)
+        Issue.record("Expected automatic draw to make draw claim unavailable")
+    } catch let error as GameDrawClaimError {
+        #expect(error == .unavailable(.fiftyMoveRule))
+    } catch {
+        Issue.record("Expected GameDrawClaimError, got: \(error)")
+    }
 }
 
 @Test func checkmateTakesPrecedenceOverAutomaticDrawCounters() {
@@ -184,10 +258,9 @@ import Testing
         try applyQuietKingCycle(to: fivefoldWithFiftyMoveClaim)
     }
 
-    let expectedClaims = Set<GameDrawClaim>([.fiftyMoveRule, .threefoldRepetition])
     #expect(fivefoldWithFiftyMoveClaim.position.counter.halfMoves == 108)
     #expect(fivefoldWithFiftyMoveClaim.currentRepetitionCount == 5)
-    #expect(fivefoldWithFiftyMoveClaim.drawClaims == expectedClaims)
+    #expect(fivefoldWithFiftyMoveClaim.drawClaims == Set<GameDrawClaim>())
     #expect(fivefoldWithFiftyMoveClaim.status == .draw(.fivefoldRepetition))
 }
 
@@ -300,11 +373,59 @@ import Testing
     #expect(copy.status == .draw(.fivefoldRepetition))
 }
 
-@Test func currentRepetitionCountTreatsExternallyAssignedPositionAsCurrent() {
-    let game = game(from: "8/8/8/8/8/6k1/8/R3K3 w - - 0 1")
-    game.position = position(from: "4k3/8/8/8/8/8/4Q3/4K3 w - - 0 1")
+@Test func gameReplayRebuildsHistoryCountersAndRepetitionState() throws {
+    let initialPosition = position(from: PGNSerializer.standardStartingFEN)
+    let cycle = ["g1f3", "g8f6", "f3g1", "f6g8"]
+    let moves = try (cycle + cycle).map { try Move(string: $0) }
 
-    #expect(game.repetitionCounts[GameRepetitionKey(position: game.position)] == nil)
+    let replayed = try Game.replay(initialPosition: initialPosition, moves: moves)
+
+    #expect(replayed.moveHistory == moves)
+    #expect(replayed.currentRepetitionCount == 3)
+    #expect(replayed.drawClaims == Set<GameDrawClaim>([.threefoldRepetition]))
+    #expect(replayed.status == .ongoing(drawClaims: Set<GameDrawClaim>([.threefoldRepetition])))
+    #expect(
+        FENSerializer().fen(from: replayed.position)
+            == "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 8 5"
+    )
+
+    let metadataOnly = Game(position: replayed.position, moveHistory: moves)
+    #expect(metadataOnly.moveHistory == moves)
+    #expect(metadataOnly.currentRepetitionCount == 1)
+    #expect(metadataOnly.drawClaims == Set<GameDrawClaim>())
+    #expect(metadataOnly.position == replayed.position)
+}
+
+@Test func gameReplayRejectsIllegalMovesWithPlyContext() throws {
+    let initialPosition = position(from: PGNSerializer.standardStartingFEN)
+    let illegalMove = try Move(string: "e2e5")
+
+    do {
+        _ = try Game.replay(initialPosition: initialPosition, moves: [illegalMove])
+        Issue.record("Expected illegal replay move to throw")
+    } catch let error as GameReplayError {
+        #expect(error == .illegalMove(move: illegalMove, ply: 1))
+    } catch {
+        Issue.record("Expected GameReplayError, got: \(error)")
+    }
+}
+
+@Test func resetReplacesPositionHistoryCountsAndClaimedDraw() throws {
+    let game = game(from: "8/8/8/8/8/6k1/8/R3K3 w - - 0 1")
+    try applyQuietKingCycle(to: game)
+    try applyQuietKingCycle(to: game)
+    try game.claimDraw(.threefoldRepetition)
+
+    let resetPosition = position(from: "4k3/8/8/8/8/8/8/R3K3 w Q - 0 1")
+    let metadataHistory = [try Move(string: "e2e4")]
+
+    game.reset(to: resetPosition, moveHistory: metadataHistory)
+
+    #expect(game.position == resetPosition)
+    #expect(game.moveHistory == metadataHistory)
+    #expect(game.positionCounts == [resetPosition.board: 1])
+    #expect(game.repetitionCounts == [GameRepetitionKey(position: resetPosition): 1])
+    #expect(game.claimedDraw == nil)
     #expect(game.currentRepetitionCount == 1)
     #expect(game.drawClaims == Set<GameDrawClaim>())
     #expect(game.status == .ongoing(drawClaims: Set<GameDrawClaim>()))

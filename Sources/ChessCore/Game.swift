@@ -23,7 +23,10 @@ public class Game {
     public private(set) var moveHistory: [Move]
 
     /// Current position, including board state, side to move, and counters.
-    public var position: Position
+    public private(set) var position: Position
+
+    /// Draw claim that has been made for this game, if any.
+    public private(set) var claimedDraw: GameDrawClaim?
 
     /// `true` when the side to move is currently in check.
     public var isCheck: Bool {
@@ -42,6 +45,18 @@ public class Game {
 
     /// Current status of the game.
     public var status: GameStatus {
+        if let terminalStatus {
+            return terminalStatus
+        }
+
+        if let claimedDraw {
+            return .draw(claimedDraw.drawReason)
+        }
+
+        return .ongoing(drawClaims: self.availableDrawClaims)
+    }
+
+    private var terminalStatus: GameStatus? {
         let legalMoves = self.legalMoves
 
         if legalMoves.isEmpty {
@@ -63,7 +78,7 @@ public class Game {
             return .draw(.fivefoldRepetition)
         }
 
-        return .ongoing(drawClaims: self.drawClaims)
+        return nil
     }
 
     /// Final outcome if the current status has one.
@@ -81,6 +96,18 @@ public class Game {
 
     /// Draw claims currently available to the player to move.
     public var drawClaims: Set<GameDrawClaim> {
+        guard self.claimedDraw == nil else {
+            return []
+        }
+
+        guard self.terminalStatus == nil else {
+            return []
+        }
+
+        return self.availableDrawClaims
+    }
+
+    private var availableDrawClaims: Set<GameDrawClaim> {
         var claims = Set<GameDrawClaim>()
 
         if self.position.counter.halfMoves >= 100 {
@@ -106,21 +133,29 @@ public class Game {
         position: Position,
         moves: [Move],
         positionCounts: [Board: Int],
-        repetitionCounts: [GameRepetitionKey: Int]
+        repetitionCounts: [GameRepetitionKey: Int],
+        claimedDraw: GameDrawClaim? = nil
     ) {
         self.position = position
         self.moveHistory = moves
         self.positionCounts = positionCounts
         self.repetitionCounts = repetitionCounts
+        self.claimedDraw = claimedDraw
         self.rules = StandardRules()
     }
 
     /// Creates a game from an existing position.
     ///
+    /// `moveHistory` is stored as metadata only. It is not replayed and does not
+    /// rebuild counters, castling rights, or repetition counts. Use
+    /// `Game.replay(initialPosition:moves:)` when a concrete move list should
+    /// produce the game state.
+    ///
     /// - Parameters:
     ///   - position: Position to use as the starting point.
-    ///   - moves: Moves that already led to that position.
-    public init(position: Position, moves: [Move] = []) {
+    ///   - moveHistory: Historical moves already known to have led to that
+    ///     position.
+    public init(position: Position, moveHistory: [Move] = []) {
         let repetitionKey = GameRepetitionKey(position: position)
         self.positionCounts = [
             position.board: 1,
@@ -128,8 +163,9 @@ public class Game {
         self.repetitionCounts = [
             repetitionKey: 1,
         ]
-        self.moveHistory = moves
+        self.moveHistory = moveHistory
         self.position = position
+        self.claimedDraw = nil
         self.rules = StandardRules()
     }
 
@@ -137,9 +173,9 @@ public class Game {
     ///
     /// - Parameters:
     ///   - position: Position to use as the starting point.
-    ///   - moves: Moves that already led to that position.
+    ///   - moveHistory: Moves already known to have led to that position.
     ///   - rules: Rule set used to generate and validate moves.
-    internal init(position: Position, moves: [Move] = [], rules: Rules) {
+    internal init(position: Position, moveHistory: [Move] = [], rules: Rules) {
         let repetitionKey = GameRepetitionKey(position: position)
         self.positionCounts = [
             position.board: 1,
@@ -147,9 +183,25 @@ public class Game {
         self.repetitionCounts = [
             repetitionKey: 1,
         ]
-        self.moveHistory = moves
+        self.moveHistory = moveHistory
         self.position = position
+        self.claimedDraw = nil
         self.rules = rules
+    }
+
+    /// Replays legal moves from an initial position and returns the resulting
+    /// game with rebuilt counters, history, and repetition state.
+    public static func replay(initialPosition: Position, moves: [Move]) throws -> Game {
+        let game = Game(position: initialPosition)
+
+        for (offset, move) in moves.enumerated() {
+            guard game.legalMoves.contains(move) else {
+                throw GameReplayError.illegalMove(move: move, ply: offset + 1)
+            }
+            game.apply(move: move)
+        }
+
+        return game
     }
 
     // MARK: Applying moves
@@ -175,6 +227,7 @@ public class Game {
     /// This method assumes the move is legal. Check `legalMoves` first when
     /// accepting input from a user or engine.
     public func apply(move: Move) {
+        self.claimedDraw = nil
         self.moveHistory.append(move)
 
         let enPassant = self.enPassantTarget(after: move)
@@ -196,6 +249,14 @@ public class Game {
             self.repetitionCounts[repetitionKey] = 0
         }
         self.repetitionCounts[repetitionKey]! += 1
+    }
+
+    /// Claims an available draw rule and marks the game as drawn.
+    public func claimDraw(_ claim: GameDrawClaim) throws {
+        guard self.drawClaims.contains(claim) else {
+            throw GameDrawClaimError.unavailable(claim)
+        }
+        self.claimedDraw = claim
     }
 
     private func applyBoardMove(_ move: Move) {
@@ -367,6 +428,20 @@ public class Game {
 
     // MARK: Utilities
 
+    /// Replaces the current position and clears derived game history.
+    public func reset(to position: Position, moveHistory: [Move] = []) {
+        let repetitionKey = GameRepetitionKey(position: position)
+        self.position = position
+        self.moveHistory = moveHistory
+        self.positionCounts = [
+            position.board: 1,
+        ]
+        self.repetitionCounts = [
+            repetitionKey: 1,
+        ]
+        self.claimedDraw = nil
+    }
+
     /// Returns a separate game object with the same position, history, and
     /// repetition counts.
     public func copy() -> Game {
@@ -377,8 +452,20 @@ public class Game {
             position: position,
             moves: moves,
             positionCounts: self.positionCounts,
-            repetitionCounts: self.repetitionCounts
+            repetitionCounts: self.repetitionCounts,
+            claimedDraw: self.claimedDraw
         )
     }
 
+}
+
+private extension GameDrawClaim {
+    var drawReason: GameDrawReason {
+        switch self {
+        case .fiftyMoveRule:
+            return .fiftyMoveRule
+        case .threefoldRepetition:
+            return .threefoldRepetition
+        }
+    }
 }
