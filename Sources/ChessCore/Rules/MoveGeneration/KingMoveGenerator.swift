@@ -51,6 +51,13 @@ class KingMoveGenerator: StepMoveGenerator {
         ]
 
         for castling in castlingRights {
+            let rookFile = castling.kind == .queen ? 0 : 7
+            guard position.board[Square(file: rookFile, rank: rank)]
+                == Piece(kind: .rook, color: position.state.turn)
+            else {
+                continue
+            }
+
             let isEmpty = shouldBeEmpty[castling.kind]!
                 .map {
                     let square = Square(file: $0, rank: rank)

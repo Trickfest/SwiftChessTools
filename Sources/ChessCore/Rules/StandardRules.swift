@@ -83,6 +83,18 @@ public class StandardRules: Rules {
             }
         }
 
+        for offset in moveOffsets.allDirections {
+            let destination = kingSquare.translate(file: offset.0, rank: offset.1)
+            guard destination.isValid else {
+                continue
+            }
+            if bitboards.king & bitboards.bitboard(for: position.state.turn.opposite)
+                & destination.bitboardMask != Int64.zero
+            {
+                return true
+            }
+        }
+
         return false
     }
 
@@ -173,6 +185,10 @@ public class StandardRules: Rules {
 
     private func filterIllegal(moves: [Move], for position: Position) -> [Move] {
         let filter = { (move: Move) -> Bool in
+            if position.board[move.to] == Piece(kind: .king, color: position.state.turn.opposite) {
+                return false
+            }
+
             var nextPosition = position
             nextPosition.board[move.to] = nextPosition.board[move.from]
             nextPosition.board[move.from] = nil
@@ -247,9 +263,8 @@ public class StandardRules: Rules {
         var nextPosition = position
         nextPosition.board[squareBetween] = nextPosition.board[move.from]
         nextPosition.board[move.from] = nil
-        nextPosition.state.turn = nextPosition.state.turn.opposite
 
-        if self.reachableSquares(in: nextPosition).contains(squareBetween) {
+        if self.isCheck(in: nextPosition) {
             return true
         }
 
@@ -257,12 +272,7 @@ public class StandardRules: Rules {
     }
 
     private func isCastlingFromCheck(move: Move, position: Position) -> Bool {
-        var nextPosition = position
-        nextPosition.state.turn = nextPosition.state.turn.opposite
-        if self.reachableSquares(in: nextPosition).contains(move.from) {
-            return true
-        }
-        return false
+        return self.isCheck(in: position)
     }
 
 }

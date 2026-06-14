@@ -49,6 +49,21 @@ private let perftCases: [PerftCase] = [
         fen: "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
         expectedNodeCounts: [1: 46, 2: 2_079, 3: 89_890]
     ),
+    PerftCase(
+        name: "Bare kings in opposite corners",
+        fen: "8/8/8/8/8/8/8/K6k w - - 0 1",
+        expectedNodeCounts: [1: 3, 2: 9]
+    ),
+    PerftCase(
+        name: "Opposed kings restrict movement",
+        fen: "8/8/8/8/8/4K3/8/4k3 w - - 0 1",
+        expectedNodeCounts: [1: 5]
+    ),
+    PerftCase(
+        name: "Stalemate has no legal continuations",
+        fen: "8/8/8/8/8/6k1/5q2/7K w - - 0 1",
+        expectedNodeCounts: [1: 0]
+    ),
 ]
 
 @Test("Known perft node counts", arguments: perftCases)

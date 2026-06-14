@@ -369,6 +369,10 @@ Manual smoke test:
 
 ## Testing
 
+See [Docs/ChessCoreTestingStrategy.md](Docs/ChessCoreTestingStrategy.md) for
+the ChessCore correctness-corpus approach, including the current rule-engine and
+game-state invariant coverage boundaries.
+
 Run all automated tests from the repository root:
 
 ```sh

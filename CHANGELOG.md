@@ -50,6 +50,12 @@ release. Replace `TBD` with the release date when a release is tagged.
 - Expanded PGN coverage with a Lichess CC0 mini-corpus, deterministic generated
   legal-game round trips, 10 long generated stress games, compact movetext and
   escape-line tolerance, and additional SAN ambiguity fixtures.
+- Expanded ChessCore rule-engine and game-state invariant coverage for pins,
+  single and double check, king exposure, castling restrictions, en passant,
+  promotion, stalemate, move counters, castling rights, game copies, and
+  board-only position counts.
+- Added `Docs/ChessCoreTestingStrategy.md` to document the ChessCore
+  correctness-corpus approach and current rule/game-state coverage boundaries.
 
 ### Changed
 
@@ -66,6 +72,10 @@ release. Replace `TBD` with the release date when a release is tagged.
   round trip en-passant SAN such as `exd6`.
 - Fixed SAN parsing normalization so pawn-file SAN such as `bxc5` remains
   distinct from piece SAN such as `Bxc5`.
+- Fixed legal move generation so king captures are never emitted as legal moves.
+- Fixed check detection so adjacent kings count as attacks.
+- Fixed castling generation so castling rights alone are not enough when the
+  corresponding rook is missing from its starting square.
 
 ## 1.0.0 - TBD
 
