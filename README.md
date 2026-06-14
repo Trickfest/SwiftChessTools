@@ -131,6 +131,10 @@ Lichess clock and evaluation comments, and numeric annotation glyphs are
 preserved on move records. Recursive annotation variations are intentionally
 reported as unsupported in the first PGN milestone.
 
+For a ChessCore-only walkthrough, see
+[Docs/ChessCoreTutorial.md](Docs/ChessCoreTutorial.md). For terminology, see
+[Docs/ChessCoreGlossary.md](Docs/ChessCoreGlossary.md).
+
 ## ChessUI Quick Start
 
 Use `ChessUI` when you want a reusable SwiftUI board. The view reports moves;

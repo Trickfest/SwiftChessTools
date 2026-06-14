@@ -64,6 +64,36 @@ private let perftCases: [PerftCase] = [
         fen: "8/8/8/8/8/6k1/5q2/7K w - - 0 1",
         expectedNodeCounts: [1: 0]
     ),
+    PerftCase(
+        name: "Lone kings separated in center files",
+        fen: "8/8/8/8/4K3/8/8/4k3 w - - 0 1",
+        expectedNodeCounts: [1: 8]
+    ),
+    PerftCase(
+        name: "Queen-side castling requires rook and adds one king move",
+        fen: "4k3/8/8/8/8/8/8/R3K3 w Q - 0 1",
+        expectedNodeCounts: [1: 16]
+    ),
+    PerftCase(
+        name: "Castling rights without rooks do not add moves",
+        fen: "4k3/8/8/8/8/8/8/4K3 w KQ - 0 1",
+        expectedNodeCounts: [1: 5]
+    ),
+    PerftCase(
+        name: "White promotion choices are generated",
+        fen: "4k3/P7/8/8/8/8/8/4K3 w - - 0 1",
+        expectedNodeCounts: [1: 9]
+    ),
+    PerftCase(
+        name: "Black promotion choices are generated",
+        fen: "4k3/8/8/8/8/8/p7/4K3 b - - 0 1",
+        expectedNodeCounts: [1: 9]
+    ),
+    PerftCase(
+        name: "Legal en passant adds one pawn capture",
+        fen: "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1",
+        expectedNodeCounts: [1: 7]
+    ),
 ]
 
 @Test("Known perft node counts", arguments: perftCases)

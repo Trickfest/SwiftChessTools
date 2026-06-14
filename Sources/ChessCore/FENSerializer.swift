@@ -146,6 +146,7 @@ public class FENSerializer {
         for (rankOffset, rankSequence) in ranks.enumerated() {
             let rank = 7 - rankOffset
             var file = 0
+            var previousCharacterWasDigit = false
 
             for character in rankSequence {
                 if let piece = Piece(character: character) {
@@ -154,11 +155,16 @@ public class FENSerializer {
                     }
                     board[Square(file: file, rank: rank)] = piece
                     file += 1
+                    previousCharacterWasDigit = false
                 } else if let emptySquares = character.wholeNumberValue {
+                    guard !previousCharacterWasDigit else {
+                        throw FENParsingError.invalidPiecePlacement(String(sequence))
+                    }
                     guard (1...8).contains(emptySquares) else {
                         throw FENParsingError.invalidPiecePlacement(String(sequence))
                     }
                     file += emptySquares
+                    previousCharacterWasDigit = true
                 } else {
                     throw FENParsingError.invalidPiecePlacement(String(sequence))
                 }

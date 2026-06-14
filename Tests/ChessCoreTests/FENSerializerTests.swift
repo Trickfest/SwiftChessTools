@@ -36,6 +36,22 @@ func serialization(fen: String) {
             FENParsingError.invalidPiecePlacement("8/8/8/8/8/8/8")
         ),
         (
+            "8/8/8/8/8/8/8/8/8 w - - 0 1",
+            FENParsingError.invalidPiecePlacement("8/8/8/8/8/8/8/8/8")
+        ),
+        (
+            "9/8/8/8/8/8/8/8 w - - 0 1",
+            FENParsingError.invalidPiecePlacement("9/8/8/8/8/8/8/8")
+        ),
+        (
+            "11/8/8/8/8/8/8/8 w - - 0 1",
+            FENParsingError.invalidPiecePlacement("11/8/8/8/8/8/8/8")
+        ),
+        (
+            "7P1/8/8/8/8/8/8/8 w - - 0 1",
+            FENParsingError.invalidPiecePlacement("7P1/8/8/8/8/8/8/8")
+        ),
+        (
             "8/8/8/8/8/8/8/8 x - - 0 1",
             FENParsingError.invalidActiveColor("x")
         ),
@@ -44,16 +60,32 @@ func serialization(fen: String) {
             FENParsingError.invalidCastlingRights("KKK")
         ),
         (
+            "8/8/8/8/8/8/8/8 w KQkq- - 0 1",
+            FENParsingError.invalidCastlingRights("KQkq-")
+        ),
+        (
             "8/8/8/8/8/8/8/8 w - e4 0 1",
             FENParsingError.invalidEnPassantSquare("e4")
+        ),
+        (
+            "8/8/8/8/8/8/8/8 w - ee 0 1",
+            FENParsingError.invalidEnPassantSquare("ee")
         ),
         (
             "8/8/8/8/8/8/8/8 w - - -1 1",
             FENParsingError.invalidHalfmoveClock("-1")
         ),
         (
+            "8/8/8/8/8/8/8/8 w - - 9999999999999999999999999 1",
+            FENParsingError.invalidHalfmoveClock("9999999999999999999999999")
+        ),
+        (
             "8/8/8/8/8/8/8/8 w - - 0 0",
             FENParsingError.invalidFullmoveNumber("0")
+        ),
+        (
+            "8/8/8/8/8/8/8/8 w - - 0 9999999999999999999999999",
+            FENParsingError.invalidFullmoveNumber("9999999999999999999999999")
         ),
     ])
 func parsingFailure(fen: String, expectedError: FENParsingError) {

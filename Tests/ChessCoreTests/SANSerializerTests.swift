@@ -32,11 +32,13 @@ let testables: [(String, String, String)] = [
     ("Nfxd4", "f3d4", "1n2k1n1/8/8/8/3p4/1N3N2/8/4K3 w - - 0 1"),
     ("N1xf3", "g1f3", "4k3/8/8/6N1/8/5p2/8/4K1N1 w - - 0 1"),
     ("N5xf3", "g5f3", "4k3/8/8/6N1/8/5p2/8/4K1N1 w - - 0 1"),
+    ("Nb2c4", "b2c4", "7k/8/1N6/8/8/8/1N1N4/4K3 w - - 0 1"),
 
     // Pawn captures.
     ("exd4", "e5d4", "r1bqkbnr/pppp1ppp/2n5/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R b KQkq - 0 3"),
     ("exf6", "e5f6", "r1bqkb1r/pppppppp/2n2n2/4P3/8/8/PPPP1PPP/RNBQKBNR w KQkq - 1 3"),
     ("exd6", "e5d6", "rnbqkbnr/pp2pppp/8/2ppP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3"),
+    ("exd6+", "e5d6", "4k3/8/8/3pP3/8/8/8/4R2K w - d6 0 1"),
     ("bxc6", "b7c6", "4kb1r/1p1n1pp1/1qR1p1n1/p2p4/3P3p/1P3N1P/P2N1PPB/3Q1RK1 b k - 0 17"),
     ("exd5", "e6d5", "r1bqkb1r/pp1n1ppp/2p1pn2/3P2B1/3P4/2N1P3/PP3PPP/R2QKBNR b KQkq - 0 6"),
 
@@ -59,6 +61,7 @@ let testables: [(String, String, String)] = [
     ("a1=N", "a2a1n", "4k3/8/8/7p/6p1/2N3P1/p4PKP/8 b - - 0 1"),
     ("e8=R+", "e7e8r", "r6k/4P3/1R4Q1/8/7p/7P/6PK/8 w - - 1 42"),
     ("exd8=Q+", "e7d8q", "3r3k/4P3/8/8/8/8/8/4K3 w - - 0 1"),
+    ("cxb8=Q#", "c7b8q", "1r2k3/2P5/4K3/8/8/8/8/8 w - - 0 1"),
 ]
 
 // MARK: Serialization

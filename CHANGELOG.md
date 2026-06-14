@@ -56,6 +56,14 @@ release. Replace `TBD` with the release date when a release is tagged.
   board-only position counts.
 - Added `Docs/ChessCoreTestingStrategy.md` to document the ChessCore
   correctness-corpus approach and current rule/game-state coverage boundaries.
+- Expanded the ChessCore rule-engine corpus with additional perft positions,
+  castling stress cases, pinned-piece fixtures, protected-piece captures,
+  promotion, en-passant, and simple endgame coverage.
+- Added deterministic FEN and SAN notation round-trip tests over generated legal
+  games plus targeted SAN ambiguity, en-passant check, and promotion-checkmate
+  fixtures.
+- Added `Docs/ChessCoreTutorial.md` and `Docs/ChessCoreGlossary.md` as
+  ChessCore-only learning references for rules, notation, PGN, and terminology.
 
 ### Changed
 
@@ -76,6 +84,8 @@ release. Replace `TBD` with the release date when a release is tagged.
 - Fixed check detection so adjacent kings count as attacks.
 - Fixed castling generation so castling rights alone are not enough when the
   corresponding rook is missing from its starting square.
+- Fixed FEN parsing so adjacent empty-square digit runs such as `11` are
+  rejected instead of accepted as valid piece placement.
 
 ## 1.0.0 - TBD
 

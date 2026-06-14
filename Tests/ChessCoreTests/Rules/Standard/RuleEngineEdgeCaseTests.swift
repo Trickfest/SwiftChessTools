@@ -20,6 +20,28 @@ import Testing
     )
 }
 
+@Test func pinnedKnightCannotMoveWhenItShieldsKing() throws {
+    expectLegalMoves(
+        for: "e2",
+        in: "4r1k1/8/8/8/8/8/4N3/4K3 w - - 0 1",
+        equal: ""
+    )
+
+    expectLegalMoves(
+        in: "4r1k1/8/8/8/8/8/4N3/4K3 w - - 0 1",
+        include: ["e1d1", "e1d2", "e1f1", "e1f2"],
+        exclude: ["e2c1", "e2c3", "e2d4", "e2f4", "e2g1", "e2g3"]
+    )
+}
+
+@Test func pinnedBishopCanCapturePinningPieceAlongDiagonal() throws {
+    expectLegalMoves(
+        for: "d3",
+        in: "7k/8/8/8/4b3/3B4/2K5/8 w - - 0 1",
+        equal: "d3e4"
+    )
+}
+
 @Test func singleCheckCanBeAnsweredByBlockCaptureOrKingMove() throws {
     let fen = "4r1k1/8/8/8/8/8/3B4/4K3 w - - 0 1"
 
@@ -107,6 +129,37 @@ import Testing
         in: "4k3/8/8/8/8/8/8/R3K2R w - - 0 1",
         exclude: ["e1g1", "e1c1"]
     )
+
+    expectLegalMoves(
+        in: "4k3/8/8/8/8/8/8/4K3 b kq - 0 1",
+        exclude: ["e8g8", "e8c8"]
+    )
+}
+
+@Test func blackCastlingRejectsAttackedTransitAndDestinationSquares() throws {
+    expectLegalMoves(
+        in: "r3k2r/8/8/6B1/8/8/8/4K3 b kq - 0 1",
+        include: ["e8g8"],
+        exclude: ["e8c8"]
+    )
+
+    expectLegalMoves(
+        in: "r3k2r/8/8/5B2/8/8/8/4K3 b kq - 0 1",
+        include: ["e8g8"],
+        exclude: ["e8c8"]
+    )
+
+    expectLegalMoves(
+        in: "r3k2r/8/8/2B5/8/8/8/4K3 b kq - 0 1",
+        include: ["e8c8"],
+        exclude: ["e8g8"]
+    )
+
+    expectLegalMoves(
+        in: "r3k2r/8/8/8/8/1B6/8/4K3 b kq - 0 1",
+        include: ["e8c8"],
+        exclude: ["e8g8"]
+    )
 }
 
 @Test func promotionMovesIncludeAllChoicesAndNoBareFinalRankMove() throws {
@@ -128,6 +181,14 @@ import Testing
     expectLegalMoves(
         in: "4k3/8/8/8/8/8/4Q3/4K3 w - - 0 1",
         exclude: ["e2e8"]
+    )
+}
+
+@Test func kingCannotCaptureProtectedPiece() throws {
+    expectLegalMoves(
+        in: "8/8/8/8/3q4/2k5/4K3/8 w - - 0 1",
+        include: ["e2e1", "e2f1", "e2f3"],
+        exclude: ["e2d3", "e2d4", "e2e3"]
     )
 }
 
