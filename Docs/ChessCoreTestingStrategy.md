@@ -102,6 +102,68 @@ The first notation round-trip milestone is complete when tests cover:
   empty-square digits, invalid castling strings, invalid en-passant squares, and
   counters outside `Int` range
 
+## python-chess Coverage Audit Matrix
+
+`python-chess` is useful as an external coverage checklist and temporary oracle,
+but its GPL-licensed tests and fixtures should not be copied into this package.
+When a useful category is found, write original Swift tests with synthetic
+positions or Lichess CC0 fixtures, and use a temporary `python-chess` install
+only to confirm expected values.
+
+This audit is based on an inspection of upstream `python-chess` test categories
+from commit `8330cfd5dbb9401f0e85be92cf408d6482505642`. The categories are
+classified as:
+
+- `Covered`: Current ChessCore tests already exercise the category adequately.
+- `Add next`: Good candidate for the next deterministic ChessCore test pass.
+- `Future API`: Useful only after ChessCore exposes more public behavior.
+- `Out of scope`: Not a current ChessCore responsibility.
+
+| Area | python-chess coverage signal | ChessCore status | Action | Priority |
+| --- | --- | --- | --- | --- |
+| Squares | Square construction, parsing, shifts, distance helpers. | Construction, coordinates, and translation are covered. Distance helpers are not public ChessCore API. | Covered | Low |
+| Moves | UCI-style move parsing, invalid move text, copy/equality, null/drop moves. | Coordinate parsing, invalid inputs, equality, and promotion spelling are covered. Null moves and drops are not standard ChessCore API. | Covered | Low |
+| Pieces | Symbol parsing, equality, hashing. | Piece equality and character mapping are covered. | Covered | Low |
+| Board storage | Default/empty boards, get/set/remove pieces, color lookup, piece maps. | Board square/index/coordinate access, copy independence, and enumeration are covered. | Covered | Low |
+| FEN syntax | Valid FEN, malformed FEN, counters, en-passant fields, castling fields. | Serialization, malformed fields, generated round trips, adjacent digit rejection, and counter bounds are covered. | Covered | Low |
+| FEN semantic status | Bad castling rights, multiple kings, impossible or inconsistent positions. | ChessCore parses FEN syntax but does not expose a full position-status API. | Future API | Medium |
+| EPD | EPD parsing, operations, best-move fields. | ChessCore does not support EPD. | Out of scope | Low |
+| Legal move generation | Legal move lists, move counts, perft-style fixtures, pseudo-legal distinctions. | Focused legal-move fixtures and 15 perft positions are covered. More standard-position corpus cases remain valuable. | Add next | High |
+| Castling | SAN castling, selective castling, missing/invalid rights, rook/king edge cases, Chess960 castling. | Standard castling rights, missing rooks, attacked transit/destination, and application are covered. Chess960 is out of scope. More standard castling regression positions are useful. | Add next | High |
+| En passant | Legal captures, attackers, impossible/skewered captures, check evasion, pinned-file cases. | Basic en passant, lifecycle, discovered-check rejection, SAN, and PGN are covered. Skewer/pin/evasion variants should be expanded. | Add next | High |
+| Promotion | Promotion generation, SAN, check/checkmate promotion, underpromotion. | Promotion choices, application, SAN, PGN promotion, and underpromotion are covered. More promotion-check and promotion-capture variants are useful. | Add next | Medium |
+| Attacks and pins | Attack maps, pin direction, pin while in check. | Public legal-move behavior for pins, double check, shielding pieces, and protected-piece king captures is covered. Direct attack-map APIs are not public. | Add next | Medium |
+| Checkmate and stalemate | Scholar's mate, mate detection, stalemate, legal moves after terminal states. | Check, checkmate, and stalemate have focused coverage. A larger terminal-position corpus would be useful. | Add next | Medium |
+| Draw and outcome rules | Insufficient material, threefold/fivefold repetition, fifty/seventy-five move rules, outcome. | ChessCore does not expose full game-outcome or draw-claim APIs. Existing `positionCounts` is board-count-only and covered at that level. | Future API | High |
+| SAN parsing/export | SAN generation, parsing, ambiguous moves, castling, promotion, checkmate, long algebraic notation. | Core SAN, generated round trips, ambiguity, en-passant, promotion, checkmate, and regression cases are covered. Additional malformed and dialect-tolerance cases are useful. | Add next | High |
+| PGN basic import/export | Tag roster, setup/FEN, comments, NAGs, headers, no tag roster, empty games, export visitors. | Mainline import/export, tags, FEN-backed games, comments, NAGs, malformed input, and round trips are covered. More dialect fixtures are useful. | Add next | High |
+| PGN dialect tolerance | UTF-8 BOM, semicolon comments, odd headers, empty lines, UCI/LAN movetext, ChessBase quirks. | Compact movetext, escape lines, semicolon comments, and Lichess samples are covered. BOM, empty-line, odd-header, and non-SAN dialect fixtures are candidates. | Add next | Medium |
+| PGN variations | Tree traversal, promote/demote variations, recursive variation handling. | Recursive variations are intentionally rejected in the first PGN milestone. | Future API | Medium |
+| PGN annotation details | Symbolic annotations, eval comments, clock comments, elapsed-move-time fields. | Comments, NAGs, Lichess clock/eval comments are covered. Symbolic annotation mapping and elapsed-time variants can be deepened. | Add next | Medium |
+| PGN variants | Chess960, Crazyhouse, antichess, and other variant PGNs. | ChessCore currently targets standard chess. | Out of scope | Low |
+| Opening books | Polyglot reader behavior. | ChessCore does not read opening books. | Out of scope | Low |
+| Engine protocols | UCI/XBoard engine communication. | Engine integration belongs outside ChessCore; this workspace has separate Stockfish work. | Out of scope | Low |
+| Tablebases | Syzygy and Gaviota probing. | ChessCore does not probe endgame tablebases. | Out of scope | Low |
+| Rendering | SVG board and piece rendering. | Rendering belongs to ChessUI or app code, not ChessCore. | Out of scope | Low |
+| Variants | Suicide, Atomic, Racing Kings, Horde, Three-check, Crazyhouse, Giveaway. | ChessCore currently targets standard chess only. | Out of scope | Low |
+
+### Recommended Next Test Pass
+
+After this matrix is reviewed, the next implementation pass should focus on the
+`Add next` rows with high priority:
+
+- expand standard legal-move/perft corpus with more independently checked
+  positions
+- add more standard castling regressions around rook/king edge cases
+- add en-passant pin, skewer, and check-evasion fixtures
+- deepen SAN malformed-input and dialect-tolerance coverage
+- deepen PGN dialect coverage for BOM, empty lines, odd headers, and additional
+  annotation spellings
+
+Rows marked `Future API` should not be forced into tests until ChessCore exposes
+the relevant behavior. Rows marked `Out of scope` should stay out unless the
+package direction changes.
+
 ## Regression Policy
 
 Every bug fix should include the narrowest permanent regression test that would

@@ -64,6 +64,9 @@ release. Replace `TBD` with the release date when a release is tagged.
   fixtures.
 - Added `Docs/ChessCoreTutorial.md` and `Docs/ChessCoreGlossary.md` as
   ChessCore-only learning references for rules, notation, PGN, and terminology.
+- Added a `python-chess` coverage audit matrix to the ChessCore testing
+  strategy to guide future original Swift test expansion without adding a
+  dependency or copying GPL-licensed fixtures.
 
 ### Changed
 
