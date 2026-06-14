@@ -94,6 +94,66 @@ private let perftCases: [PerftCase] = [
         fen: "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1",
         expectedNodeCounts: [1: 7]
     ),
+    PerftCase(
+        name: "White en passant horizontal skewer rejects capture",
+        fen: "4k3/8/8/r4pPK/8/8/8/8 w - f6 0 1",
+        expectedNodeCounts: [1: 4, 2: 66, 3: 289]
+    ),
+    PerftCase(
+        name: "Black en passant horizontal skewer rejects capture",
+        fen: "8/8/8/8/R4Ppk/8/8/4K3 b - f3 0 1",
+        expectedNodeCounts: [1: 4, 2: 66, 3: 289]
+    ),
+    PerftCase(
+        name: "White en passant can evade pawn check",
+        fen: "4k3/8/8/3pP3/4K3/8/8/8 w - d6 0 1",
+        expectedNodeCounts: [1: 8, 2: 44, 3: 316]
+    ),
+    PerftCase(
+        name: "Black en passant can evade pawn check",
+        fen: "8/8/8/4k3/3Pp3/8/8/4K3 b - d3 0 1",
+        expectedNodeCounts: [1: 8, 2: 44, 3: 316]
+    ),
+    PerftCase(
+        name: "White queen-side castling ignores attack on b1",
+        fen: "4k3/8/8/8/8/8/b7/R3K3 w Q - 0 1",
+        expectedNodeCounts: [1: 10, 2: 109, 3: 1_631]
+    ),
+    PerftCase(
+        name: "Black queen-side castling ignores attack on b8",
+        fen: "r3k3/B7/8/8/8/8/8/4K3 b q - 0 1",
+        expectedNodeCounts: [1: 10, 2: 109, 3: 1_631]
+    ),
+    PerftCase(
+        name: "White queen-side castling requires b1 to be empty",
+        fen: "4k3/8/8/8/8/8/8/RB2K3 w Q - 0 1",
+        expectedNodeCounts: [1: 19, 2: 87]
+    ),
+    PerftCase(
+        name: "Black queen-side castling requires b8 to be empty",
+        fen: "rn2k3/8/8/8/8/8/8/4K3 b q - 0 1",
+        expectedNodeCounts: [1: 15, 2: 70]
+    ),
+    PerftCase(
+        name: "Castling rejected while king is in knight check",
+        fen: "4k3/8/8/8/8/5n2/8/R3K2R w KQ - 0 1",
+        expectedNodeCounts: [1: 4, 2: 52, 3: 1_296]
+    ),
+    PerftCase(
+        name: "Promotion captures include all choices",
+        fen: "3r3k/4P3/8/8/8/8/8/4K3 w - - 0 1",
+        expectedNodeCounts: [1: 11, 2: 91, 3: 933]
+    ),
+    PerftCase(
+        name: "Fool's mate has no legal continuations",
+        fen: "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3",
+        expectedNodeCounts: [1: 0]
+    ),
+    PerftCase(
+        name: "Corner queen stalemate has no legal continuations",
+        fen: "7k/5K2/6Q1/8/8/8/8/8 b - - 0 1",
+        expectedNodeCounts: [1: 0]
+    ),
 ]
 
 @Test("Known perft node counts", arguments: perftCases)

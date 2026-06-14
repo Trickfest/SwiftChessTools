@@ -67,6 +67,9 @@ release. Replace `TBD` with the release date when a release is tagged.
 - Added a `python-chess` coverage audit matrix to the ChessCore testing
   strategy to guide future original Swift test expansion without adding a
   dependency or copying GPL-licensed fixtures.
+- Expanded high-priority ChessCore audit coverage for legal move generation,
+  castling, en passant, SAN parsing, and PGN import/export edge cases, including
+  a 27-position perft corpus.
 
 ### Changed
 
@@ -89,6 +92,8 @@ release. Replace `TBD` with the release date when a release is tagged.
   corresponding rook is missing from its starting square.
 - Fixed FEN parsing so adjacent empty-square digit runs such as `11` are
   rejected instead of accepted as valid piece placement.
+- Fixed PGN parsing so a UTF-8 byte-order marker at the start of input is
+  ignored instead of being treated as movetext.
 
 ## 1.0.0 - TBD
 

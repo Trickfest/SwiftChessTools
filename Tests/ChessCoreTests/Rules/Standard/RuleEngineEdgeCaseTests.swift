@@ -99,6 +99,34 @@ import Testing
     )
 }
 
+@Test func enPassantHorizontalSkewersAreRejectedForBothColors() throws {
+    expectLegalMoves(
+        in: "4k3/8/8/r4pPK/8/8/8/8 w - f6 0 1",
+        include: ["g5g6", "h5g6", "h5h4", "h5h6"],
+        exclude: ["g5f6"]
+    )
+
+    expectLegalMoves(
+        in: "8/8/8/8/R4Ppk/8/8/4K3 b - f3 0 1",
+        include: ["g4g3", "h4g3", "h4h3", "h4h5"],
+        exclude: ["g4f3"]
+    )
+}
+
+@Test func enPassantCanEvadePawnCheckForBothColors() throws {
+    expectLegalMoves(
+        in: "4k3/8/8/3pP3/4K3/8/8/8 w - d6 0 1",
+        include: ["e5d6"],
+        exclude: ["e5e6"]
+    )
+
+    expectLegalMoves(
+        in: "8/8/8/4k3/3Pp3/8/8/4K3 b - d3 0 1",
+        include: ["e4d3"],
+        exclude: ["e4e3"]
+    )
+}
+
 @Test func enPassantTargetWithoutAdjacentCapturingPawnDoesNotCreateCapture() throws {
     let legalMoves = legalMoveStrings(in: "7k/8/8/3p4/8/8/4P3/4K3 w - d6 0 1")
 
@@ -136,6 +164,54 @@ import Testing
     )
 }
 
+@Test func castlingUsesKingPathSafetyNotRookPathAttackSafety() throws {
+    expectLegalMoves(
+        in: "4k3/8/8/8/8/8/b7/R3K3 w Q - 0 1",
+        include: ["e1c1"],
+        exclude: []
+    )
+
+    expectLegalMoves(
+        in: "r3k3/B7/8/8/8/8/8/4K3 b q - 0 1",
+        include: ["e8c8"],
+        exclude: []
+    )
+}
+
+@Test func queenSideCastlingRequiresAllSquaresBetweenKingAndRookToBeEmpty() throws {
+    expectLegalMoves(
+        in: "4k3/8/8/8/8/8/8/RB2K3 w Q - 0 1",
+        exclude: ["e1c1"]
+    )
+
+    expectLegalMoves(
+        in: "rn2k3/8/8/8/8/8/8/4K3 b q - 0 1",
+        exclude: ["e8c8"]
+    )
+}
+
+@Test func castlingRightsRequireMatchingRookColor() throws {
+    expectLegalMoves(
+        in: "4k3/8/8/8/8/8/r7/4K2R w KQ - 0 1",
+        include: ["e1g1"],
+        exclude: ["e1c1"]
+    )
+
+    expectLegalMoves(
+        in: "4k2r/R7/8/8/8/8/8/4K3 b kq - 0 1",
+        include: ["e8g8"],
+        exclude: ["e8c8"]
+    )
+}
+
+@Test func castlingIsRejectedWhileKingIsInKnightCheck() throws {
+    expectLegalMoves(
+        in: "4k3/8/8/8/8/5n2/8/R3K2R w KQ - 0 1",
+        include: ["e1d1", "e1e2", "e1f1", "e1f2"],
+        exclude: ["e1g1", "e1c1"]
+    )
+}
+
 @Test func blackCastlingRejectsAttackedTransitAndDestinationSquares() throws {
     expectLegalMoves(
         in: "r3k2r/8/8/6B1/8/8/8/4K3 b kq - 0 1",
@@ -162,10 +238,36 @@ import Testing
     )
 }
 
+@Test func terminalPositionsHaveNoLegalContinuations() throws {
+    let checkmate = try FENSerializer().position(
+        from: "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3"
+    )
+    let stalemate = try FENSerializer().position(
+        from: "7k/5K2/6Q1/8/8/8/8/8 b - - 0 1"
+    )
+
+    let checkmateGame = Game(position: checkmate)
+    let stalemateGame = Game(position: stalemate)
+
+    #expect(checkmateGame.isCheck)
+    #expect(checkmateGame.isCheckmate)
+    #expect(checkmateGame.legalMoves.isEmpty)
+
+    #expect(!stalemateGame.isCheck)
+    #expect(!stalemateGame.isCheckmate)
+    #expect(stalemateGame.legalMoves.isEmpty)
+}
+
 @Test func promotionMovesIncludeAllChoicesAndNoBareFinalRankMove() throws {
     expectLegalMoves(
         for: "e7",
         in: "3n4/4P3/8/8/8/8/8/4K2k w - - 0 1",
+        equal: "e7d8q e7d8r e7d8b e7d8n e7e8q e7e8r e7e8b e7e8n"
+    )
+
+    expectLegalMoves(
+        for: "e7",
+        in: "3r3k/4P3/8/8/8/8/8/4K3 w - - 0 1",
         equal: "e7d8q e7d8r e7d8b e7d8n e7e8q e7e8r e7e8b e7e8n"
     )
 

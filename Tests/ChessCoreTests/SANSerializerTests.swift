@@ -120,6 +120,19 @@ func move(from san: String, in fen: String) -> String {
     #expect(try! SANSerializer().move(for: "0-0", in: game).description == "e1g1")
 }
 
+@Test func deserializationToleratesOptionalAndDecorativeCheckSuffixes() {
+    let start = Game(position: try! FENSerializer().position(from: PGNSerializer.standardStartingFEN))
+    #expect(try! SANSerializer().move(for: "e4+", in: start).description == "e2e4")
+    #expect(try! SANSerializer().move(for: "e4#", in: start).description == "e2e4")
+
+    let scholarMate = Game(position: try! FENSerializer().position(
+        from: "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4"
+    ))
+    #expect(try! SANSerializer().move(for: "Qxf7", in: scholarMate).description == "h5f7")
+    #expect(try! SANSerializer().move(for: "Qxf7+", in: scholarMate).description == "h5f7")
+    #expect(try! SANSerializer().move(for: "Qxf7#", in: scholarMate).description == "h5f7")
+}
+
 @Test func deserializationKeepsPawnFilesDistinctFromPieceLetters() {
     let game = Game(position: try! FENSerializer().position(
         from: "8/rP6/np2p2k/1PR2p2/Pb6/5P2/q7/2K5 b - - 0 66"
@@ -127,6 +140,30 @@ func move(from san: String, in fen: String) -> String {
 
     #expect(try! SANSerializer().move(for: "Bxc5", in: game).description == "b4c5")
     #expect(try! SANSerializer().move(for: "bxc5", in: game).description == "b6c5")
+}
+
+@Test func deserializationRejectsMissingDisambiguationAndCoordinateNotation() {
+    let ambiguousKnights = Game(position: try! FENSerializer().position(
+        from: "1n2k1n1/8/8/8/8/1N3N2/8/4K3 w - - 0 1"
+    ))
+    do {
+        _ = try SANSerializer().move(for: "Nd4", in: ambiguousKnights)
+        Issue.record("Expected ambiguous missing-disambiguation SAN to fail")
+    } catch let error as SANParsingError {
+        #expect(error == .noMatchingLegalMove("Nd4"))
+    } catch {
+        Issue.record("Expected SANParsingError, got: \(error)")
+    }
+
+    let start = Game(position: try! FENSerializer().position(from: PGNSerializer.standardStartingFEN))
+    do {
+        _ = try SANSerializer().move(for: "e2e4", in: start)
+        Issue.record("Expected coordinate notation to fail SAN parsing")
+    } catch let error as SANParsingError {
+        #expect(error == .noMatchingLegalMove("e2e4"))
+    } catch {
+        Issue.record("Expected SANParsingError, got: \(error)")
+    }
 }
 
 @Test func deserializationFailureIsReported() {

@@ -10,11 +10,11 @@ cases should be synthetic or hand-authored.
 
 ## Current Coverage Shape
 
-- Rule-engine tests cover known perft positions, focused legal move lists, pawn
-  movement, castling restrictions, king safety, pins, checks, double check,
+- Rule-engine tests cover 27 known perft positions, focused legal move lists,
+  pawn movement, castling restrictions, king safety, pins, checks, double check,
   discovered-check exposure, en passant edge cases, promotion choices, king
   capture exclusion, protected-piece captures, black and white castling stress,
-  and stalemate.
+  checkmate, and stalemate.
 - Game-state invariant tests cover move counters, en passant lifecycle,
   castling-right mutation, promotion application, game copy independence, and
   board-only position counting.
@@ -22,10 +22,12 @@ cases should be synthetic or hand-authored.
   trips, and malformed input errors.
 - SAN tests cover parse/export behavior, checkmate, castling spelling,
   en-passant SAN, pawn-file case sensitivity, generated legal-move round trips,
-  targeted ambiguity, promotion, and parser failures.
+  targeted ambiguity, optional/decorative check suffixes, promotion, and parser
+  failures.
 - PGN tests cover validated import/export, multi-game parsing, FEN-backed games,
-  comments, NAGs, malformed input, result mismatches, Lichess CC0 samples,
-  generated legal-game round trips, and long deterministic stress games.
+  UTF-8 BOM input, sparse tag rosters, odd tag names, comments, NAGs, malformed
+  input, result mismatches, Lichess CC0 samples, generated legal-game round
+  trips, and long deterministic stress games.
 
 ## Phase 2 Boundary: Game-State Invariants
 
@@ -78,7 +80,7 @@ FEN/SAN round trips, and new regression tests for every bug found.
 The second rule-engine corpus milestone deepens the first pass without trying to
 test every possible chess position. It is complete when tests add:
 
-- a larger perft corpus, currently 15 deterministic positions
+- a larger perft corpus, currently 27 deterministic positions
 - extra castling positions for missing rooks, attacked transit squares, and
   attacked destination squares
 - extra pinned-piece cases, including pinned knights and bishops
@@ -128,16 +130,16 @@ classified as:
 | FEN syntax | Valid FEN, malformed FEN, counters, en-passant fields, castling fields. | Serialization, malformed fields, generated round trips, adjacent digit rejection, and counter bounds are covered. | Covered | Low |
 | FEN semantic status | Bad castling rights, multiple kings, impossible or inconsistent positions. | ChessCore parses FEN syntax but does not expose a full position-status API. | Future API | Medium |
 | EPD | EPD parsing, operations, best-move fields. | ChessCore does not support EPD. | Out of scope | Low |
-| Legal move generation | Legal move lists, move counts, perft-style fixtures, pseudo-legal distinctions. | Focused legal-move fixtures and 15 perft positions are covered. More standard-position corpus cases remain valuable. | Add next | High |
-| Castling | SAN castling, selective castling, missing/invalid rights, rook/king edge cases, Chess960 castling. | Standard castling rights, missing rooks, attacked transit/destination, and application are covered. Chess960 is out of scope. More standard castling regression positions are useful. | Add next | High |
-| En passant | Legal captures, attackers, impossible/skewered captures, check evasion, pinned-file cases. | Basic en passant, lifecycle, discovered-check rejection, SAN, and PGN are covered. Skewer/pin/evasion variants should be expanded. | Add next | High |
+| Legal move generation | Legal move lists, move counts, perft-style fixtures, pseudo-legal distinctions. | Focused legal-move fixtures and 27 perft positions are covered, including more castling, en-passant, promotion, checkmate, and stalemate positions. | Covered | Low |
+| Castling | SAN castling, selective castling, missing/invalid rights, rook/king edge cases, Chess960 castling. | Standard castling rights, missing rooks, matching rook color, attacked transit/destination, in-check rejection, b-file occupancy, rook-path attack tolerance, and application are covered. Chess960 is out of scope. | Covered | Low |
+| En passant | Legal captures, attackers, impossible/skewered captures, check evasion, pinned-file cases. | En passant lifecycle, SAN/PGN replay, discovered-check rejection, horizontal skewers for both colors, and pawn-check evasion for both colors are covered. | Covered | Low |
 | Promotion | Promotion generation, SAN, check/checkmate promotion, underpromotion. | Promotion choices, application, SAN, PGN promotion, and underpromotion are covered. More promotion-check and promotion-capture variants are useful. | Add next | Medium |
 | Attacks and pins | Attack maps, pin direction, pin while in check. | Public legal-move behavior for pins, double check, shielding pieces, and protected-piece king captures is covered. Direct attack-map APIs are not public. | Add next | Medium |
 | Checkmate and stalemate | Scholar's mate, mate detection, stalemate, legal moves after terminal states. | Check, checkmate, and stalemate have focused coverage. A larger terminal-position corpus would be useful. | Add next | Medium |
 | Draw and outcome rules | Insufficient material, threefold/fivefold repetition, fifty/seventy-five move rules, outcome. | ChessCore does not expose full game-outcome or draw-claim APIs. Existing `positionCounts` is board-count-only and covered at that level. | Future API | High |
-| SAN parsing/export | SAN generation, parsing, ambiguous moves, castling, promotion, checkmate, long algebraic notation. | Core SAN, generated round trips, ambiguity, en-passant, promotion, checkmate, and regression cases are covered. Additional malformed and dialect-tolerance cases are useful. | Add next | High |
-| PGN basic import/export | Tag roster, setup/FEN, comments, NAGs, headers, no tag roster, empty games, export visitors. | Mainline import/export, tags, FEN-backed games, comments, NAGs, malformed input, and round trips are covered. More dialect fixtures are useful. | Add next | High |
-| PGN dialect tolerance | UTF-8 BOM, semicolon comments, odd headers, empty lines, UCI/LAN movetext, ChessBase quirks. | Compact movetext, escape lines, semicolon comments, and Lichess samples are covered. BOM, empty-line, odd-header, and non-SAN dialect fixtures are candidates. | Add next | Medium |
+| SAN parsing/export | SAN generation, parsing, ambiguous moves, castling, promotion, checkmate, long algebraic notation. | Core SAN, generated round trips, ambiguity, en-passant, promotion, checkmate, optional/decorative check suffixes, coordinate-notation rejection, and missing-disambiguation rejection are covered. Long algebraic notation is not currently accepted as SAN. | Covered | Low |
+| PGN basic import/export | Tag roster, setup/FEN, comments, NAGs, headers, no tag roster, empty games, export visitors. | Mainline import/export, sparse and full tag rosters, odd tag names, FEN-backed games, empty games, leading comments, comments, NAGs, invalid NAGs, malformed input, and round trips are covered. | Covered | Low |
+| PGN dialect tolerance | UTF-8 BOM, semicolon comments, odd headers, empty lines, UCI/LAN movetext, ChessBase quirks. | UTF-8 BOM input, compact movetext, escape lines, semicolon comments, odd tag names, empty games, and Lichess samples are covered. Non-SAN UCI/LAN movetext and broader ChessBase quirks remain future decisions. | Add next | Medium |
 | PGN variations | Tree traversal, promote/demote variations, recursive variation handling. | Recursive variations are intentionally rejected in the first PGN milestone. | Future API | Medium |
 | PGN annotation details | Symbolic annotations, eval comments, clock comments, elapsed-move-time fields. | Comments, NAGs, Lichess clock/eval comments are covered. Symbolic annotation mapping and elapsed-time variants can be deepened. | Add next | Medium |
 | PGN variants | Chess960, Crazyhouse, antichess, and other variant PGNs. | ChessCore currently targets standard chess. | Out of scope | Low |
@@ -147,22 +149,24 @@ classified as:
 | Rendering | SVG board and piece rendering. | Rendering belongs to ChessUI or app code, not ChessCore. | Out of scope | Low |
 | Variants | Suicide, Atomic, Racing Kings, Horde, Three-check, Crazyhouse, Giveaway. | ChessCore currently targets standard chess only. | Out of scope | Low |
 
-### Recommended Next Test Pass
+### High-Priority Current-API Pass Boundary
 
-After this matrix is reviewed, the next implementation pass should focus on the
-`Add next` rows with high priority:
+The high-priority current-API audit pass is complete when tests cover:
 
-- expand standard legal-move/perft corpus with more independently checked
-  positions
-- add more standard castling regressions around rook/king edge cases
-- add en-passant pin, skewer, and check-evasion fixtures
-- deepen SAN malformed-input and dialect-tolerance coverage
-- deepen PGN dialect coverage for BOM, empty lines, odd headers, and additional
-  annotation spellings
+- a 27-position perft corpus with added castling, en-passant, promotion,
+  checkmate, and stalemate positions
+- castling edge cases for matching rook color, b-file occupancy, rook-path
+  attack tolerance, and in-check rejection
+- en-passant horizontal skewer rejection and pawn-check evasion for both colors
+- SAN tolerance and rejection boundaries for decorative check suffixes,
+  coordinate notation, and missing disambiguation
+- PGN sparse tag rosters, UTF-8 BOM input, odd tag names, empty games, leading
+  comments, invalid result tags, and invalid NAGs
 
-Rows marked `Future API` should not be forced into tests until ChessCore exposes
-the relevant behavior. Rows marked `Out of scope` should stay out unless the
-package direction changes.
+The `Draw and outcome rules` row remains high priority but `Future API` because
+ChessCore does not yet expose insufficient-material, repetition-claim, or
+fifty/seventy-five-move outcome behavior. Rows marked `Out of scope` should stay
+out unless the package direction changes.
 
 ## Regression Policy
 

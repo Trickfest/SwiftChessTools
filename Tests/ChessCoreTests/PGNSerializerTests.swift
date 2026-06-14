@@ -116,6 +116,31 @@ import Testing
     #expect(exported.contains(#"[Event "Quote \" and slash \\"]"#))
 }
 
+@Test func pgnParsesUTF8BOMMissingRosterAndOddTagNames() throws {
+    let pgn = "\u{FEFF}" + """
+        [Event "BOM And Sparse Tags"]
+        [White-Team "A"]
+        [Black_Title "GM"]
+        [Result "*"]
+
+        *
+        """
+
+    let serializer = PGNSerializer()
+    let game = try serializer.game(from: pgn)
+    let exported = serializer.pgn(from: game)
+
+    #expect(game.moveRecords.isEmpty)
+    #expect(game.tagValue(for: "Event") == "BOM And Sparse Tags")
+    #expect(game.tagValue(for: "White-Team") == "A")
+    #expect(game.tagValue(for: "Black_Title") == "GM")
+    #expect(exported.contains("[Site \"?\"]"))
+    #expect(exported.contains("[White \"?\"]"))
+    #expect(exported.contains("[Black \"?\"]"))
+    #expect(exported.contains("[White-Team \"A\"]"))
+    #expect(exported.contains("[Black_Title \"GM\"]"))
+}
+
 @Test func pgnParsesCastlingForBothSides() throws {
     let pgn = """
         [Event "Synthetic Castling"]
@@ -135,6 +160,24 @@ import Testing
     #expect(game.moveRecords[6].move.description == "e1g1")
     #expect(game.moveRecords[9].san == "O-O")
     #expect(game.moveRecords[9].move.description == "e8g8")
+}
+
+@Test func pgnParsesSparseRosterEmptyGameAndLeadingComments() throws {
+    let pgn = """
+        [Event "Sparse Empty"]
+        [Result "*"]
+
+        { leading comment before movetext is ignored }
+        *
+        """
+
+    let game = try PGNSerializer().game(from: pgn)
+
+    #expect(game.tagValue(for: "Event") == "Sparse Empty")
+    #expect(game.result == .unfinished)
+    #expect(game.moveRecords.isEmpty)
+    #expect(game.mainlineMoves.isEmpty)
+    #expect(game.finalPosition == game.initialPosition)
 }
 
 @Test func pgnParsesFenBackedPromotion() throws {
@@ -446,6 +489,44 @@ import Testing
         *
         """, parseSingleGame: true) { error in
         error == .expectedSingleGame(actual: 2)
+    }
+}
+
+@Test func pgnRejectsInvalidResultTagAndNAGs() throws {
+    expectPGNParsingError("""
+        [Event "Invalid Result Tag"]
+        [Result "1/2"]
+
+        *
+        """) { error in
+        if case let .invalidResultMarker("1/2", context) = error {
+            return context.token == "1/2"
+        }
+        return false
+    }
+
+    expectPGNParsingError("""
+        [Event "Invalid NAG"]
+        [Result "*"]
+
+        1. e4 $256 *
+        """) { error in
+        if case .invalidNAG("$256", _) = error {
+            return true
+        }
+        return false
+    }
+
+    expectPGNParsingError("""
+        [Event "NAG Before Move"]
+        [Result "*"]
+
+        $1 *
+        """) { error in
+        if case let .unexpectedToken("$1", context) = error {
+            return context.token == "$1"
+        }
+        return false
     }
 }
 

@@ -147,6 +147,8 @@ engine-analysis, and product-specific concepts belong in app-level docs.
 - **FEN-Backed PGN**: A PGN that starts from a non-standard position using
   `[SetUp "1"]` and `[FEN "..."]`.
 - **PGN Database**: Text containing one or more PGN games.
+- **UTF-8 BOM**: A byte-order marker that may appear at the start of a text
+  file. ChessCore tolerates this marker at the start of PGN input.
 - **Reduced Export Style**: PGN output that writes deterministic tags and
   movetext without trying to preserve the exact original whitespace.
 - **Recursive Annotation Variation**: A PGN variation tree. ChessCore detects

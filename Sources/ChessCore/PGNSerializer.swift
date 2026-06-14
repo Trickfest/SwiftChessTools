@@ -732,7 +732,9 @@ private struct PGNLexer {
         while !self.isAtEnd {
             let character = self.currentCharacter
 
-            if character == "%", self.column == 1 {
+            if character == "\u{FEFF}", self.line == 1, self.column == 1 {
+                self.advance()
+            } else if character == "%", self.column == 1 {
                 self.skipLine()
             } else if character.isWhitespace {
                 self.advance()

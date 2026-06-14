@@ -291,9 +291,9 @@ let exported = serializer.pgn(from: pgnGame)
 ```
 
 The first PGN milestone supports validated mainlines, tag pairs, comments, NAGs,
-FEN-backed games, and multi-game database parsing. Recursive annotation
-variations are detected and reported as unsupported until ChessCore grows a PGN
-tree model.
+FEN-backed games, UTF-8 BOM input, and multi-game database parsing. Recursive
+annotation variations are detected and reported as unsupported until ChessCore
+grows a PGN tree model.
 
 ## 7. PGN Move Records
 
