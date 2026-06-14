@@ -39,6 +39,10 @@ engine-analysis, and product-specific concepts belong in app-level docs.
   rights, en passant target, halfmove clock, and fullmove number.
 - **Game**: A playable wrapper around `Position` that applies moves, exposes
   legal moves, and tracks move history.
+- **Game Status**: A high-level description of the current game state, exposed
+  as `Game.status`.
+- **Game Outcome**: The final result of a completed game: a win for one side or
+  a draw.
 - **Move History**: The concrete sequence of moves applied through `Game`.
 - **Initial Position**: The position before replaying a move list or PGN
   mainline. This is usually the standard starting position, but can come from a
@@ -56,6 +60,21 @@ engine-analysis, and product-specific concepts belong in app-level docs.
 - **Check**: A position where the active color's king is attacked.
 - **Checkmate**: A check position where the active color has no legal moves.
 - **Stalemate**: A non-check position where the active color has no legal moves.
+- **Automatic Draw**: A draw that ends the game without a player claim, such as
+  stalemate, insufficient material, the seventy-five-move rule, or fivefold
+  repetition.
+- **Draw Claim**: A draw rule available for a player to claim, such as the
+  fifty-move rule or threefold repetition.
+- **Insufficient Material**: A position where neither side has enough material
+  to produce checkmate under ChessCore's standard insufficient-material model.
+- **Fifty-Move Rule**: A claimable draw when 100 halfmoves have passed without a
+  pawn move or capture.
+- **Seventy-Five-Move Rule**: An automatic draw when 150 halfmoves have passed
+  without a pawn move or capture.
+- **Threefold Repetition**: A claimable draw when the current repetition key has
+  occurred at least three times.
+- **Fivefold Repetition**: An automatic draw when the current repetition key has
+  occurred at least five times.
 - **Attack**: A square is attacked by a side if one of that side's pieces could
   capture a piece on that square according to chess movement rules.
 - **King Safety**: The rule that a legal move may not leave or place the moving
@@ -92,7 +111,12 @@ engine-analysis, and product-specific concepts belong in app-level docs.
 - **Fullmove Number**: The FEN move number, starting at 1 and incrementing after
   Black moves.
 - **Position Count**: ChessCore currently tracks board occurrences by `Board`
-  in `Game.positionCounts`; this is not a full threefold-repetition state key.
+  in `Game.positionCounts`.
+- **Repetition Key**: The rules-relevant identity used for repetition claims:
+  board layout, side to move, castling rights, and legal en-passant
+  availability.
+- **Current Repetition Count**: The number of times the current repetition key
+  has appeared in a game.
 
 ## Notation Terms
 
@@ -178,5 +202,5 @@ engine-analysis, and product-specific concepts belong in app-level docs.
 - **Mainline PGN First**: PGN support validates mainline games and preserves
   comments/NAGs, but does not yet model recursive variations.
 - **Board-Based Position Counts**: `Game.positionCounts` tracks board
-  occurrences by piece placement. It is not a complete draw-claim or
-  repetition-rule engine.
+  occurrences by piece placement. Draw-claim repetition uses
+  `Game.repetitionCounts` and `GameRepetitionKey` instead.

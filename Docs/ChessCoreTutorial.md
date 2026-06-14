@@ -28,6 +28,7 @@ Use `ChessCore` when you need:
 - board state
 - legal moves
 - move application
+- game status and outcome inspection
 - FEN parsing and export
 - SAN parsing and export
 - PGN parsing and export
@@ -52,6 +53,8 @@ The most common model types are:
 - `Board`: piece placement only.
 - `Position`: complete playable state.
 - `Game`: playable state plus move history.
+- `GameStatus`: current game state, including checkmate, automatic draws, and
+  claimable draws.
 
 The key distinction:
 
@@ -188,6 +191,42 @@ for coordinate in coordinates {
 let finalPosition = game.position
 let moveHistory = game.moveHistory
 ```
+
+Inspect status and outcome after moves:
+
+```swift
+switch game.status {
+case .ongoing(let drawClaims):
+    if drawClaims.contains(.threefoldRepetition) {
+        print("A threefold repetition claim is available.")
+    }
+case .checkmate(let winner):
+    print("\(winner) won by checkmate.")
+case .draw(let reason):
+    print("Draw: \(reason)")
+}
+```
+
+For simpler app logic, use the convenience properties:
+
+```swift
+if game.isStalemate {
+    print("Stalemate")
+}
+
+if game.isDraw {
+    print("Automatic draw")
+}
+
+if let outcome = game.outcome {
+    print("Final outcome: \(outcome)")
+}
+```
+
+`Game.drawClaims` reports claimable draw rules for the current position, such as
+the fifty-move rule or threefold repetition. `Game.status` reports automatic
+draws such as stalemate, insufficient material, the seventy-five-move rule, and
+fivefold repetition.
 
 ## 5. SAN Notation
 

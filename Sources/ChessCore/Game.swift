@@ -16,6 +16,9 @@ public class Game {
     /// Number of times each board position has appeared in this game.
     public private(set) var positionCounts: [Board: Int]
 
+    /// Number of times each rules-relevant repetition key has appeared.
+    public private(set) var repetitionCounts: [GameRepetitionKey: Int]
+
     /// Moves that produced the current position.
     public private(set) var moveHistory: [Move]
 
@@ -32,12 +35,83 @@ public class Game {
         return self.rules.isCheckmate(in: self.position)
     }
 
+    /// `true` when the side to move has no legal moves and is not in check.
+    public var isStalemate: Bool {
+        return !self.isCheck && self.legalMoves.isEmpty
+    }
+
+    /// Current status of the game.
+    public var status: GameStatus {
+        let legalMoves = self.legalMoves
+
+        if legalMoves.isEmpty {
+            if self.isCheck {
+                return .checkmate(winner: self.position.state.turn.opposite)
+            }
+            return .draw(.stalemate)
+        }
+
+        if self.hasInsufficientMaterial {
+            return .draw(.insufficientMaterial)
+        }
+
+        if self.position.counter.halfMoves >= 150 {
+            return .draw(.seventyFiveMoveRule)
+        }
+
+        if self.currentRepetitionCount >= 5 {
+            return .draw(.fivefoldRepetition)
+        }
+
+        return .ongoing(drawClaims: self.drawClaims)
+    }
+
+    /// Final outcome if the current status has one.
+    public var outcome: GameOutcome? {
+        return self.status.outcome
+    }
+
+    /// `true` when the current status is an automatic draw.
+    public var isDraw: Bool {
+        if case .draw = self.status {
+            return true
+        }
+        return false
+    }
+
+    /// Draw claims currently available to the player to move.
+    public var drawClaims: Set<GameDrawClaim> {
+        var claims = Set<GameDrawClaim>()
+
+        if self.position.counter.halfMoves >= 100 {
+            claims.insert(.fiftyMoveRule)
+        }
+
+        if self.currentRepetitionCount >= 3 {
+            claims.insert(.threefoldRepetition)
+        }
+
+        return claims
+    }
+
+    /// Number of times the current repetition key has appeared.
+    public var currentRepetitionCount: Int {
+        let count = self.repetitionCounts[GameRepetitionKey(position: self.position), default: 0]
+        return max(count, 1)
+    }
+
     // MARK: Initialization
 
-    init(position: Position, moves: [Move], positionCounts: [Board: Int]) {
+    init(
+        position: Position,
+        moves: [Move],
+        positionCounts: [Board: Int],
+        repetitionCounts: [GameRepetitionKey: Int]
+    ) {
         self.position = position
         self.moveHistory = moves
         self.positionCounts = positionCounts
+        self.repetitionCounts = repetitionCounts
         self.rules = StandardRules()
     }
 
@@ -47,8 +121,12 @@ public class Game {
     ///   - position: Position to use as the starting point.
     ///   - moves: Moves that already led to that position.
     public init(position: Position, moves: [Move] = []) {
+        let repetitionKey = GameRepetitionKey(position: position)
         self.positionCounts = [
-            position.board: 1
+            position.board: 1,
+        ]
+        self.repetitionCounts = [
+            repetitionKey: 1,
         ]
         self.moveHistory = moves
         self.position = position
@@ -62,8 +140,12 @@ public class Game {
     ///   - moves: Moves that already led to that position.
     ///   - rules: Rule set used to generate and validate moves.
     internal init(position: Position, moves: [Move] = [], rules: Rules) {
+        let repetitionKey = GameRepetitionKey(position: position)
         self.positionCounts = [
-            position.board: 1
+            position.board: 1,
+        ]
+        self.repetitionCounts = [
+            repetitionKey: 1,
         ]
         self.moveHistory = moves
         self.position = position
@@ -108,6 +190,12 @@ public class Game {
             self.positionCounts[self.position.board] = 0
         }
         self.positionCounts[self.position.board]! += 1
+
+        let repetitionKey = GameRepetitionKey(position: self.position)
+        if self.repetitionCounts[repetitionKey] == nil {
+            self.repetitionCounts[repetitionKey] = 0
+        }
+        self.repetitionCounts[repetitionKey]! += 1
     }
 
     private func applyBoardMove(_ move: Move) {
@@ -250,6 +338,33 @@ public class Game {
         return nil
     }
 
+    private var hasInsufficientMaterial: Bool {
+        let pieces = self.position.board.enumeratedPieces()
+        let nonKings = pieces.filter { $0.1.kind != .king }
+
+        if nonKings.isEmpty {
+            return true
+        }
+
+        if nonKings.contains(where: { [.queen, .rook, .pawn].contains($0.1.kind) }) {
+            return false
+        }
+
+        let knights = nonKings.filter { $0.1.kind == .knight }
+        let bishops = nonKings.filter { $0.1.kind == .bishop }
+
+        if bishops.isEmpty && knights.count == 1 {
+            return true
+        }
+
+        if knights.isEmpty && !bishops.isEmpty {
+            let bishopSquareColors = Set(bishops.map { ($0.0.file + $0.0.rank).isMultiple(of: 2) })
+            return bishopSquareColors.count == 1
+        }
+
+        return false
+    }
+
     // MARK: Utilities
 
     /// Returns a separate game object with the same position, history, and
@@ -261,7 +376,8 @@ public class Game {
         return Game(
             position: position,
             moves: moves,
-            positionCounts: self.positionCounts
+            positionCounts: self.positionCounts,
+            repetitionCounts: self.repetitionCounts
         )
     }
 

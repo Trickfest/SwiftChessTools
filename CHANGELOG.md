@@ -70,6 +70,13 @@ release. Replace `TBD` with the release date when a release is tagged.
 - Expanded high-priority ChessCore audit coverage for legal move generation,
   castling, en passant, SAN parsing, and PGN import/export edge cases, including
   a 27-position perft corpus.
+- Added `GameStatus`, `GameOutcome`, `GameDrawReason`, `GameDrawClaim`, and
+  `GameRepetitionKey` so ChessCore consumers can inspect checkmate, stalemate,
+  insufficient material, fifty/seventy-five-move rules, and threefold/fivefold
+  repetition state.
+- Added hardened GameStatus coverage for material edge cases, real-move draw
+  threshold transitions, halfmove resets, illegal en-passant repetition keys,
+  status precedence, and game-like knight repetitions.
 
 ### Changed
 
@@ -94,6 +101,9 @@ release. Replace `TBD` with the release date when a release is tagged.
   rejected instead of accepted as valid piece placement.
 - Fixed PGN parsing so a UTF-8 byte-order marker at the start of input is
   ignored instead of being treated as movetext.
+- Fixed repetition tracking for draw rules by adding a rules-relevant
+  repetition key that includes board layout, side to move, castling rights, and
+  legal en-passant availability.
 
 ## 1.0.0 - TBD
 

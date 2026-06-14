@@ -52,6 +52,25 @@ import ChessCore
     #expect(ChessMoveRecordBuilderError.illegalMove(move: move, ply: 2).description.isEmpty == false)
 }
 
+@Test func gameStatusAPIsArePubliclyUsable() {
+    let position = try! FENSerializer().position(
+        from: "4k3/8/8/8/8/8/4Q3/4K3 w - - 100 1"
+    )
+    let game = Game(position: position)
+    let repetitionKey = GameRepetitionKey(position: position)
+
+    #expect(game.status == .ongoing(drawClaims: Set<GameDrawClaim>([.fiftyMoveRule])))
+    #expect(game.drawClaims == Set<GameDrawClaim>([.fiftyMoveRule]))
+    #expect(game.currentRepetitionCount == 1)
+    #expect(game.outcome == nil)
+    #expect(!game.isDraw)
+    #expect(!game.isStalemate)
+    #expect(repetitionKey.turn == .white)
+    #expect(GameStatus.draw(.stalemate).outcome == .draw)
+    #expect(GameStatus.checkmate(winner: .black).outcome == .win(.black))
+    #expect(GameDrawReason.insufficientMaterial == .insufficientMaterial)
+}
+
 @Test func pgnAPIsArePubliclyUsable() {
     let serializer = PGNSerializer()
     let pgn = """

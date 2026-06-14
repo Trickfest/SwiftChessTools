@@ -18,6 +18,9 @@ cases should be synthetic or hand-authored.
 - Game-state invariant tests cover move counters, en passant lifecycle,
   castling-right mutation, promotion application, game copy independence, and
   board-only position counting.
+- Game-status tests cover checkmate, stalemate, insufficient material,
+  fifty/seventy-five-move rules, threefold/fivefold repetition, repetition-key
+  identity, real-move threshold transitions, and status precedence.
 - FEN tests cover serialization round trips, generated legal-position round
   trips, and malformed input errors.
 - SAN tests cover parse/export behavior, checkmate, castling spelling,
@@ -47,9 +50,38 @@ surface when tests verify:
 - `positionCounts` tracks board occurrences by `Board`, not full repetition
   state
 
-If ChessCore later adds explicit game-status APIs for stalemate, insufficient
-material, fifty-move rule, or threefold repetition, those APIs should get a new
-game-status test pass rather than being folded into this completed boundary.
+Game status and outcome behavior is covered by a separate boundary below.
+
+## Game Status And Outcome Boundary
+
+The current game-status pass is complete for the existing `Game` API surface
+when tests verify:
+
+- ongoing positions, checkmate with winner color, stalemate, `isDraw`,
+  `isStalemate`, and `outcome`
+- insufficient-material positives for bare kings, king and bishop versus king,
+  king and knight versus king, same-color bishop-only positions, and
+  promotion-like multiple-bishop positions
+- insufficient-material negatives for pawns, rooks, queens, bishop and knight,
+  two knights, opposing knights, opposite-color bishops, and mixed minor-piece
+  combinations
+- fifty-move draw claims at 100 halfmoves and seventy-five-move automatic draws
+  at 150 halfmoves
+- quiet moves that cross fifty/seventy-five-move thresholds, plus pawn moves
+  and captures that reset draw pressure
+- threefold draw claims and fivefold automatic draws for the current repetition
+  key, including a game-like knight repetition from the standard starting
+  position
+- repetition keys distinguish side to move and castling rights
+- repetition keys ignore irrelevant en-passant target fields but include legal
+  en-passant availability
+- repetition keys ignore en-passant target fields when an adjacent pawn exists
+  but the capture is illegal because it exposes the king
+- status precedence for terminal positions, insufficient material, automatic
+  draws, and claimable draw combinations
+- board-only `positionCounts` remain separate from rules-relevant
+  `repetitionCounts`
+- copied games preserve repetition state but mutate independently
 
 ## Phase 1 Milestone 1 Boundary: Rule Engine Corpus
 
@@ -128,7 +160,7 @@ classified as:
 | Pieces | Symbol parsing, equality, hashing. | Piece equality and character mapping are covered. | Covered | Low |
 | Board storage | Default/empty boards, get/set/remove pieces, color lookup, piece maps. | Board square/index/coordinate access, copy independence, and enumeration are covered. | Covered | Low |
 | FEN syntax | Valid FEN, malformed FEN, counters, en-passant fields, castling fields. | Serialization, malformed fields, generated round trips, adjacent digit rejection, and counter bounds are covered. | Covered | Low |
-| FEN semantic status | Bad castling rights, multiple kings, impossible or inconsistent positions. | ChessCore parses FEN syntax but does not expose a full position-status API. | Future API | Medium |
+| FEN semantic status | Bad castling rights, multiple kings, impossible or inconsistent positions. | ChessCore parses FEN syntax and exposes game status for playable positions, but does not yet validate arbitrary FEN semantic legality. | Future API | Medium |
 | EPD | EPD parsing, operations, best-move fields. | ChessCore does not support EPD. | Out of scope | Low |
 | Legal move generation | Legal move lists, move counts, perft-style fixtures, pseudo-legal distinctions. | Focused legal-move fixtures and 27 perft positions are covered, including more castling, en-passant, promotion, checkmate, and stalemate positions. | Covered | Low |
 | Castling | SAN castling, selective castling, missing/invalid rights, rook/king edge cases, Chess960 castling. | Standard castling rights, missing rooks, matching rook color, attacked transit/destination, in-check rejection, b-file occupancy, rook-path attack tolerance, and application are covered. Chess960 is out of scope. | Covered | Low |
@@ -136,7 +168,7 @@ classified as:
 | Promotion | Promotion generation, SAN, check/checkmate promotion, underpromotion. | Promotion choices, application, SAN, PGN promotion, and underpromotion are covered. More promotion-check and promotion-capture variants are useful. | Add next | Medium |
 | Attacks and pins | Attack maps, pin direction, pin while in check. | Public legal-move behavior for pins, double check, shielding pieces, and protected-piece king captures is covered. Direct attack-map APIs are not public. | Add next | Medium |
 | Checkmate and stalemate | Scholar's mate, mate detection, stalemate, legal moves after terminal states. | Check, checkmate, and stalemate have focused coverage. A larger terminal-position corpus would be useful. | Add next | Medium |
-| Draw and outcome rules | Insufficient material, threefold/fivefold repetition, fifty/seventy-five move rules, outcome. | ChessCore does not expose full game-outcome or draw-claim APIs. Existing `positionCounts` is board-count-only and covered at that level. | Future API | High |
+| Draw and outcome rules | Insufficient material, threefold/fivefold repetition, fifty/seventy-five move rules, outcome. | `Game.status`, `Game.outcome`, draw claims, automatic draws, and rules-relevant repetition keys are covered. `positionCounts` remains board-only for compatibility. | Covered | Low |
 | SAN parsing/export | SAN generation, parsing, ambiguous moves, castling, promotion, checkmate, long algebraic notation. | Core SAN, generated round trips, ambiguity, en-passant, promotion, checkmate, optional/decorative check suffixes, coordinate-notation rejection, and missing-disambiguation rejection are covered. Long algebraic notation is not currently accepted as SAN. | Covered | Low |
 | PGN basic import/export | Tag roster, setup/FEN, comments, NAGs, headers, no tag roster, empty games, export visitors. | Mainline import/export, sparse and full tag rosters, odd tag names, FEN-backed games, empty games, leading comments, comments, NAGs, invalid NAGs, malformed input, and round trips are covered. | Covered | Low |
 | PGN dialect tolerance | UTF-8 BOM, semicolon comments, odd headers, empty lines, UCI/LAN movetext, ChessBase quirks. | UTF-8 BOM input, compact movetext, escape lines, semicolon comments, odd tag names, empty games, and Lichess samples are covered. Non-SAN UCI/LAN movetext and broader ChessBase quirks remain future decisions. | Add next | Medium |
@@ -163,10 +195,9 @@ The high-priority current-API audit pass is complete when tests cover:
 - PGN sparse tag rosters, UTF-8 BOM input, odd tag names, empty games, leading
   comments, invalid result tags, and invalid NAGs
 
-The `Draw and outcome rules` row remains high priority but `Future API` because
-ChessCore does not yet expose insufficient-material, repetition-claim, or
-fifty/seventy-five-move outcome behavior. Rows marked `Out of scope` should stay
-out unless the package direction changes.
+No current-API high-priority rows remain open in the audit matrix. Rows marked
+`Future API` or `Out of scope` should stay out of this pass unless the package
+direction changes.
 
 ## Regression Policy
 

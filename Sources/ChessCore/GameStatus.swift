@@ -1,0 +1,129 @@
+//
+// SwiftChessTools provides reusable chess rules, notation, and SwiftUI board UI.
+//
+// See NOTICE.md for upstream attribution and license details.
+//
+// Licensed under the MIT License.
+// You may obtain a copy of the License at: https://opensource.org/licenses/MIT
+// See the LICENSE file for more information.
+//
+
+/// Claimable draw rules available to the player to move.
+public enum GameDrawClaim: Hashable, Sendable {
+    /// The halfmove clock has reached 100 halfmoves.
+    case fiftyMoveRule
+
+    /// The current repetition key has occurred at least three times.
+    case threefoldRepetition
+}
+
+/// Automatic draw reasons that end a game.
+public enum GameDrawReason: Equatable, Sendable {
+    /// The player to move has no legal moves and is not in check.
+    case stalemate
+
+    /// Neither side has enough material for any checkmate supported by
+    /// ChessCore's standard insufficient-material model.
+    case insufficientMaterial
+
+    /// The halfmove clock has reached 150 halfmoves.
+    case seventyFiveMoveRule
+
+    /// The current repetition key has occurred at least five times.
+    case fivefoldRepetition
+}
+
+/// High-level status for the current game position.
+public enum GameStatus: Equatable, Sendable {
+    /// The game is still playable, with any currently available draw claims.
+    case ongoing(drawClaims: Set<GameDrawClaim>)
+
+    /// The side to move is checkmated.
+    case checkmate(winner: PieceColor)
+
+    /// The game is automatically drawn.
+    case draw(GameDrawReason)
+
+    /// Final outcome when this status has one.
+    public var outcome: GameOutcome? {
+        switch self {
+        case .ongoing:
+            return nil
+        case let .checkmate(winner):
+            return .win(winner)
+        case .draw:
+            return .draw
+        }
+    }
+}
+
+/// Final result for a completed game.
+public enum GameOutcome: Equatable, Sendable {
+    /// One side won.
+    case win(PieceColor)
+
+    /// The game ended in a draw.
+    case draw
+}
+
+/// Position identity used for threefold and fivefold repetition.
+///
+/// Repetition depends on piece placement, side to move, castling rights, and
+/// legal en-passant availability. It deliberately excludes move counters.
+public struct GameRepetitionKey: Hashable, Sendable {
+
+    /// Pieces on the board.
+    public let board: Board
+
+    /// Side to move.
+    public let turn: PieceColor
+
+    /// Castling rights, independent of source ordering.
+    public let castlingRights: Set<Piece>
+
+    /// En-passant target when an en-passant capture is legal in this position.
+    public let enPassant: Square?
+
+    /// Creates a repetition key for a position.
+    public init(position: Position) {
+        self.board = position.board
+        self.turn = position.state.turn
+        self.castlingRights = Set(position.state.castlingRights)
+        self.enPassant = Self.legalEnPassantTarget(in: position)
+    }
+
+    private static func legalEnPassantTarget(in position: Position) -> Square? {
+        guard let target = position.state.enPassant else {
+            return nil
+        }
+
+        let sourceRank = position.state.turn == .white ? target.rank - 1 : target.rank + 1
+        let capturedRank = sourceRank
+        guard (0..<8).contains(sourceRank), (0..<8).contains(capturedRank) else {
+            return nil
+        }
+
+        let capturedSquare = Square(file: target.file, rank: capturedRank)
+        guard position.board[capturedSquare] == Piece(kind: .pawn, color: position.state.turn.opposite)
+        else {
+            return nil
+        }
+
+        let rules = StandardRules()
+        for fileOffset in [-1, 1] {
+            let source = Square(file: target.file + fileOffset, rank: sourceRank)
+            guard source.isValid else {
+                continue
+            }
+            guard position.board[source] == Piece(kind: .pawn, color: position.state.turn) else {
+                continue
+            }
+            if rules.legalMovesForPiece(at: source, in: position).contains(Move(from: source, to: target)) {
+                return target
+            }
+        }
+
+        return nil
+    }
+
+}
