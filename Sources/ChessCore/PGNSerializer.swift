@@ -153,6 +153,9 @@ public enum PGNParsingError: Error, Equatable, CustomStringConvertible, Localize
 /// Errors thrown while building PGN from move lists.
 public enum PGNSerializationError: Error, Equatable, CustomStringConvertible, LocalizedError {
     case illegalMove(Move, PGNParsingContext)
+    case invalidMoveRecord(PGNMoveRecordValidationFailure, PGNParsingContext)
+    case finalPositionMismatch(expected: Position, actual: Position, PGNParsingContext)
+    case finalStatusMismatch(expected: GameStatus, actual: GameStatus, PGNParsingContext)
     case resultConflictsWithFinalStatus(result: PGNResult, status: GameStatus, PGNParsingContext)
 
     /// Human-readable error text.
@@ -160,6 +163,12 @@ public enum PGNSerializationError: Error, Equatable, CustomStringConvertible, Lo
         switch self {
         case let .illegalMove(move, context):
             return "Cannot serialize illegal move \(move) at \(context)."
+        case let .invalidMoveRecord(reason, context):
+            return "Cannot serialize invalid PGN move record: \(reason) at \(context)."
+        case let .finalPositionMismatch(_, _, context):
+            return "Cannot serialize PGN game because finalPosition does not match replayed moves at \(context)."
+        case let .finalStatusMismatch(expected, actual, context):
+            return "Cannot serialize PGN game because finalStatus \(actual) does not match replayed status \(expected) at \(context)."
         case let .resultConflictsWithFinalStatus(result, status, context):
             return "Cannot serialize result \(result) because final status is \(status) at \(context)."
         }
@@ -167,6 +176,28 @@ public enum PGNSerializationError: Error, Equatable, CustomStringConvertible, Lo
 
     public var errorDescription: String? {
         description
+    }
+}
+
+/// Validation failures for manually constructed PGN move records.
+public enum PGNMoveRecordValidationFailure: Equatable, Sendable, CustomStringConvertible {
+    case ply(expected: Int, actual: Int)
+    case moveNumber(expected: Int, actual: Int)
+    case color(expected: PieceColor, actual: PieceColor)
+    case san(expected: String, actual: String)
+
+    /// Human-readable validation failure text.
+    public var description: String {
+        switch self {
+        case let .ply(expected, actual):
+            return "expected ply \(expected), found \(actual)"
+        case let .moveNumber(expected, actual):
+            return "expected move number \(expected), found \(actual)"
+        case let .color(expected, actual):
+            return "expected \(expected) to move, found \(actual)"
+        case let .san(expected, actual):
+            return "expected SAN \(expected), found \(actual)"
+        }
     }
 }
 
@@ -197,6 +228,21 @@ public enum PGNResult: String, CaseIterable, Equatable, Sendable, CustomStringCo
     /// Creates a result from a PGN result marker.
     public init?(marker: String) {
         self.init(rawValue: marker)
+    }
+
+    /// Creates the required PGN result for a terminal game status.
+    ///
+    /// Returns `nil` for ongoing positions because PGN games may end externally
+    /// by resignation, timeout, adjudication, agreement, or remain unfinished.
+    public init?(terminalStatus status: GameStatus) {
+        switch status {
+        case .ongoing:
+            return nil
+        case let .checkmate(winner):
+            self = winner == .white ? .whiteWins : .blackWins
+        case .draw:
+            self = .draw
+        }
     }
 
     /// PGN result marker.
@@ -297,24 +343,47 @@ public struct PGNGame: Equatable, Sendable {
     /// Final position after replaying the mainline.
     public let finalPosition: Position
 
+    /// Final status after replaying the mainline.
+    public let finalStatus: GameStatus
+
     /// Creates a validated PGN game model.
     public init(
         tagPairs: [PGNTagPair],
         initialPosition: Position,
         moveRecords: [PGNMoveRecord],
         result: PGNResult,
-        finalPosition: Position
+        finalPosition: Position,
+        finalStatus: GameStatus
     ) {
         self.tagPairs = tagPairs
         self.initialPosition = initialPosition
         self.moveRecords = moveRecords
         self.result = result
         self.finalPosition = finalPosition
+        self.finalStatus = finalStatus
     }
 
     /// Mainline moves in order.
     public var mainlineMoves: [Move] {
         moveRecords.map(\.move)
+    }
+
+    /// Final outcome when the replayed final status has one.
+    public var finalOutcome: GameOutcome? {
+        finalStatus.outcome
+    }
+
+    /// Required PGN result for the final status, when ChessCore can prove one.
+    public var requiredResultForFinalStatus: PGNResult? {
+        PGNResult(terminalStatus: finalStatus)
+    }
+
+    /// `true` when the PGN result does not contradict the final status.
+    public var resultMatchesFinalStatus: Bool {
+        guard let requiredResultForFinalStatus else {
+            return true
+        }
+        return result == requiredResultForFinalStatus
     }
 
     /// Returns the first value for a tag name, using PGN's case-sensitive tag
@@ -432,13 +501,15 @@ public final class PGNSerializer {
             initialPosition: initialPosition,
             moveRecords: records,
             result: result,
-            finalPosition: game.position
+            finalPosition: game.position,
+            finalStatus: game.status
         )
     }
 
     /// Exports a PGN game in deterministic reduced export style, preserving
     /// move comments and NAGs when present.
-    public func pgn(from game: PGNGame, lineWidth: Int = 80) -> String {
+    public func pgn(from game: PGNGame, lineWidth: Int = 80) throws -> String {
+        try self.validateSerializedGame(game)
         let tagLines = self.exportTagPairs(for: game)
             .map { "[\($0.name) \"\(self.escapedTagValue($0.value))\"]" }
         let movetext = self.wrappedMovetext(self.movetextTokens(for: game), lineWidth: lineWidth)
@@ -525,7 +596,8 @@ public final class PGNSerializer {
             initialPosition: initialPosition,
             moveRecords: records,
             result: result,
-            finalPosition: game.position
+            finalPosition: game.position,
+            finalStatus: game.status
         )
     }
 
@@ -571,7 +643,7 @@ public final class PGNSerializer {
     }
 
     private func validateSerializedResult(_ result: PGNResult, against status: GameStatus) throws {
-        guard let expectedResult = self.expectedPGNResult(for: status) else {
+        guard let expectedResult = PGNResult(terminalStatus: status) else {
             return
         }
         guard result == expectedResult else {
@@ -584,14 +656,70 @@ public final class PGNSerializer {
     }
 
     private func expectedPGNResult(for status: GameStatus) -> PGNResult? {
-        switch status {
-        case .ongoing:
-            return nil
-        case let .checkmate(winner):
-            return winner == .white ? .whiteWins : .blackWins
-        case .draw:
-            return .draw
+        PGNResult(terminalStatus: status)
+    }
+
+    private func validateSerializedGame(_ pgnGame: PGNGame) throws {
+        let game = Game(position: pgnGame.initialPosition)
+
+        for (offset, record) in pgnGame.moveRecords.enumerated() {
+            let expectedPly = offset + 1
+            let context = PGNParsingContext(
+                ply: expectedPly,
+                moveNumber: game.position.counter.fullMoves,
+                token: record.san
+            )
+
+            guard record.ply == expectedPly else {
+                throw PGNSerializationError.invalidMoveRecord(
+                    .ply(expected: expectedPly, actual: record.ply),
+                    context
+                )
+            }
+            guard record.moveNumber == game.position.counter.fullMoves else {
+                throw PGNSerializationError.invalidMoveRecord(
+                    .moveNumber(expected: game.position.counter.fullMoves, actual: record.moveNumber),
+                    context
+                )
+            }
+            guard record.color == game.position.state.turn else {
+                throw PGNSerializationError.invalidMoveRecord(
+                    .color(expected: game.position.state.turn, actual: record.color),
+                    context
+                )
+            }
+            guard game.legalMoves.contains(record.move) else {
+                throw PGNSerializationError.illegalMove(record.move, context)
+            }
+
+            let canonicalSAN = self.sanSerializer.san(for: record.move, in: game)
+            guard record.san == canonicalSAN else {
+                throw PGNSerializationError.invalidMoveRecord(
+                    .san(expected: canonicalSAN, actual: record.san),
+                    context
+                )
+            }
+
+            game.apply(move: record.move)
         }
+
+        let context = PGNParsingContext(ply: pgnGame.moveRecords.count)
+        guard game.position == pgnGame.finalPosition else {
+            throw PGNSerializationError.finalPositionMismatch(
+                expected: game.position,
+                actual: pgnGame.finalPosition,
+                context
+            )
+        }
+        guard game.status == pgnGame.finalStatus else {
+            throw PGNSerializationError.finalStatusMismatch(
+                expected: game.status,
+                actual: pgnGame.finalStatus,
+                context
+            )
+        }
+
+        try self.validateSerializedResult(pgnGame.result, against: game.status)
     }
 
     private func initialPosition(from parsedGame: PGNParsedGame, gameIndex: Int) throws -> Position {

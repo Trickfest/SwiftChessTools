@@ -117,7 +117,7 @@ import Testing
 
     let serializer = PGNSerializer()
     let game = try serializer.game(from: pgn)
-    let exported = serializer.pgn(from: game, lineWidth: 120)
+    let exported = try serializer.pgn(from: game, lineWidth: 120)
 
     #expect(game.tagValue(for: "White") == #"Escaped "White""#)
     #expect(game.tagValue(for: "Black") == #"Backslash \ Black"#)
@@ -292,7 +292,7 @@ import Testing
 
     let serializer = PGNSerializer()
     let game = try serializer.game(from: pgn)
-    let exported = serializer.pgn(from: game)
+    let exported = try serializer.pgn(from: game)
 
     #expect(game.tagValue(for: "Event") == #"Quote " and slash \"#)
     #expect(exported.contains(#"[Event "Quote \" and slash \\"]"#))
@@ -310,7 +310,7 @@ import Testing
 
     let serializer = PGNSerializer()
     let game = try serializer.game(from: pgn)
-    let exported = serializer.pgn(from: game)
+    let exported = try serializer.pgn(from: game)
 
     #expect(game.moveRecords.isEmpty)
     #expect(game.tagValue(for: "Event") == "BOM And Sparse Tags")
@@ -463,7 +463,7 @@ import Testing
         1. e4 { comment } e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0
         """)
 
-    let exported = serializer.pgn(from: original, lineWidth: 32)
+    let exported = try serializer.pgn(from: original, lineWidth: 32)
     let reparsed = try serializer.game(from: exported)
 
     #expect(reparsed.result == original.result)
@@ -681,6 +681,38 @@ import Testing
         Game(position: claimableDraw.finalPosition).status
             == .ongoing(drawClaims: Set<GameDrawClaim>([.fiftyMoveRule]))
     )
+}
+
+@Test("PGN accepts result markers required by terminal final status", arguments: terminalStatusAcceptedResultCases)
+private func pgnAcceptsRequiredResultsForTerminalFinalStatuses(testCase: PGNStatusResultCase) throws {
+    let game = try PGNSerializer().game(from: testCase.pgn)
+
+    #expect(game.result == testCase.result, "\(testCase.name)")
+    #expect(game.finalStatus == testCase.expectedStatus, "\(testCase.name)")
+    #expect(game.requiredResultForFinalStatus == testCase.result, "\(testCase.name)")
+    #expect(game.resultMatchesFinalStatus, "\(testCase.name)")
+}
+
+@Test("PGN rejects result markers that conflict with terminal final status", arguments: terminalStatusRejectedResultCases)
+private func pgnRejectsResultsThatConflictWithTerminalFinalStatuses(testCase: PGNStatusResultCase) {
+    expectPGNParsingError(testCase.pgn) { error in
+        if case let .resultConflictsWithFinalStatus(result, status, context) = error {
+            return result == testCase.result
+                && status == testCase.expectedStatus
+                && context.gameIndex == 0
+        }
+        return false
+    }
+}
+
+@Test("PGN accepts external result markers for ongoing final status", arguments: ongoingStatusAcceptedResultCases)
+private func pgnAcceptsExternalResultsForOngoingFinalStatuses(testCase: PGNStatusResultCase) throws {
+    let game = try PGNSerializer().game(from: testCase.pgn)
+
+    #expect(game.result == testCase.result, "\(testCase.name)")
+    #expect(game.finalStatus == testCase.expectedStatus, "\(testCase.name)")
+    #expect(game.requiredResultForFinalStatus == nil, "\(testCase.name)")
+    #expect(game.resultMatchesFinalStatus, "\(testCase.name)")
 }
 
 @Test func pgnRejectsInvalidSANWithContext() throws {
@@ -939,6 +971,155 @@ import Testing
     #expect(deadPositionExport.contains("1/2-1/2"))
 }
 
+@Test("PGN export accepts result markers required by terminal final status", arguments: terminalStatusAcceptedResultCases)
+private func pgnExportAcceptsRequiredResultsForTerminalFinalStatuses(testCase: PGNStatusResultCase) throws {
+    let exported = try exportedPGN(for: testCase)
+    let reparsed = try PGNSerializer().game(from: exported)
+
+    #expect(reparsed.result == testCase.result, "\(testCase.name)")
+    #expect(reparsed.finalStatus == testCase.expectedStatus, "\(testCase.name)")
+    #expect(reparsed.resultMatchesFinalStatus, "\(testCase.name)")
+}
+
+@Test("PGN export rejects result markers that conflict with terminal final status", arguments: terminalStatusRejectedResultCases)
+private func pgnExportRejectsResultsThatConflictWithTerminalFinalStatuses(testCase: PGNStatusResultCase) throws {
+    do {
+        _ = try exportedPGN(for: testCase)
+        Issue.record("Expected PGN export to reject result conflict: \(testCase.name)")
+    } catch let error as PGNSerializationError {
+        if case let .resultConflictsWithFinalStatus(result, status, _) = error {
+            #expect(result == testCase.result, "\(testCase.name)")
+            #expect(status == testCase.expectedStatus, "\(testCase.name)")
+        } else {
+            Issue.record("Expected resultConflictsWithFinalStatus, got: \(error)")
+        }
+    } catch {
+        Issue.record("Expected PGNSerializationError, got: \(error)")
+    }
+}
+
+@Test("PGN export accepts external result markers for ongoing final status", arguments: ongoingStatusAcceptedResultCases)
+private func pgnExportAcceptsExternalResultsForOngoingFinalStatuses(testCase: PGNStatusResultCase) throws {
+    let exported = try exportedPGN(for: testCase)
+    let reparsed = try PGNSerializer().game(from: exported)
+
+    #expect(reparsed.result == testCase.result, "\(testCase.name)")
+    #expect(reparsed.finalStatus == testCase.expectedStatus, "\(testCase.name)")
+    #expect(reparsed.resultMatchesFinalStatus, "\(testCase.name)")
+}
+
+@Test func pgnGameExportValidatesManuallyConstructedGameModels() throws {
+    let serializer = PGNSerializer()
+    let checkmate = try serializer.game(from: statusTestPGN(
+        name: "Manual Model Checkmate",
+        source: .movetext("1. f3 e5 2. g4 Qh4#"),
+        result: .blackWins
+    ))
+
+    let wrongResult = PGNGame(
+        tagPairs: checkmate.tagPairs,
+        initialPosition: checkmate.initialPosition,
+        moveRecords: checkmate.moveRecords,
+        result: .whiteWins,
+        finalPosition: checkmate.finalPosition,
+        finalStatus: checkmate.finalStatus
+    )
+
+    do {
+        _ = try serializer.pgn(from: wrongResult)
+        Issue.record("Expected manually constructed wrong result to fail")
+    } catch let error as PGNSerializationError {
+        if case let .resultConflictsWithFinalStatus(result, status, _) = error {
+            #expect(result == .whiteWins)
+            #expect(status == .checkmate(winner: .black))
+        } else {
+            Issue.record("Expected resultConflictsWithFinalStatus, got: \(error)")
+        }
+    } catch {
+        Issue.record("Expected PGNSerializationError, got: \(error)")
+    }
+
+    let wrongFinalStatus = PGNGame(
+        tagPairs: checkmate.tagPairs,
+        initialPosition: checkmate.initialPosition,
+        moveRecords: checkmate.moveRecords,
+        result: checkmate.result,
+        finalPosition: checkmate.finalPosition,
+        finalStatus: .ongoing(drawClaims: Set<GameDrawClaim>())
+    )
+
+    do {
+        _ = try serializer.pgn(from: wrongFinalStatus)
+        Issue.record("Expected manually constructed wrong finalStatus to fail")
+    } catch let error as PGNSerializationError {
+        if case let .finalStatusMismatch(expected, actual, _) = error {
+            #expect(expected == .checkmate(winner: .black))
+            #expect(actual == .ongoing(drawClaims: Set<GameDrawClaim>()))
+        } else {
+            Issue.record("Expected finalStatusMismatch, got: \(error)")
+        }
+    } catch {
+        Issue.record("Expected PGNSerializationError, got: \(error)")
+    }
+
+    var wrongSANRecords = checkmate.moveRecords
+    wrongSANRecords[0] = PGNMoveRecord(
+        ply: wrongSANRecords[0].ply,
+        moveNumber: wrongSANRecords[0].moveNumber,
+        color: wrongSANRecords[0].color,
+        san: "e4",
+        sourceSAN: wrongSANRecords[0].sourceSAN,
+        move: wrongSANRecords[0].move,
+        comments: wrongSANRecords[0].comments,
+        nags: wrongSANRecords[0].nags
+    )
+    let wrongSAN = PGNGame(
+        tagPairs: checkmate.tagPairs,
+        initialPosition: checkmate.initialPosition,
+        moveRecords: wrongSANRecords,
+        result: checkmate.result,
+        finalPosition: checkmate.finalPosition,
+        finalStatus: checkmate.finalStatus
+    )
+
+    do {
+        _ = try serializer.pgn(from: wrongSAN)
+        Issue.record("Expected manually constructed wrong SAN to fail")
+    } catch let error as PGNSerializationError {
+        if case let .invalidMoveRecord(.san(expected, actual), context) = error {
+            #expect(expected == "f3")
+            #expect(actual == "e4")
+            #expect(context.ply == 1)
+        } else {
+            Issue.record("Expected invalidMoveRecord SAN failure, got: \(error)")
+        }
+    } catch {
+        Issue.record("Expected PGNSerializationError, got: \(error)")
+    }
+
+    let missingLastMove = PGNGame(
+        tagPairs: checkmate.tagPairs,
+        initialPosition: checkmate.initialPosition,
+        moveRecords: Array(checkmate.moveRecords.dropLast()),
+        result: .unfinished,
+        finalPosition: checkmate.finalPosition,
+        finalStatus: .ongoing(drawClaims: Set<GameDrawClaim>())
+    )
+
+    do {
+        _ = try serializer.pgn(from: missingLastMove)
+        Issue.record("Expected manually constructed finalPosition mismatch to fail")
+    } catch let error as PGNSerializationError {
+        if case .finalPositionMismatch = error {
+            // Expected.
+        } else {
+            Issue.record("Expected finalPositionMismatch, got: \(error)")
+        }
+    } catch {
+        Issue.record("Expected PGNSerializationError, got: \(error)")
+    }
+}
+
 @Test func pgnParsesLichessStandardDatabaseSample() throws {
     let game = try PGNSerializer().game(from: lichessStandardDatabaseSample)
 
@@ -972,7 +1153,7 @@ import Testing
     #expect(games.map { $0.moveRecords.last?.san } == ["Qe8#", "Bxh8", "Nxc7+", "c4", "Bxh3+", "Qxd5+"])
 
     for game in games {
-        let reparsed = try serializer.game(from: serializer.pgn(from: game))
+        let reparsed = try serializer.game(from: try serializer.pgn(from: game))
         #expect(reparsed.mainlineMoves == game.mainlineMoves)
         #expect(reparsed.finalPosition == game.finalPosition)
         #expect(reparsed.result == game.result)
@@ -1116,6 +1297,216 @@ func pgnLongGeneratedGamesStressRoundTrip(seed: Int) throws {
     #expect(reparsed.mainlineMoves == moves)
     #expect(reparsed.finalPosition == builtGame.finalPosition)
     #expect(reparsed.result == result)
+}
+
+private enum PGNStatusSource: Sendable {
+    case fen(String)
+    case movetext(String)
+}
+
+private struct PGNStatusCase: Sendable {
+    var name: String
+    var source: PGNStatusSource
+    var expectedStatus: GameStatus
+    var requiredResult: PGNResult?
+}
+
+private struct PGNStatusResultCase: Sendable {
+    var name: String
+    var source: PGNStatusSource
+    var result: PGNResult
+    var expectedStatus: GameStatus
+    var requiredResult: PGNResult?
+
+    var pgn: String {
+        statusTestPGN(name: name, source: source, result: result)
+    }
+}
+
+private let terminalStatusPGNCases = [
+    PGNStatusCase(
+        name: "White checkmates from FEN",
+        source: .fen("7k/6Q1/5K2/8/8/8/8/8 b - - 0 1"),
+        expectedStatus: .checkmate(winner: .white),
+        requiredResult: .whiteWins
+    ),
+    PGNStatusCase(
+        name: "Black checkmates from FEN",
+        source: .fen("rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3"),
+        expectedStatus: .checkmate(winner: .black),
+        requiredResult: .blackWins
+    ),
+    PGNStatusCase(
+        name: "Stalemate from FEN",
+        source: .fen("7k/5K2/6Q1/8/8/8/8/8 b - - 0 1"),
+        expectedStatus: .draw(.stalemate),
+        requiredResult: .draw
+    ),
+    PGNStatusCase(
+        name: "Bare kings insufficient material",
+        source: .fen("8/8/8/8/8/8/8/K6k w - - 0 1"),
+        expectedStatus: .draw(.insufficientMaterial),
+        requiredResult: .draw
+    ),
+    PGNStatusCase(
+        name: "Same-color bishops insufficient material",
+        source: .fen("8/8/8/8/8/8/3b4/K1k1B1B1 w - - 0 1"),
+        expectedStatus: .draw(.insufficientMaterial),
+        requiredResult: .draw
+    ),
+    PGNStatusCase(
+        name: "Sealed pawn-barrier dead position",
+        source: .fen("7k/8/8/8/1p1p1p1p/pPpPpPpP/P1P1P1P1/K7 w - - 0 1"),
+        expectedStatus: .draw(.deadPosition),
+        requiredResult: .draw
+    ),
+    PGNStatusCase(
+        name: "Seventy-five-move automatic draw",
+        source: .fen("4k3/8/8/8/8/8/Q7/4K3 w - - 150 1"),
+        expectedStatus: .draw(.seventyFiveMoveRule),
+        requiredResult: .draw
+    ),
+    PGNStatusCase(
+        name: "White checkmates from movetext",
+        source: .movetext("1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7#"),
+        expectedStatus: .checkmate(winner: .white),
+        requiredResult: .whiteWins
+    ),
+    PGNStatusCase(
+        name: "Black checkmates from movetext",
+        source: .movetext("1. f3 e5 2. g4 Qh4#"),
+        expectedStatus: .checkmate(winner: .black),
+        requiredResult: .blackWins
+    ),
+    PGNStatusCase(
+        name: "Fivefold repetition automatic draw",
+        source: .movetext(
+            "1. Nf3 Nf6 2. Ng1 Ng8 3. Nf3 Nf6 4. Ng1 Ng8 5. Nf3 Nf6 6. Ng1 Ng8 7. Nf3 Nf6 8. Ng1 Ng8"
+        ),
+        expectedStatus: .draw(.fivefoldRepetition),
+        requiredResult: .draw
+    ),
+]
+
+private let ongoingStatusPGNCases = [
+    PGNStatusCase(
+        name: "Normal ongoing movetext",
+        source: .movetext("1. e4"),
+        expectedStatus: .ongoing(drawClaims: Set<GameDrawClaim>()),
+        requiredResult: nil
+    ),
+    PGNStatusCase(
+        name: "Ongoing position with fifty-move claim",
+        source: .fen("4k3/8/8/8/8/8/Q7/4K3 w - - 100 1"),
+        expectedStatus: .ongoing(drawClaims: Set<GameDrawClaim>([.fiftyMoveRule])),
+        requiredResult: nil
+    ),
+    PGNStatusCase(
+        name: "Ongoing position with threefold claim",
+        source: .movetext("1. Nf3 Nf6 2. Ng1 Ng8 3. Nf3 Nf6 4. Ng1 Ng8"),
+        expectedStatus: .ongoing(drawClaims: Set<GameDrawClaim>([.threefoldRepetition])),
+        requiredResult: nil
+    ),
+    PGNStatusCase(
+        name: "Ongoing check with legal en-passant evasion",
+        source: .fen("4k3/8/8/3pP3/4K3/8/8/8 w - d6 0 1"),
+        expectedStatus: .ongoing(drawClaims: Set<GameDrawClaim>()),
+        requiredResult: nil
+    ),
+]
+
+private let terminalStatusAcceptedResultCases = terminalStatusPGNCases.compactMap { testCase in
+    testCase.requiredResult.map { result in
+        PGNStatusResultCase(
+            name: testCase.name,
+            source: testCase.source,
+            result: result,
+            expectedStatus: testCase.expectedStatus,
+            requiredResult: testCase.requiredResult
+        )
+    }
+}
+
+private let terminalStatusRejectedResultCases = terminalStatusPGNCases.flatMap { testCase in
+    PGNResult.allCases
+        .filter { $0 != testCase.requiredResult }
+        .map { result in
+            PGNStatusResultCase(
+                name: "\(testCase.name), rejected \(result.rawValue)",
+                source: testCase.source,
+                result: result,
+                expectedStatus: testCase.expectedStatus,
+                requiredResult: testCase.requiredResult
+            )
+        }
+}
+
+private let ongoingStatusAcceptedResultCases = ongoingStatusPGNCases.flatMap { testCase in
+    PGNResult.allCases.map { result in
+        PGNStatusResultCase(
+            name: "\(testCase.name), accepted \(result.rawValue)",
+            source: testCase.source,
+            result: result,
+            expectedStatus: testCase.expectedStatus,
+            requiredResult: nil
+        )
+    }
+}
+
+private func statusTestPGN(name: String, source: PGNStatusSource, result: PGNResult) -> String {
+    switch source {
+    case let .fen(fen):
+        return """
+            [Event "\(name)"]
+            [Site "?"]
+            [Date "????.??.??"]
+            [Round "?"]
+            [White "White"]
+            [Black "Black"]
+            [Result "\(result.rawValue)"]
+            [SetUp "1"]
+            [FEN "\(fen)"]
+
+            \(result.rawValue)
+            """
+    case let .movetext(movetext):
+        return """
+            [Event "\(name)"]
+            [Site "?"]
+            [Date "????.??.??"]
+            [Round "?"]
+            [White "White"]
+            [Black "Black"]
+            [Result "\(result.rawValue)"]
+
+            \(movetext) \(result.rawValue)
+            """
+    }
+}
+
+private func exportedPGN(for testCase: PGNStatusResultCase) throws -> String {
+    let serializer = PGNSerializer()
+
+    switch testCase.source {
+    case let .fen(fen):
+        return try serializer.pgn(
+            initialPosition: try FENSerializer().position(from: fen),
+            moves: [],
+            result: testCase.result
+        )
+    case .movetext:
+        let parseResult = testCase.requiredResult ?? testCase.result
+        let validGame = try serializer.game(from: statusTestPGN(
+            name: testCase.name,
+            source: testCase.source,
+            result: parseResult
+        ))
+        return try serializer.pgn(
+            initialPosition: validGame.initialPosition,
+            moves: validGame.mainlineMoves,
+            result: testCase.result
+        )
+    }
 }
 
 private func expectPGNParsingError(

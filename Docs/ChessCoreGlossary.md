@@ -62,6 +62,9 @@ engine-analysis, and product-specific concepts belong in app-level docs.
   mainline. This is usually the standard starting position, but can come from a
   FEN tag.
 - **Final Position**: The position after replaying all moves.
+- **Final Status**: The `GameStatus` after replaying all moves in a game or PGN
+  mainline. `PGNGame.finalStatus` stores this status for parsed and generated
+  PGN records.
 - **Standard Starting Position**: The normal chess starting position, represented
   by `PGNSerializer.standardStartingFEN`.
 
@@ -199,6 +202,9 @@ engine-analysis, and product-specific concepts belong in app-level docs.
 - **Result/Status Conflict**: A PGN validation failure where replay reaches a
   terminal final status that is incompatible with the PGN result marker, such as
   checkmate for Black with a `1-0` result.
+- **Validating PGN Export**: Export that replays a `PGNGame` model before
+  writing text, rejecting inconsistent move records, final positions, final
+  statuses, or result markers.
 - **FEN-Backed PGN**: A PGN that starts from a non-standard position using
   `[SetUp "1"]` and `[FEN "..."]`.
 - **PGN Database**: Text containing one or more PGN games.

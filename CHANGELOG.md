@@ -44,6 +44,9 @@ release. Replace `TBD` with the release date when a release is tagged.
 - Added validated mainline PGN parsing, multi-game database parsing,
   FEN-backed PGN support, comment and NAG preservation, and deterministic PGN
   export.
+- Added `PGNGame.finalStatus`, `finalOutcome`, result/status consistency
+  helpers, and validating `PGNGame` export so manually constructed game records
+  must replay to their stored final position, final status, and result.
 - Added PGN coverage for Lichess-style comments, a Lichess CC0 sample, result
   mismatches, malformed syntax, invalid SAN, FEN-backed games, castling,
   promotion, underpromotion, en passant, disambiguation, and export round trips.
@@ -112,6 +115,9 @@ release. Replace `TBD` with the release date when a release is tagged.
 
 ### Changed
 
+- Changed `PGNSerializer.pgn(from:)` to validate the supplied `PGNGame` and
+  throw `PGNSerializationError` when the model is internally inconsistent or
+  its result conflicts with a terminal final status.
 - Replaced the bundled legacy piece PNGs with self-contained prefixed piece
   asset families that can be added or removed one set at a time.
 - Marked `PieceColor`, `PieceKind`, `Square`, and `Move` as `Sendable` so they

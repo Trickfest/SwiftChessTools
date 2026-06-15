@@ -401,7 +401,7 @@ let black = pgnGame.tagValue(for: "Black") ?? "?"
 Export the parsed game back to deterministic PGN:
 
 ```swift
-let exported = serializer.pgn(from: pgnGame)
+let exported = try serializer.pgn(from: pgnGame)
 ```
 
 The first PGN milestone supports validated mainlines, tag pairs, comments, NAGs,
@@ -414,6 +414,18 @@ in checkmate, the result must name the winning side. If replay ends in an
 automatic draw, the result must be `1/2-1/2`. Ongoing positions can still carry a
 decisive or drawn result because real PGNs may end by resignation, timeout, or
 agreement before the board position is terminal.
+
+Use `finalStatus`, `finalOutcome`, and `resultMatchesFinalStatus` when a PGN
+browser, importer, or training tool needs to explain the final state:
+
+```swift
+let finalStatus = pgnGame.finalStatus
+let finalOutcome = pgnGame.finalOutcome
+
+if !pgnGame.resultMatchesFinalStatus {
+    print("Result \(pgnGame.result) conflicts with \(finalStatus)")
+}
+```
 
 ## 7. PGN Move Records
 
@@ -558,7 +570,7 @@ When exporting from a non-standard initial position, `PGNSerializer` includes
 Export an imported `PGNGame`:
 
 ```swift
-let exported = PGNSerializer().pgn(from: pgnGame)
+let exported = try PGNSerializer().pgn(from: pgnGame)
 ```
 
 Export concrete moves from the standard starting position:
@@ -584,8 +596,8 @@ let exported = try PGNSerializer().pgn(
 Control movetext wrapping:
 
 ```swift
-let compact = PGNSerializer().pgn(from: pgnGame, lineWidth: 0)
-let wrapped = PGNSerializer().pgn(from: pgnGame, lineWidth: 80)
+let compact = try PGNSerializer().pgn(from: pgnGame, lineWidth: 0)
+let wrapped = try PGNSerializer().pgn(from: pgnGame, lineWidth: 80)
 ```
 
 Round trip exported PGN:
@@ -613,7 +625,8 @@ Common errors:
   position validation.
 - `SANParsingError`: SAN cannot be parsed in the current game context.
 - `PGNParsingError`: malformed PGN or semantic replay failure.
-- `PGNSerializationError`: an invalid move list was supplied for export.
+- `PGNSerializationError`: an invalid move list or inconsistent `PGNGame` model
+  was supplied for export.
 - `GameReplayError`: an illegal move was supplied while replaying a concrete
   move list.
 - `GameDrawClaimError`: a draw claim was requested when it is not currently
@@ -670,7 +683,7 @@ PGN export and reparse:
 
 ```swift
 let original = try PGNSerializer().game(from: pgnText)
-let exported = PGNSerializer().pgn(from: original)
+let exported = try PGNSerializer().pgn(from: original)
 let reparsed = try PGNSerializer().game(from: exported)
 
 #expect(reparsed.mainlineMoves == original.mainlineMoves)
@@ -743,7 +756,7 @@ struct PGNInspector {
 
             print("Final FEN: \(finalFEN)")
             print("Normalized PGN:")
-            print(pgnSerializer.pgn(from: game))
+            print(try pgnSerializer.pgn(from: game))
         }
     }
 }
@@ -859,7 +872,7 @@ try game.claimDraw(.threefoldRepetition)
 ### Export A PGNGame
 
 ```swift
-let exported = PGNSerializer().pgn(from: game)
+let exported = try PGNSerializer().pgn(from: game)
 ```
 
 ### Export Concrete Moves As PGN

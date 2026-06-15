@@ -46,9 +46,9 @@ cases should be synthetic or hand-authored.
   UTF-8 BOM input, `%` escape lines, sparse tag rosters, odd and repeated tag
   names, escaped tag strings, empty/brace/semicolon comments, comments around
   result markers, clock/eval/EMT/comment-arrow variants, NAGs, malformed input,
-  result mismatches, terminal result/status conflicts including dead-position
-  draws, Lichess CC0 samples, generated legal-game round trips, and long
-  deterministic stress games.
+  result mismatches, terminal result/status conflicts, validating `PGNGame`
+  export, external results on ongoing positions, Lichess CC0 samples, generated
+  legal-game round trips, and long deterministic stress games.
 
 ## Rule Engine Coverage
 
@@ -220,7 +220,7 @@ classified as:
 | Checkmate and stalemate | Scholar's mate, mate detection, stalemate, legal moves after terminal states. | Check, checkmate, stalemate, terminal legal-move exhaustion, promotion mates, underpromotion mates, and promoted-piece stalemate fixtures are covered. | Covered | Low |
 | Draw and outcome rules | Insufficient material, dead positions, threefold/fivefold repetition, fifty/seventy-five move rules, outcome. | `Game.status`, `Game.outcome`, draw claims, claimed draws, automatic draws, dead-position analysis, rules-relevant repetition keys, replay, and reset behavior are covered. `positionCounts` remains board-only by design. | Covered | Low |
 | SAN parsing/export | SAN generation, parsing, ambiguous moves, castling, promotion, checkmate, long algebraic notation. | Core SAN, generated round trips, every-legal-move stress round trips, ambiguity, en-passant, promotion, checkmate, optional/decorative check suffixes, coordinate-notation rejection, and missing-disambiguation rejection are covered. Long algebraic notation is not currently accepted as SAN. | Covered | Low |
-| PGN basic import/export | Tag roster, setup/FEN, comments, NAGs, headers, no tag roster, empty games, export visitors. | Mainline import/export, sparse and full tag rosters, odd tag names, FEN-backed games, empty games, leading comments, comments, NAGs, invalid NAGs, malformed input, terminal result/status validation, and round trips are covered. | Covered | Low |
+| PGN basic import/export | Tag roster, setup/FEN, comments, NAGs, headers, no tag roster, empty games, export visitors. | Mainline import/export, sparse and full tag rosters, odd tag names, FEN-backed games, empty games, leading comments, comments, NAGs, invalid NAGs, malformed input, explicit terminal result/status validation, external ongoing-result acceptance, validating `PGNGame` export, and round trips are covered. | Covered | Low |
 | PGN dialect tolerance | UTF-8 BOM, semicolon comments, odd headers, empty lines, UCI/LAN movetext, ChessBase quirks. | UTF-8 BOM input, compact movetext, `%` escape lines, semicolon comments, empty comments, result-boundary comments, repeated extra tags, escaped strings, odd tag names, empty games, and Lichess-style samples are covered. Non-SAN UCI/LAN movetext and broader ChessBase quirks remain future decisions. | Covered | Low |
 | PGN variations | Tree traversal, promote/demote variations, recursive variation handling. | Recursive variations are intentionally rejected by the current PGN implementation. | Future API | Medium |
 | PGN annotation details | Symbolic annotations, eval comments, clock comments, elapsed-move-time fields. | Comments, NAGs including `$0` and leading-zero values, symbolic annotation mapping, Lichess clock/eval comments, elapsed-move-time variants, arrow comments, and colored-square comments are covered. | Covered | Low |
@@ -255,8 +255,10 @@ Current high-priority API coverage includes:
 - dead-position analyzer coverage for material-only draws, sealed immobile pawn
   barriers with trapped sliding pieces, symmetry invariants, false-positive
   near-misses, and a status/analyzer performance smoke pass
-- PGN result/status conflicts for terminal checkmate and automatic draw
-  positions, including dead-position draws
+- PGN result/status conflicts for checkmate, stalemate, insufficient material,
+  dead position, seventy-five-move, and fivefold-repetition terminal statuses,
+  plus explicit external-result acceptance for ongoing and claimable-draw
+  positions
 
 No current-API high-priority rows remain open in the audit matrix. Rows marked
 `Future API` or `Out of scope` should stay out of this pass unless the package

@@ -12,6 +12,7 @@ display.
 - Mainline SAN replay through `SANSerializer` and `Game`.
 - Concrete `Move` values, canonical SAN, source SAN, move number, side, and ply
   on each `PGNMoveRecord`.
+- `PGNGame.finalStatus`, `finalOutcome`, and result/status consistency helpers.
 - Results: `1-0`, `0-1`, `1/2-1/2`, and `*`.
 - Result/status validation for terminal final positions: checkmate must match
   the winning side, and automatic draws, including dead positions, must use
@@ -23,10 +24,17 @@ display.
 - Repeated nonstandard tags are preserved in source order; tag lookup returns
   the first matching tag value.
 - Deterministic PGN export with the seven tag roster first.
+- Validating `PGNGame` export with `try PGNSerializer().pgn(from:)`; manually
+  constructed `PGNGame` values must replay to their stored final position,
+  final status, SAN, move numbers, side-to-move data, and result.
 
 Ongoing final positions may still carry decisive or drawn results because real
 PGNs can end by resignation, timeout, adjudication, or draw agreement before the
 board position itself is terminal.
+
+ChessCore only rejects result contradictions it can prove. Claimable draws, such
+as fifty-move or threefold-repetition claims, remain ongoing until claimed and
+therefore may still be exported or imported with any PGN result marker.
 
 ## Deferred
 

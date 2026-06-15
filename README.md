@@ -122,7 +122,7 @@ let pgnText = """
 let pgnGame = try PGNSerializer().game(from: pgnText)
 let moves = pgnGame.mainlineMoves
 let finalFEN = FENSerializer().fen(from: pgnGame.finalPosition)
-let exported = PGNSerializer().pgn(from: pgnGame)
+let exported = try PGNSerializer().pgn(from: pgnGame)
 ```
 
 Use `games(from:)` for PGN database text containing multiple games. FEN-backed
@@ -130,6 +130,10 @@ PGNs with `[SetUp "1"]` and `[FEN "..."]` are supported. Comments, including
 Lichess clock and evaluation comments, and numeric annotation glyphs are
 preserved on move records. Recursive annotation variations are intentionally
 reported as unsupported in the first PGN milestone.
+
+`PGNGame.finalStatus` reports the replayed final status. PGN import and export
+reject result markers that contradict terminal statuses ChessCore can prove,
+while still accepting external decisive or drawn results for ongoing positions.
 
 For a ChessCore-only walkthrough, see
 [Docs/ChessCoreTutorial.md](Docs/ChessCoreTutorial.md). For terminology, see
