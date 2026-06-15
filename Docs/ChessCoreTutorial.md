@@ -253,8 +253,32 @@ if let outcome = game.outcome {
 
 `Game.drawClaims` reports claimable draw rules for the current position, such as
 the fifty-move rule or threefold repetition. `Game.status` reports automatic
-draws such as stalemate, insufficient material, the seventy-five-move rule, and
-fivefold repetition.
+draws such as stalemate, insufficient material, dead position, the
+seventy-five-move rule, and fivefold repetition.
+
+Material-only dead positions are reported as `.draw(.insufficientMaterial)` for
+compatibility with common chess terminology. Other proven FIDE dead positions,
+such as sealed immobile pawn barriers where neither side can ever reach mate,
+are reported as `.draw(.deadPosition)`.
+
+Use `DeadPositionAnalyzer` directly when you need to ask the same question for a
+raw `Position`:
+
+```swift
+let analyzer = DeadPositionAnalyzer()
+
+if analyzer.hasInsufficientMatingMaterial(in: game.position) {
+    print("Draw by insufficient material.")
+}
+
+if analyzer.isDeadPosition(game.position) {
+    print("Neither side can ever checkmate.")
+}
+```
+
+`DeadPositionAnalyzer` is conservative. If it cannot prove that the position is
+dead, it returns `false` and `Game.status` remains ongoing unless another
+terminal rule applies.
 
 Claim an available draw explicitly:
 

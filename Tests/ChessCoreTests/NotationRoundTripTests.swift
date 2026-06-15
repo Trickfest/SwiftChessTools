@@ -92,6 +92,8 @@ func generatedLegalGameStatusInvariantsStayCoherent(seed: Int) throws {
                 #expect(!game.isCheck, "Seed \(seed), ply \(ply)")
             case .insufficientMaterial:
                 #expect(game.drawClaims.isEmpty, "Seed \(seed), ply \(ply)")
+            case .deadPosition:
+                #expect(DeadPositionAnalyzer().isDeadPosition(game.position), "Seed \(seed), ply \(ply)")
             case .seventyFiveMoveRule:
                 #expect(game.position.counter.halfMoves >= 150, "Seed \(seed), ply \(ply)")
             case .fivefoldRepetition:

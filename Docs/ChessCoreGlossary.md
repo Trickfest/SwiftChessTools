@@ -20,6 +20,9 @@ engine-analysis, and product-specific concepts belong in app-level docs.
 - **Position Validator**: `PositionValidator`, the ChessCore API that checks
   whether a syntactically parsed `Position` satisfies strict semantic position
   constraints.
+- **Dead Position Analyzer**: `DeadPositionAnalyzer`, the ChessCore API that
+  proves whether a position is dead because neither side can possibly
+  checkmate.
 - **Serialization Error**: A typed error thrown while exporting values, such as
   attempting to export an illegal concrete move list as PGN.
 - **Sendable**: A Swift concurrency marker used by value types that can safely
@@ -72,14 +75,19 @@ engine-analysis, and product-specific concepts belong in app-level docs.
 - **Checkmate**: A check position where the active color has no legal moves.
 - **Stalemate**: A non-check position where the active color has no legal moves.
 - **Automatic Draw**: A draw that ends the game without a player claim, such as
-  stalemate, insufficient material, the seventy-five-move rule, or fivefold
-  repetition.
+  stalemate, insufficient material, dead position, the seventy-five-move rule,
+  or fivefold repetition.
 - **Draw Claim**: A draw rule available for a player to claim, such as the
   fifty-move rule or threefold repetition.
 - **Claimed Draw**: A draw claim that has been applied with `Game.claimDraw`.
   Once claimed, `Game.status` reports a draw with the claimed reason.
-- **Insufficient Material**: A position where neither side has enough material
-  to produce checkmate under ChessCore's standard insufficient-material model.
+- **Insufficient Material**: A material-only dead position where neither side
+  has enough material to produce checkmate under ChessCore's standard
+  insufficient-material model.
+- **Dead Position**: A position where neither side can possibly checkmate by
+  any legal sequence of moves. ChessCore reports material-only cases as
+  `.draw(.insufficientMaterial)` and other proven cases as
+  `.draw(.deadPosition)`.
 - **Fifty-Move Rule**: A claimable draw when 100 halfmoves have passed without a
   pawn move or capture.
 - **Seventy-Five-Move Rule**: An automatic draw when 150 halfmoves have passed
@@ -227,6 +235,7 @@ engine-analysis, and product-specific concepts belong in app-level docs.
 - **Board-Based Position Counts**: `Game.positionCounts` tracks board
   occurrences by piece placement. Draw-claim repetition uses
   `Game.repetitionCounts` and `GameRepetitionKey` instead.
-- **Dead Position Boundary**: ChessCore currently covers standard
-  insufficient-material automatic draws, but does not yet implement the full
-  FIDE dead-position reachability rule for blocked structures.
+- **Dead Position Detection**: ChessCore proves material-only dead positions,
+  sealed immobile pawn-barrier dead positions, and bounded legal-state
+  reachability cases. The analyzer is conservative: positions outside those
+  proven classes remain ongoing rather than risking a false-positive draw.

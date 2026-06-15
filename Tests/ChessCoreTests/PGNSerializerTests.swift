@@ -194,6 +194,89 @@ import Testing
     #expect(games[2].moveRecords[3].san == "Qh4#")
 }
 
+@Test func pgnParsesExpandedDialectCorpus() throws {
+    let database = #"""
+        % ignored escape line before the first game
+        [Event "Dialect \"Tag\" Corpus"]
+        [Site "https://lichess.org/synthetic-dialect-1"]
+        [Date "2026.06.14"]
+        [Round "-"]
+        [White "Quote \" White"]
+        [Black "Slash \\ Black"]
+        [Result "*"]
+        [Annotator "Primary"]
+        [Annotator "Secondary"]
+        [Opening "Queen's Pawn \\ Line"]
+
+        ; loose line comment before movetext is ignored
+        1.d4 {[%clk 0:10:00.5][%eval 0.32]} Nf6 { [%eval #4] }
+        % ignored escape line between moves
+        2.c4 {[%emt 0:00:01.25]} e6 { [%cal Ge7e5,Rg8f6] [%csl Gd4] } *
+
+        [Event "Result Comment Boundary"]
+        [Site "?"]
+        [Date "????.??.??"]
+        [Round "?"]
+        [White "White"]
+        [Black "Black"]
+        [Result "1-0"]
+
+        1. e4 { comment before external result } 1-0 { comment after result is ignored }
+
+        [Event "Empty Comments And Semicolons"]
+        [Site "?"]
+        [Date "????.??.??"]
+        [Round "?"]
+        [White "White"]
+        [Black "Black"]
+        [Result "*"]
+
+        { loose brace comment is ignored }
+        ; loose semicolon comment is ignored
+        1. e4 {} ; line comment attaches to e4
+        1... c5 {   } 2. Nf3 $0 $01 *
+
+        [Event "FEN Backed Dialect"]
+        [Site "?"]
+        [Date "????.??.??"]
+        [Round "?"]
+        [White "White"]
+        [Black "Black"]
+        [Result "*"]
+        [SetUp "1"]
+        [FEN "r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1"]
+
+        1... O-O-O { [%clk 0:00:59.99] [%emt 0:00:00.01] } *
+        """#
+
+    let games = try PGNSerializer().games(from: database)
+
+    #expect(games.count == 4)
+
+    #expect(games[0].tagValue(for: "Event") == #"Dialect "Tag" Corpus"#)
+    #expect(games[0].tagValue(for: "White") == #"Quote " White"#)
+    #expect(games[0].tagValue(for: "Black") == #"Slash \ Black"#)
+    #expect(games[0].tagPairs.filter { $0.name == "Annotator" }.map(\.value) == ["Primary", "Secondary"])
+    #expect(games[0].moveRecords.map(\.san) == ["d4", "Nf6", "c4", "e6"])
+    #expect(games[0].moveRecords[0].comments == ["[%clk 0:10:00.5][%eval 0.32]"])
+    #expect(games[0].moveRecords[1].comments == ["[%eval #4]"])
+    #expect(games[0].moveRecords[2].comments == ["[%emt 0:00:01.25]"])
+    #expect(games[0].moveRecords[3].comments == ["[%cal Ge7e5,Rg8f6] [%csl Gd4]"])
+
+    #expect(games[1].result == .whiteWins)
+    #expect(games[1].moveRecords.map(\.san) == ["e4"])
+    #expect(games[1].moveRecords[0].comments == ["comment before external result"])
+
+    #expect(games[2].moveRecords.map(\.san) == ["e4", "c5", "Nf3"])
+    #expect(games[2].moveRecords[0].comments == ["", "line comment attaches to e4"])
+    #expect(games[2].moveRecords[1].comments == [""])
+    #expect(games[2].moveRecords[2].nags.map(\.rawValue) == [0, 1])
+
+    #expect(games[3].moveRecords.map(\.san) == ["O-O-O"])
+    #expect(games[3].mainlineMoves.map(\.description) == ["e8c8"])
+    #expect(games[3].moveRecords[0].comments == ["[%clk 0:00:59.99] [%emt 0:00:00.01]"])
+}
+
 @Test func pgnParsesEscapedTagValuesAndExportsThem() throws {
     let pgn = #"""
         [Event "Quote \" and slash \\"]
@@ -529,6 +612,43 @@ import Testing
     #expect(terminalDraw.result == .draw)
     #expect(Game(position: terminalDraw.finalPosition).status == .draw(.stalemate))
 
+    expectPGNParsingError("""
+        [Event "Wrong Dead Position Result"]
+        [Site "?"]
+        [Date "????.??.??"]
+        [Round "?"]
+        [White "White"]
+        [Black "Black"]
+        [Result "1-0"]
+        [SetUp "1"]
+        [FEN "7k/8/8/8/1p1p1p1p/pPpPpPpP/P1P1P1P1/K7 w - - 0 1"]
+
+        1-0
+        """) { error in
+        if case let .resultConflictsWithFinalStatus(result, status, context) = error {
+            return result == .whiteWins
+                && status == .draw(.deadPosition)
+                && context.gameIndex == 0
+        }
+        return false
+    }
+
+    let deadPositionDraw = try PGNSerializer().game(from: """
+        [Event "Correct Dead Position Result"]
+        [Site "?"]
+        [Date "????.??.??"]
+        [Round "?"]
+        [White "White"]
+        [Black "Black"]
+        [Result "1/2-1/2"]
+        [SetUp "1"]
+        [FEN "7k/8/8/8/1p1p1p1p/pPpPpPpP/P1P1P1P1/K7 w - - 0 1"]
+
+        1/2-1/2
+        """)
+    #expect(deadPositionDraw.result == .draw)
+    #expect(Game(position: deadPositionDraw.finalPosition).status == .draw(.deadPosition))
+
     let resignation = try PGNSerializer().game(from: """
         [Event "External Result"]
         [Site "?"]
@@ -797,6 +917,26 @@ import Testing
 
     let stalemateExport = try serializer.pgn(initialPosition: stalemate, moves: [], result: .draw)
     #expect(stalemateExport.contains("1/2-1/2"))
+
+    let deadPosition = try FENSerializer().position(
+        from: "7k/8/8/8/1p1p1p1p/pPpPpPpP/P1P1P1P1/K7 w - - 0 1"
+    )
+    do {
+        _ = try serializer.pgn(initialPosition: deadPosition, moves: [], result: .whiteWins)
+        Issue.record("Expected dead-position result conflict to fail")
+    } catch let error as PGNSerializationError {
+        if case let .resultConflictsWithFinalStatus(result, status, _) = error {
+            #expect(result == .whiteWins)
+            #expect(status == .draw(.deadPosition))
+        } else {
+            Issue.record("Expected resultConflictsWithFinalStatus, got: \(error)")
+        }
+    } catch {
+        Issue.record("Expected PGNSerializationError, got: \(error)")
+    }
+
+    let deadPositionExport = try serializer.pgn(initialPosition: deadPosition, moves: [], result: .draw)
+    #expect(deadPositionExport.contains("1/2-1/2"))
 }
 
 @Test func pgnParsesLichessStandardDatabaseSample() throws {

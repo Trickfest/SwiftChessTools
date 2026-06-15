@@ -66,8 +66,13 @@ public class Game {
             return .draw(.stalemate)
         }
 
-        if self.hasInsufficientMaterial {
+        let deadPositionAnalyzer = DeadPositionAnalyzer()
+        if deadPositionAnalyzer.hasInsufficientMatingMaterial(in: self.position) {
             return .draw(.insufficientMaterial)
+        }
+
+        if deadPositionAnalyzer.isDeadPosition(self.position) {
+            return .draw(.deadPosition)
         }
 
         if self.position.counter.halfMoves >= 150 {
@@ -397,33 +402,6 @@ public class Game {
         }
 
         return nil
-    }
-
-    private var hasInsufficientMaterial: Bool {
-        let pieces = self.position.board.enumeratedPieces()
-        let nonKings = pieces.filter { $0.1.kind != .king }
-
-        if nonKings.isEmpty {
-            return true
-        }
-
-        if nonKings.contains(where: { [.queen, .rook, .pawn].contains($0.1.kind) }) {
-            return false
-        }
-
-        let knights = nonKings.filter { $0.1.kind == .knight }
-        let bishops = nonKings.filter { $0.1.kind == .bishop }
-
-        if bishops.isEmpty && knights.count == 1 {
-            return true
-        }
-
-        if knights.isEmpty && !bishops.isEmpty {
-            let bishopSquareColors = Set(bishops.map { ($0.0.file + $0.0.rank).isMultiple(of: 2) })
-            return bishopSquareColors.count == 1
-        }
-
-        return false
     }
 
     // MARK: Utilities

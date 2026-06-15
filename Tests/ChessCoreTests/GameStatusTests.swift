@@ -153,6 +153,14 @@ private let terminalStatusCorpus: [TerminalStatusCorpusCase] = [
         isCheck: false,
         isStalemate: false
     ),
+    TerminalStatusCorpusCase(
+        name: "Locked pawn-barrier dead position",
+        fen: "7k/8/8/8/1p1p1p1p/pPpPpPpP/P1P1P1P1/K7 w - - 0 1",
+        expectedStatus: .draw(.deadPosition),
+        expectedOutcome: .draw,
+        isCheck: false,
+        isStalemate: false
+    ),
 ]
 
 @Test("Terminal position corpus", arguments: terminalStatusCorpus)

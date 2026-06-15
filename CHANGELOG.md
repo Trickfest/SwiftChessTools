@@ -72,8 +72,8 @@ release. Replace `TBD` with the release date when a release is tagged.
   a 27-position perft corpus.
 - Added `GameStatus`, `GameOutcome`, `GameDrawReason`, `GameDrawClaim`, and
   `GameRepetitionKey` so ChessCore consumers can inspect checkmate, stalemate,
-  insufficient material, fifty/seventy-five-move rules, and threefold/fivefold
-  repetition state.
+  insufficient material, dead positions, fifty/seventy-five-move rules, and
+  threefold/fivefold repetition state.
 - Added hardened GameStatus coverage for material edge cases, real-move draw
   threshold transitions, halfmove resets, illegal en-passant repetition keys,
   status precedence, and game-like knight repetitions.
@@ -97,6 +97,15 @@ release. Replace `TBD` with the release date when a release is tagged.
   validation, every-legal-move SAN stress round trips, automatic draw precedence
   overlaps, checked insufficient-material positions, and generated game-status
   invariants.
+- Added oracle-backed ChessCore hardening with a checked-in `python-chess`
+  corpus covering 53 exact legal-move/status positions and 48 generated
+  move-count/status positions, generated legal-game mutation invariants, and an
+  expanded PGN dialect corpus for escaped tags, result boundary comments,
+  semicolon/empty comments, Lichess clock/eval/EMT fields, arrow/square
+  annotations, and repeated tags.
+- Added `DeadPositionAnalyzer` plus ChessCore status/PGN coverage for material
+  dead positions, sealed immobile pawn-barrier dead positions, symmetry
+  invariants, false-positive guards, and dead-position result validation.
 
 ### Changed
 

@@ -18,6 +18,7 @@ import ChessCore
     _ = ChessMoveRecordBuilder()
     _ = PGNSerializer()
     _ = PositionValidator()
+    _ = DeadPositionAnalyzer()
 }
 
 @Test func parserAPIsArePubliclyUsable() {
@@ -70,7 +71,14 @@ import ChessCore
     #expect(GameStatus.draw(.stalemate).outcome == .draw)
     #expect(GameStatus.checkmate(winner: .black).outcome == .win(.black))
     #expect(GameDrawReason.insufficientMaterial == .insufficientMaterial)
+    #expect(GameDrawReason.deadPosition == .deadPosition)
     #expect(GameDrawReason.fiftyMoveRule == .fiftyMoveRule)
+
+    let deadPosition = try! FENSerializer().position(
+        from: "7k/8/8/8/1p1p1p1p/pPpPpPpP/P1P1P1P1/K7 w - - 0 1"
+    )
+    #expect(DeadPositionAnalyzer().isDeadPosition(deadPosition))
+    #expect(Game(position: deadPosition).status == .draw(.deadPosition))
 
     try! game.claimDraw(.fiftyMoveRule)
     #expect(game.claimedDraw == .fiftyMoveRule)

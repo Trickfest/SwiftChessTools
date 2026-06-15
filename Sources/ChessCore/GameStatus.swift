@@ -28,6 +28,9 @@ public enum GameDrawReason: Equatable, Sendable {
     /// ChessCore's standard insufficient-material model.
     case insufficientMaterial
 
+    /// Neither side can possibly checkmate by any legal sequence of moves.
+    case deadPosition
+
     /// The halfmove clock has reached 150 halfmoves.
     case seventyFiveMoveRule
 

@@ -14,10 +14,12 @@ display.
   on each `PGNMoveRecord`.
 - Results: `1-0`, `0-1`, `1/2-1/2`, and `*`.
 - Result/status validation for terminal final positions: checkmate must match
-  the winning side, and automatic draws must use `1/2-1/2`.
+  the winning side, and automatic draws, including dead positions, must use
+  `1/2-1/2`.
 - FEN-backed games with `[SetUp "1"]` and `[FEN "..."]`.
-- Brace comments, empty comments, semicolon comments, `%` escape lines, Lichess
-  clock/eval/elapsed-move-time comments, and NAGs.
+- Escaped tag strings, brace comments, empty comments, semicolon comments,
+  comments around result markers, `%` escape lines, Lichess clock/eval/elapsed
+  move time comments, arrow/square annotation comments, and NAGs.
 - Repeated nonstandard tags are preserved in source order; tag lookup returns
   the first matching tag value.
 - Deterministic PGN export with the seven tag roster first.
