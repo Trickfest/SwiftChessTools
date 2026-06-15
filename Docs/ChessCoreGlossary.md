@@ -237,11 +237,13 @@ engine-analysis, and product-specific concepts belong in app-level docs.
 - **Standard Chess Only**: ChessCore currently targets standard chess rules, not
   Chess960 or other variants.
 - **Mainline PGN First**: PGN support validates mainline games and preserves
-  comments/NAGs, but does not yet model recursive variations.
+  comments/NAGs. Recursive variations are Future API because they need a public
+  move-tree model.
 - **Board-Based Position Counts**: `Game.positionCounts` tracks board
   occurrences by piece placement. Draw-claim repetition uses
   `Game.repetitionCounts` and `GameRepetitionKey` instead.
 - **Dead Position Detection**: ChessCore proves material-only dead positions,
   sealed immobile pawn-barrier dead positions, and bounded legal-state
   reachability cases. The analyzer is conservative: positions outside those
-  proven classes remain ongoing rather than risking a false-positive draw.
+  proven classes remain ongoing rather than risking a false-positive draw. A
+  broader exhaustive FIDE dead-position solver is deferred future work.

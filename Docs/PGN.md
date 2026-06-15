@@ -36,12 +36,13 @@ ChessCore only rejects result contradictions it can prove. Claimable draws, such
 as fifty-move or threefold-repetition claims, remain ongoing until claimed and
 therefore may still be exported or imported with any PGN result marker.
 
-## Deferred
+## Future API
 
 Recursive annotation variations are lexed and reported with a specific
 `PGNParsingError.unsupportedRecursiveVariation` error. Full variation modeling
-should be added as a separate milestone so the public model can represent
-variation trees cleanly instead of flattening them.
+is intentionally deferred as future API. It should be added only as a separate
+milestone with a public move-tree model that can represent variation trees
+cleanly instead of flattening them.
 
 ## Fixture Policy
 
