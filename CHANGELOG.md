@@ -53,6 +53,9 @@ release. Replace `TBD` with the release date when a release is tagged.
 - Expanded PGN coverage with a Lichess CC0 mini-corpus, deterministic generated
   legal-game round trips, 10 long generated stress games, compact movetext and
   escape-line tolerance, and additional SAN ambiguity fixtures.
+- Expanded the checked-in Lichess CC0 PGN corpus with 15 additional historic
+  standard games covering real-world external results, checkmates, castling,
+  promotions, and promoted-queen SAN disambiguation.
 - Expanded ChessCore rule-engine and game-state invariant coverage for pins,
   single and double check, king exposure, castling restrictions, en passant,
   promotion, stalemate, move counters, castling rights, game copies, and

@@ -51,3 +51,7 @@ database samples for checked-in real-world corpus coverage because Lichess
 publishes those exports under Creative Commons CC0. Avoid vendoring PGNs from
 TWIC, commercial databases, or tournament sites unless redistribution rights are
 explicit and compatible with this package.
+
+Checked-in Lichess fixtures should stay small, static, and offline. Fetch from
+Lichess only when refreshing the corpus, then commit the selected PGN text so
+normal tests never require network access.

@@ -1152,12 +1152,72 @@ private func pgnExportAcceptsExternalResultsForOngoingFinalStatuses(testCase: PG
     #expect(games.map { $0.moveRecords.count } == [25, 35, 21, 94, 46, 63])
     #expect(games.map { $0.moveRecords.last?.san } == ["Qe8#", "Bxh8", "Nxc7+", "c4", "Bxh3+", "Qxd5+"])
 
-    for game in games {
-        let reparsed = try serializer.game(from: try serializer.pgn(from: game))
-        #expect(reparsed.mainlineMoves == game.mainlineMoves)
-        #expect(reparsed.finalPosition == game.finalPosition)
-        #expect(reparsed.result == game.result)
-    }
+    try assertPGNRoundTrips(games, using: serializer)
+}
+
+@Test func pgnParsesExpandedLichessCC0Corpus() throws {
+    let serializer = PGNSerializer()
+    let games = try serializer.games(from: lichessExpandedCC0Corpus)
+
+    #expect(games.count == 15)
+    #expect(games.map { $0.tagValue(for: "Site") } == [
+        "https://lichess.org/1hi3aveq",
+        "https://lichess.org/6x5okiht",
+        "https://lichess.org/pflcg8eb",
+        "https://lichess.org/bcqa8u74",
+        "https://lichess.org/0i6bq9a9",
+        "https://lichess.org/tw3fxgjh",
+        "https://lichess.org/gu3wxtnf",
+        "https://lichess.org/8hia9meu",
+        "https://lichess.org/kvvm7a7d",
+        "https://lichess.org/k0dgsn99",
+        "https://lichess.org/t2y7ot3b",
+        "https://lichess.org/hla57hi7",
+        "https://lichess.org/4urpsw2h",
+        "https://lichess.org/uuoc3k9j",
+        "https://lichess.org/m3oizjhx",
+    ])
+    #expect(games.map(\.result) == [
+        .blackWins, .blackWins, .blackWins, .whiteWins, .blackWins,
+        .blackWins, .blackWins, .blackWins, .whiteWins, .blackWins,
+        .whiteWins, .whiteWins, .whiteWins, .whiteWins, .blackWins,
+    ])
+    #expect(games.map { $0.tagValue(for: "Variant") } == Array(repeating: "Standard", count: games.count))
+    #expect(games.map { $0.tagValue(for: "GameId") } == [
+        "1hi3aveq",
+        "6x5okiht",
+        "pflcg8eb",
+        "bcqa8u74",
+        "0i6bq9a9",
+        "tw3fxgjh",
+        "gu3wxtnf",
+        "8hia9meu",
+        "kvvm7a7d",
+        "k0dgsn99",
+        "t2y7ot3b",
+        "hla57hi7",
+        "4urpsw2h",
+        "uuoc3k9j",
+        "m3oizjhx",
+    ])
+
+    let allSAN = games.flatMap { $0.moveRecords.map(\.san) }
+    #expect(allSAN.contains("c8=Q"))
+    #expect(allSAN.contains("d1=Q"))
+    #expect(allSAN.contains("e1=Q"))
+    #expect(allSAN.contains("Q4g4#"))
+    #expect(allSAN.contains("h1=Q"))
+    #expect(allSAN.contains("a1=Q"))
+    #expect(allSAN.contains("Qag1#"))
+    #expect(allSAN.contains("O-O-O"))
+
+    #expect(games.allSatisfy { $0.resultMatchesFinalStatus })
+    #expect(games.contains { $0.requiredResultForFinalStatus == .whiteWins })
+    #expect(games.contains { $0.requiredResultForFinalStatus == .blackWins })
+    #expect(games.contains { $0.requiredResultForFinalStatus == nil && $0.result != .unfinished })
+    #expect(games.filter { $0.tagValue(for: "Termination") == "Time forfeit" }.count == 1)
+
+    try assertPGNRoundTrips(games, using: serializer)
 }
 
 @Test(
@@ -1560,6 +1620,20 @@ private func compatiblePGNResult(for moves: [Move], fallback: PGNResult) throws 
     }
 }
 
+private func assertPGNRoundTrips(_ games: [PGNGame], using serializer: PGNSerializer) throws {
+    for game in games {
+        let reparsed = try serializer.game(from: try serializer.pgn(from: game))
+        for tagPair in game.tagPairs {
+            #expect(reparsed.tagValue(for: tagPair.name) == tagPair.value)
+        }
+        #expect(reparsed.mainlineMoves == game.mainlineMoves)
+        #expect(reparsed.finalPosition == game.finalPosition)
+        #expect(reparsed.finalStatus == game.finalStatus)
+        #expect(reparsed.result == game.result)
+        #expect(reparsed.resultMatchesFinalStatus == game.resultMatchesFinalStatus)
+    }
+}
+
 private struct DeterministicGenerator {
     var state: UInt64
 
@@ -1716,4 +1790,338 @@ private let lichessMiniCorpus = """
     [Termination "Time forfeit"]
 
     1. e4 b6 2. Bc4 Bb7 3. d3 Nh6 4. Bxh6 gxh6 5. Qf3 e6 6. Nh3 Bg7 7. c3 Nc6 8. Qg3 Rg8 9. Qf3 Ne5 10. Qe3 Nxc4 11. dxc4 Qe7 12. O-O Qc5 13. Qxc5 b5 14. Qxb5 Bxe4 15. Nd2 Bc6 16. Qb3 Bxc3 17. g3 Bxd2 18. Rad1 Bg5 19. Nxg5 hxg5 20. Qd3 h6 21. b4 Ba4 22. Rd2 Rb8 23. b5 d6 24. Qa3 Bxb5 25. cxb5 Rxb5 26. Qxa7 Rc5 27. Qa8+ Ke7 28. Qxg8 e5 29. Qh8 d5 30. Qxe5+ Kd7 31. Rxd5+ Rxd5 32. Qxd5+ 1-0
+    """
+
+// Public Lichess CC0 standard-game exports, fetched once and checked in so the
+// test suite never depends on network access.
+private let lichessExpandedCC0Corpus = """
+    [Event "rated rapid game"]
+    [Site "https://lichess.org/1hi3aveq"]
+    [Date "2012.12.31"]
+    [Round "-"]
+    [White "BFG9k"]
+    [Black "Sagaz"]
+    [Result "0-1"]
+    [GameId "1hi3aveq"]
+    [UTCDate "2012.12.31"]
+    [UTCTime "23:07:33"]
+    [WhiteElo "1644"]
+    [BlackElo "1544"]
+    [WhiteRatingDiff "-16"]
+    [BlackRatingDiff "+14"]
+    [Variant "Standard"]
+    [TimeControl "600+8"]
+    [ECO "B06"]
+    [Opening "Modern Defense"]
+    [Termination "Normal"]
+
+    1. e4 g6 2. d4 d6 3. Nf3 c6 4. h3 Nf6 5. Bg5 Nxe4 6. Qe2 Bf5 7. Nbd2 Qa5 8. c3 Nxd2 9. Bxd2 Nd7 10. b4 Qa3 11. Ng5 h5 12. Qc4 d5 13. Qe2 Qb2 14. Qd1 Bc2 15. Qc1 Qxc1+ 16. Rxc1 Ba4 17. Bd3 Nb6 18. O-O Nc4 19. Bxc4 dxc4 20. Bf4 Bh6 21. Rfe1 O-O 22. Rxe7 Rae8 23. Rxb7 f6 24. Ne6 Rxe6 25. Bxh6 Rf7 26. Rb8+ Kh7 27. Bf4 g5 28. Bd2 Re2 29. Be1 Rfe7 30. Kf1 Bc2 31. Rc8 Bd3 32. Rxc6 Rc2+ 33. Kg1 Rxc1 34. Rxf6 h4 35. g4 Rexe1+ 36. Kg2 Be4+ 37. f3 Rc2# 0-1
+
+    [Event "rated rapid game"]
+    [Site "https://lichess.org/6x5okiht"]
+    [Date "2012.12.31"]
+    [Round "-"]
+    [White "BFG9k"]
+    [Black "Jonathan_52"]
+    [Result "0-1"]
+    [GameId "6x5okiht"]
+    [UTCDate "2012.12.31"]
+    [UTCTime "22:48:41"]
+    [WhiteElo "1649"]
+    [BlackElo "1500"]
+    [WhiteRatingDiff "-10"]
+    [BlackRatingDiff "+265"]
+    [Variant "Standard"]
+    [TimeControl "600+8"]
+    [ECO "B00"]
+    [Opening "Nimzowitsch Defense: Mikenas Variation"]
+    [Termination "Normal"]
+
+    1. e4 Nc6 2. d4 d6 3. Bb5 e5 4. d5 a6 5. dxc6 axb5 6. cxb7 Bxb7 7. Nc3 Nf6 8. Bg5 h6 9. Bh4 g5 10. Bg3 b4 11. Nd5 Bxd5 12. exd5 Ne4 13. Ne2 c6 14. dxc6 Qc7 15. Qd5 Ra5 16. Qxe4 h5 17. Qxb4 d5 18. Bxe5 Qxe5 19. Qxa5 Qe4 20. Qa8+ Ke7 21. Qb7+ Ke6 22. Qd7+ Kf6 23. Qd8+ Kg6 24. c7 Bg7 25. Qxh8 Bxh8 26. c8=Q Kh7 27. Qh3 g4 28. Qxh5+ Kg8 29. Qg5+ Bg7 30. h3 Qxg2 31. O-O-O Qxf2 32. Qxg4 Qe3+ 33. Kb1 Qe5 34. Rhg1 Qxb2# 0-1
+
+    [Event "rated rapid game"]
+    [Site "https://lichess.org/pflcg8eb"]
+    [Date "2012.12.31"]
+    [Round "-"]
+    [White "BFG9k"]
+    [Black "arion_6"]
+    [Result "0-1"]
+    [GameId "pflcg8eb"]
+    [UTCDate "2012.12.31"]
+    [UTCTime "22:42:26"]
+    [WhiteElo "1659"]
+    [BlackElo "1500"]
+    [WhiteRatingDiff "-10"]
+    [BlackRatingDiff "+273"]
+    [Variant "Standard"]
+    [TimeControl "600+8"]
+    [ECO "C23"]
+    [Opening "Bishop's Opening: Philidor Counterattack"]
+    [Termination "Normal"]
+
+    1. e4 e5 2. Bc4 c6 3. d3 d5 4. exd5 cxd5 5. Bb5+ Nc6 6. Nf3 Bg4 7. h3 Bh5 8. Bg5 Bxf3 9. Qxf3 Qxg5 10. Qxd5 Qc1+ 11. Ke2 Qxc2+ 12. Kf3 Nf6 13. Qxe5+ Be7 14. Re1 O-O 15. Bxc6 Qxc6+ 16. Kg3 Bd6 0-1
+
+    [Event "rated rapid game"]
+    [Site "https://lichess.org/bcqa8u74"]
+    [Date "2012.12.30"]
+    [Round "-"]
+    [White "BFG9k"]
+    [Black "A4"]
+    [Result "1-0"]
+    [GameId "bcqa8u74"]
+    [UTCDate "2012.12.30"]
+    [UTCTime "21:57:38"]
+    [WhiteElo "1644"]
+    [BlackElo "1764"]
+    [WhiteRatingDiff "+15"]
+    [BlackRatingDiff "-35"]
+    [Variant "Standard"]
+    [TimeControl "600+8"]
+    [ECO "C00"]
+    [Opening "Rat Defense: Small Center Defense"]
+    [Termination "Normal"]
+
+    1. e4 e6 2. d4 d6 3. Nf3 c6 4. Nc3 f6 5. Bf4 g6 6. Bc4 h6 7. O-O b6 8. h3 a6 9. a3 b5 10. Ba2 g5 11. Bh2 h5 12. Re1 Be7 13. Qd3 e5 14. d5 Nh6 15. dxc6 Nxc6 16. Bd5 Qc7 17. Bxc6+ Qxc6 18. Nd5 g4 19. Nxe7 Kxe7 20. Nh4 gxh3 21. Ng6+ Kf7 22. Nxh8+ Kg7 23. Qg3+ Kxh8 24. Qg6 hxg2 25. Qxh6+ Kg8 26. Qxf6 Bg4 27. Bxe5 Ra7 28. Rad1 Rh7 29. Rxd6 Qe8 30. Rd8 Qxd8 31. Qxd8+ Kf7 32. Qf6+ Kg8 33. Qg6+ Kf8 34. Qxh7 h4 35. Qxh4 Bh3 36. Qxh3 b4 37. Qh7 bxa3 38. Rd1 axb2 39. Rd8# 1-0
+
+    [Event "rated rapid game"]
+    [Site "https://lichess.org/0i6bq9a9"]
+    [Date "2012.12.30"]
+    [Round "-"]
+    [White "BFG9k"]
+    [Black "Zaqws"]
+    [Result "0-1"]
+    [GameId "0i6bq9a9"]
+    [UTCDate "2012.12.30"]
+    [UTCTime "21:30:19"]
+    [WhiteElo "1657"]
+    [BlackElo "1641"]
+    [WhiteRatingDiff "-13"]
+    [BlackRatingDiff "+12"]
+    [Variant "Standard"]
+    [TimeControl "600+8"]
+    [ECO "B01"]
+    [Opening "Scandinavian Defense"]
+    [Termination "Normal"]
+
+    1. e4 d5 2. e5 Bf5 3. d4 e6 4. h3 Ne7 5. Bg5 h6 6. Bh4 g5 7. Bg3 Nbc6 8. Bb5 Qd7 9. Nf3 O-O-O 10. a4 a6 11. Bd3 Nb4 12. Bxf5 Nxf5 13. Bh2 c5 14. c3 Nc6 15. b4 cxd4 16. cxd4 Nxb4 17. Na3 Kb8 18. O-O Rc8 19. Qd2 Be7 20. Rfc1 Rxc1+ 21. Rxc1 Rc8 22. Nc2 Nxc2 23. Rxc2 Qxa4 24. Rxc8+ Kxc8 25. Qc1+ Kb8 26. Bg3 Nxd4 27. Nxd4 Qxd4 28. Kh2 Qc4 29. Qd1 a5 30. Qh5 Qc7 31. Qxf7 Qd7 32. Qg6 a4 33. Qb1 b5 34. f3 h5 35. Be1 h4 36. g4 Qc6 37. Bd2 Qc4 38. Kg1 Bc5+ 39. Kg2 Qe2+ 40. Kh1 Qxf3+ 41. Kh2 Qg3+ 42. Kh1 Qxh3# 0-1
+
+    [Event "rated rapid game"]
+    [Site "https://lichess.org/tw3fxgjh"]
+    [Date "2012.12.29"]
+    [Round "-"]
+    [White "BFG9k"]
+    [Black "Monsieur_Tapis"]
+    [Result "0-1"]
+    [GameId "tw3fxgjh"]
+    [UTCDate "2012.12.29"]
+    [UTCTime "23:49:23"]
+    [WhiteElo "1665"]
+    [BlackElo "1779"]
+    [WhiteRatingDiff "-8"]
+    [BlackRatingDiff "+8"]
+    [Variant "Standard"]
+    [TimeControl "600+8"]
+    [ECO "C02"]
+    [Opening "French Defense: Advance Variation"]
+    [Termination "Normal"]
+
+    1. e4 e6 2. d4 d5 3. e5 c5 4. c3 Nc6 5. Bb5 Bd7 6. Bxc6 bxc6 7. Nf3 cxd4 8. cxd4 c5 9. O-O Nh6 10. Bxh6 gxh6 11. Qd2 Rg8 12. dxc5 Qc7 13. b4 a5 14. a3 axb4 15. Qxb4 Bxc5 16. Qf4 Rg6 17. Rc1 Qa7 18. Rc3 Bxf2+ 19. Kh1 Ke7 20. Qb4+ Ke8 21. Nbd2 Rb8 22. Qd6 Rb6 23. Rc7 Rxd6 24. Rxa7 Rb6 25. Ra8+ Ke7 26. h3 Rc6 27. a4 Rc8 28. Rxc8 Bxc8 29. a5 Ba6 30. Nb3 Kd7 31. Nfd4 Rg3 32. Nc5+ Kc8 33. Nxa6 Bxd4 34. Rc1+ Rc3 35. Rf1 Bxe5 36. Nb4 f6 37. a6 Ra3 38. Kg1 Bd4+ 39. Kh2 Be5+ 40. g3 Bxg3+ 41. Kg2 Be5 42. Rc1+ Rc3 43. Rxc3+ Bxc3 44. Nc6 Be5 45. Ne7+ Kb8 46. Nc6+ Ka8 47. a7 Bc7 48. Kf3 Bb6 49. Kf4 Bxa7 50. Nxa7 Kxa7 51. Ke3 Kb6 52. Kd4 Kc6 53. h4 e5+ 54. Ke3 f5 55. Kf3 Kc5 56. h5 Kc4 57. Kg3 d4 58. Kf3 Kd3 59. Kg3 Ke3 60. Kg2 d3 61. Kf1 Kd2 62. Kf2 e4 63. Kf1 Kc1 64. Ke1 d2+ 65. Kf2 d1=Q 66. Ke3 Qf3+ 67. Kd4 Qd3+ 68. Ke5 Qb5+ 69. Kf4 Kd2 70. Kg3 e3 71. Kg2 e2 72. Kf3 e1=Q 73. Kg2 Qe4+ 74. Kf2 Qbe2+ 75. Kg3 Q4g4# 0-1
+
+    [Event "rated rapid game"]
+    [Site "https://lichess.org/gu3wxtnf"]
+    [Date "2012.12.29"]
+    [Round "-"]
+    [White "BFG9k"]
+    [Black "Vitus"]
+    [Result "0-1"]
+    [GameId "gu3wxtnf"]
+    [UTCDate "2012.12.29"]
+    [UTCTime "23:25:44"]
+    [WhiteElo "1678"]
+    [BlackElo "1620"]
+    [WhiteRatingDiff "-13"]
+    [BlackRatingDiff "+13"]
+    [Variant "Standard"]
+    [TimeControl "600+8"]
+    [ECO "B00"]
+    [Opening "Duras Gambit"]
+    [Termination "Normal"]
+
+    1. e4 f5 2. Qh5+ g6 3. Qf3 d6 4. Bc4 Nf6 5. d3 Nc6 6. Bb5 Bd7 7. Nc3 Nd4 8. Bxd7+ Nxd7 9. Qd1 e5 10. Nf3 Nc6 11. Bg5 Be7 12. Qd2 Bxg5 13. Nxg5 f4 14. Ne6 Qc8 15. Nd5 Kf7 16. Ng5+ Kg8 17. b4 Nf8 18. b5 Qd8 19. bxc6 Qxg5 20. cxb7 Rb8 21. Rg1 Rxb7 22. f3 c6 23. Nc3 Ne6 24. Ne2 Kf7 25. Qc3 Rc8 26. Qc4 Qh4+ 27. g3 fxg3 28. hxg3 Qh2 29. Rf1 Ke7 30. a4 Kd7 31. a5 Rcb8 32. Kd2 Rb4 33. Qa6 R4b7 34. c4 Rb2+ 35. Kc1 Qxe2 36. Qxa7+ Nc7 37. Qf2 Rc2# 0-1
+
+    [Event "rated rapid game"]
+    [Site "https://lichess.org/8hia9meu"]
+    [Date "2012.12.29"]
+    [Round "-"]
+    [White "BFG9k"]
+    [Black "guzu"]
+    [Result "0-1"]
+    [GameId "8hia9meu"]
+    [UTCDate "2012.12.29"]
+    [UTCTime "21:18:27"]
+    [WhiteElo "1686"]
+    [BlackElo "1832"]
+    [WhiteRatingDiff "-8"]
+    [BlackRatingDiff "+7"]
+    [Variant "Standard"]
+    [TimeControl "600+8"]
+    [ECO "B20"]
+    [Opening "Sicilian Defense: Bowdler Attack"]
+    [Termination "Normal"]
+
+    1. e4 c5 2. Bc4 g6 3. d3 Nc6 4. Nf3 Bg7 5. Bg5 Bxb2 6. Nc3 Bxc3+ 7. Nd2 Bxa1 8. Qxa1 Nf6 9. Bxf6 exf6 10. O-O O-O 11. Re1 d6 12. Nf3 Ne5 13. Nxe5 dxe5 14. Bd5 Qc7 15. c4 Bd7 16. Re3 Bc6 17. Rf3 Kg7 18. g4 h6 19. h4 Bxd5 20. cxd5 Qd6 21. g5 fxg5 22. hxg5 h5 23. Rf6 Qd7 24. Qxe5 Qg4+ 25. Kf1 Kg8 26. d6 Qd1+ 27. Kg2 Qxd3 28. Qe7 Rae8 29. Qxb7 Qxe4+ 30. Qxe4 Rxe4 31. d7 Rd4 32. Rc6 c4 33. Rc8 Rxd7 34. Rxc4 Rd5 35. f4 Rd2+ 36. Kf3 Rxa2 37. Ke4 Re8+ 38. Kd5 Rd2+ 39. Kc5 Rc8+ 40. Kb5 Rxc4 41. Kxc4 a5 42. Kb3 h4 43. f5 h3 44. fxg6 fxg6 45. Kc3 Rd8 46. Kb3 h2 47. Ka4 Ra8 48. Kb5 Kf7 49. Kc5 Ke6 50. Kd4 a4 51. Ke3 Kf5 52. Kf3 Kxg5 53. Kg2 Rh8 54. Kh1 a3 55. Kg2 a2 56. Kg3 h1=Q 57. Kf2 a1=Q 58. Kg3 Qag1# 0-1
+
+    [Event "rated rapid game"]
+    [Site "https://lichess.org/kvvm7a7d"]
+    [Date "2012.12.29"]
+    [Round "-"]
+    [White "BFG9k"]
+    [Black "MaxPax"]
+    [Result "1-0"]
+    [GameId "kvvm7a7d"]
+    [UTCDate "2012.12.29"]
+    [UTCTime "21:06:11"]
+    [WhiteElo "1677"]
+    [BlackElo "1579"]
+    [WhiteRatingDiff "+9"]
+    [BlackRatingDiff "-8"]
+    [Variant "Standard"]
+    [TimeControl "600+8"]
+    [ECO "C24"]
+    [Opening "Bishop's Opening: Vienna Hybrid"]
+    [Termination "Time forfeit"]
+
+    1. e4 e5 2. Bc4 Nf6 3. Nc3 Nc6 4. d3 h6 5. Nd5 Na5 6. Ne3 Nxc4 7. Nxc4 Bc5 8. Nxe5 d6 9. Nc4 Ng4 10. Nh3 Qf6 11. Qe2 1-0
+
+    [Event "rated rapid game"]
+    [Site "https://lichess.org/k0dgsn99"]
+    [Date "2012.12.29"]
+    [Round "-"]
+    [White "BFG9k"]
+    [Black "fistfullofbastard"]
+    [Result "0-1"]
+    [GameId "k0dgsn99"]
+    [UTCDate "2012.12.29"]
+    [UTCTime "20:59:43"]
+    [WhiteElo "1693"]
+    [BlackElo "1550"]
+    [WhiteRatingDiff "-16"]
+    [BlackRatingDiff "+17"]
+    [Variant "Standard"]
+    [TimeControl "600+8"]
+    [ECO "B12"]
+    [Opening "Caro-Kann Defense"]
+    [Termination "Normal"]
+
+    1. e4 c6 2. d4 e6 3. Nc3 a6 4. Nf3 h6 5. Bf4 d6 6. Bc4 b5 7. Bb3 Nd7 8. O-O Bb7 9. Re1 d5 10. e5 c5 11. Ne2 c4 12. c3 cxb3 13. Qxb3 Nb6 14. a3 Nc4 15. a4 Ne7 16. axb5 axb5 17. Qxb5+ Bc6 18. Rxa8 Qxa8 19. Qb6 Nxb6 0-1
+
+    [Event "rated rapid game"]
+    [Site "https://lichess.org/t2y7ot3b"]
+    [Date "2012.12.29"]
+    [Round "-"]
+    [White "BFG9k"]
+    [Black "ticotico"]
+    [Result "1-0"]
+    [GameId "t2y7ot3b"]
+    [UTCDate "2012.12.29"]
+    [UTCTime "20:35:33"]
+    [WhiteElo "1680"]
+    [BlackElo "1777"]
+    [WhiteRatingDiff "+13"]
+    [BlackRatingDiff "-74"]
+    [Variant "Standard"]
+    [TimeControl "600+8"]
+    [ECO "C23"]
+    [Opening "Bishop's Opening"]
+    [Termination "Normal"]
+
+    1. e4 e5 2. Bc4 d6 3. d3 Be6 4. Bxe6 fxe6 5. Qg4 Qf6 6. Bg5 Qg6 7. h4 h5 8. Qh3 Be7 9. Nf3 Nf6 10. Qxe6 Nbd7 11. Nc3 Qf7 12. Qxf7+ Kxf7 13. Bxf6 Bxf6 14. Nd5 Rhf8 15. Nxc7 Rac8 16. Nb5 Rxc2 17. Nxd6+ Ke6 18. Nxb7 Rxb2 19. Na5 Rfb8 20. O-O g5 21. hxg5 Bg7 22. Nc6 Nc5 23. Nxb8 Rxb8 24. d4 exd4 25. Rad1 Nxe4 26. Nxd4+ Bxd4 27. Rxd4 Ke5 28. Rfd1 Rf8 29. Rd5+ Kf4 30. g3+ Kg4 31. R1d4 Kf3 32. Rd3+ Ke2 33. Re3# 1-0
+
+    [Event "rated rapid game"]
+    [Site "https://lichess.org/hla57hi7"]
+    [Date "2012.12.29"]
+    [Round "-"]
+    [White "BFG9k"]
+    [Black "ticotico"]
+    [Result "1-0"]
+    [GameId "hla57hi7"]
+    [UTCDate "2012.12.29"]
+    [UTCTime "20:06:27"]
+    [WhiteElo "1663"]
+    [BlackElo "1883"]
+    [WhiteRatingDiff "+17"]
+    [BlackRatingDiff "-106"]
+    [Variant "Standard"]
+    [TimeControl "600+8"]
+    [ECO "C23"]
+    [Opening "Bishop's Opening"]
+    [Termination "Normal"]
+
+    1. e4 e5 2. Bc4 d6 3. d3 c5 4. Nc3 b6 5. Bd5 Na6 6. Bxa8 Nb4 7. Bd5 Nxd5 8. Nxd5 Be6 9. c4 g6 10. Nf3 Bg7 11. h3 Nf6 12. Bg5 O-O 13. a4 a5 14. Nh2 Bxd5 15. cxd5 Qd7 16. Qf3 Nh5 17. Ng4 f5 18. Nh6+ Kh8 19. exf5 Bf6 20. fxg6 hxg6 21. Bxf6+ Rxf6 22. Qg4 Qg7 23. Qc8+ Rf8 24. Qc6 Qxh6 25. Qxd6 Qf4 26. O-O g5 27. Rae1 g4 28. Qxe5+ Ng7 29. Qxf4 Rxf4 30. Re4 Rf5 31. Rxg4 Rxd5 32. Rg6 Rxd3 33. Rxb6 c4 34. Rc1 Nh5 35. Rh6+ Kg7 36. Rxh5 Rb3 37. Rxc4 Rxb2 38. Rg4+ Kf6 39. Rh6+ Kf5 40. Rh5+ Kf6 41. Rxa5 Rb1+ 42. Kh2 Rb2 43. f3 1-0
+
+    [Event "rated rapid game"]
+    [Site "https://lichess.org/4urpsw2h"]
+    [Date "2012.12.29"]
+    [Round "-"]
+    [White "BFG9k"]
+    [Black "ThreeFoxes"]
+    [Result "1-0"]
+    [GameId "4urpsw2h"]
+    [UTCDate "2012.12.29"]
+    [UTCTime "19:54:28"]
+    [WhiteElo "1658"]
+    [BlackElo "1427"]
+    [WhiteRatingDiff "+5"]
+    [BlackRatingDiff "-5"]
+    [Variant "Standard"]
+    [TimeControl "600+8"]
+    [ECO "C23"]
+    [Opening "Bishop's Opening"]
+    [Termination "Normal"]
+
+    1. e4 e5 2. Bc4 d6 3. d3 a6 4. Nf3 h6 5. h3 Nf6 6. Nc3 c6 7. O-O d5 8. Bb3 Qd6 9. Re1 d4 10. Na4 b5 11. Nb6 Ra7 12. Nxc8 Qc7 13. Nxa7 Qxa7 14. Nxe5 Qe7 15. Bxf7+ Kd8 16. Bf4 g5 17. Bg3 h5 18. Ng6 1-0
+
+    [Event "rated rapid game"]
+    [Site "https://lichess.org/uuoc3k9j"]
+    [Date "2012.12.29"]
+    [Round "-"]
+    [White "BFG9k"]
+    [Black "Patolino"]
+    [Result "1-0"]
+    [GameId "uuoc3k9j"]
+    [UTCDate "2012.12.29"]
+    [UTCTime "19:27:26"]
+    [WhiteElo "1651"]
+    [BlackElo "1493"]
+    [WhiteRatingDiff "+7"]
+    [BlackRatingDiff "-6"]
+    [Variant "Standard"]
+    [TimeControl "600+8"]
+    [ECO "B00"]
+    [Opening "Pirc Defense"]
+    [Termination "Normal"]
+
+    1. e4 d6 2. d4 b6 3. Nc3 Bb7 4. Nf3 e6 5. Bg5 Be7 6. Qd2 h6 7. Bf4 g5 8. Bg3 Nf6 9. h3 Qd7 10. Bd3 Nh5 11. Bh2 Bf6 12. g4 Ng7 13. O-O-O O-O 14. Rde1 c5 15. Bb5 Qc7 16. d5 e5 17. Bg3 a5 18. h4 Qc8 19. hxg5 Qxg4 20. gxf6 Qxf3 21. fxg7 1-0
+
+    [Event "rated rapid game"]
+    [Site "https://lichess.org/m3oizjhx"]
+    [Date "2012.12.29"]
+    [Round "-"]
+    [White "BFG9k"]
+    [Black "parsh"]
+    [Result "0-1"]
+    [GameId "m3oizjhx"]
+    [UTCDate "2012.12.29"]
+    [UTCTime "16:00:26"]
+    [WhiteElo "1662"]
+    [BlackElo "1695"]
+    [WhiteRatingDiff "-11"]
+    [BlackRatingDiff "+10"]
+    [Variant "Standard"]
+    [TimeControl "600+8"]
+    [ECO "C23"]
+    [Opening "Bishop's Opening: Boi Variation"]
+    [Termination "Normal"]
+
+    1. e4 e5 2. Bc4 Bc5 3. d3 Nc6 4. Nc3 Nge7 5. Bg5 f6 6. Bh4 Na5 7. Qh5+ Ng6 8. Nf3 Nxc4 9. dxc4 Be7 10. Nd5 O-O 11. Nxe7+ Qxe7 12. O-O-O d6 13. Ne1 Be6 14. Qe2 Nf4 15. Qf1 Qf7 16. b3 a5 17. g3 Ng6 18. Ng2 a4 19. Kb2 axb3 20. cxb3 Ne7 21. f4 Bg4 22. Rd2 Nc6 23. h3 Be6 24. f5 Bd7 25. g4 Ra6 26. g5 Rfa8 27. a4 fxg5 28. Bxg5 h6 29. Be3 Nd4 30. Nh4 Nxb3 31. Rg2 Rxa4 32. Kc3 Nd4 33. Bxh6 Ra3+ 34. Kd2 Ra2+ 35. Ke1 Ra1+ 36. Kf2 R8a2+ 37. Kg1 Rxf1+ 38. Kxf1 Rxg2 39. Nxg2 gxh6 40. Rg1 Qxc4+ 41. Kf2 Qe2+ 42. Kg3 Nf3 43. Nh4 Nxg1 0-1
     """
