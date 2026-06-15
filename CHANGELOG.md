@@ -106,6 +106,9 @@ release. Replace `TBD` with the release date when a release is tagged.
 - Added `DeadPositionAnalyzer` plus ChessCore status/PGN coverage for material
   dead positions, sealed immobile pawn-barrier dead positions, symmetry
   invariants, false-positive guards, and dead-position result validation.
+- Expanded dead-position hardening with additional material-theory fixtures,
+  trapped-piece pawn-barrier fixtures, capture-based near-miss fixtures, and a
+  status/analyzer performance smoke test.
 
 ### Changed
 

@@ -27,8 +27,24 @@ private let materialDeadPositionFixtures = [
         fen: "8/8/8/8/8/8/8/KB5k w - - 0 1"
     ),
     DeadPositionFixture(
+        name: "Black bishop versus bare king",
+        fen: "6bk/8/8/8/8/8/8/K7 b - - 0 1"
+    ),
+    DeadPositionFixture(
+        name: "White knight versus bare king",
+        fen: "7k/8/8/8/8/8/8/KN6 w - - 0 1"
+    ),
+    DeadPositionFixture(
         name: "Black knight versus bare king",
         fen: "k6n/8/8/8/8/8/8/K7 b - - 0 1"
+    ),
+    DeadPositionFixture(
+        name: "Multiple same-color white bishops versus bare king",
+        fen: "7k/8/8/8/8/8/8/K1B1B1B1 w - - 0 1"
+    ),
+    DeadPositionFixture(
+        name: "Multiple same-color black bishops versus bare king",
+        fen: "b1b1b2k/8/8/8/8/8/8/K7 b - - 0 1"
     ),
     DeadPositionFixture(
         name: "Same-color bishops only",
@@ -66,8 +82,20 @@ private let materialCanStillMateFixtures = [
         fen: "8/8/8/8/8/8/8/KNk2n2 w - - 0 1"
     ),
     DeadPositionFixture(
+        name: "Single knight plus enemy pawn can construct mate",
+        fen: "7k/8/8/8/8/8/p7/KN6 w - - 0 1"
+    ),
+    DeadPositionFixture(
+        name: "Single bishop plus enemy pawn can construct mate",
+        fen: "7k/8/8/8/8/8/p7/KB6 w - - 0 1"
+    ),
+    DeadPositionFixture(
         name: "Pawn can promote into mating material",
         fen: "7k/P7/8/8/8/8/8/K7 w - - 0 1"
+    ),
+    DeadPositionFixture(
+        name: "Same-color bishops plus pawn can still promote",
+        fen: "7k/8/8/8/8/8/P7/K1B1B3 w - - 0 1"
     ),
     DeadPositionFixture(
         name: "Rook is mating material",
@@ -102,6 +130,26 @@ private let blockedDeadPositionFixtures = [
     DeadPositionFixture(
         name: "Locked barrier with trapped sliders",
         fen: "6rk/8/8/8/1p1p1p1p/pPpPpPpP/P1P1P1P1/KQ6 w - - 0 1"
+    ),
+    DeadPositionFixture(
+        name: "Locked barrier with trapped rooks",
+        fen: "6rk/8/8/8/1p1p1p1p/pPpPpPpP/P1P1P1P1/KR6 w - - 0 1"
+    ),
+    DeadPositionFixture(
+        name: "Locked barrier with trapped queens",
+        fen: "5q1k/8/8/8/1p1p1p1p/pPpPpPpP/P1P1P1P1/KQ6 w - - 0 1"
+    ),
+    DeadPositionFixture(
+        name: "Locked barrier with trapped bishops",
+        fen: "5b1k/8/8/8/1p1p1p1p/pPpPpPpP/P1P1P1P1/KB6 b - - 0 1"
+    ),
+    DeadPositionFixture(
+        name: "Locked barrier with mixed trapped pieces",
+        fen: "4bqrk/8/8/8/1p1p1p1p/pPpPpPpP/P1P1P1P1/KBRQ4 w - - 0 1"
+    ),
+    DeadPositionFixture(
+        name: "Locked barrier with mixed trapped pieces and black to move",
+        fen: "4bqrk/8/8/8/1p1p1p1p/pPpPpPpP/P1P1P1P1/KBRQ4 b - - 0 1"
     ),
 ]
 
@@ -148,6 +196,14 @@ private let blockedNearMissFixtures = [
         fen: "6bk/8/8/8/1p1p1p1p/pPpPpPpP/P1P1P1P1/K1B5 w - - 0 1"
     ),
     DeadPositionFixture(
+        name: "A rook can capture a barrier pawn",
+        fen: "7k/8/8/8/1p1p1p1p/p1pPpPpP/P1P1P1P1/KR6 w - - 0 1"
+    ),
+    DeadPositionFixture(
+        name: "A queen can capture a barrier pawn",
+        fen: "7k/8/8/8/1p1p1p1p/p1pPpPpP/P1P1P1P1/KQ6 w - - 0 1"
+    ),
+    DeadPositionFixture(
         name: "An opposing king-side component contains attacking material",
         fen: "6Bk/8/8/8/1p1p1p1p/pPpPpPpP/P1P1P1P1/K7 w - - 0 1"
     ),
@@ -181,8 +237,73 @@ private func blockedNearMissesAreNotFalsePositiveDeadPositions(testCase: DeadPos
     #expect(Game(position: position).status == .draw(.stalemate))
 }
 
+@Test func deadPositionStatusPerformanceSmoke() throws {
+    let analyzer = DeadPositionAnalyzer()
+    var positions = try (materialDeadPositionFixtures
+        + materialCanStillMateFixtures
+        + blockedDeadPositionFixtures
+        + blockedNearMissFixtures
+    ).map { try position(from: $0.fen) }
+    positions.append(
+        contentsOf: try generatedLegalPerformancePositions(seedCount: 16, pliesPerSeed: 18)
+    )
+
+    let clock = ContinuousClock()
+    let iterations = 5
+    let elapsed = clock.measure {
+        for _ in 0..<iterations {
+            for position in positions {
+                _ = Game(position: position).status
+                _ = analyzer.isDeadPosition(position)
+            }
+        }
+    }
+
+    #expect(
+        elapsed < .seconds(30),
+        "Dead-position status performance probe took \(elapsed) for \(positions.count * iterations) evaluations."
+    )
+}
+
 private func position(from fen: String) throws -> Position {
     return try FENSerializer().position(from: fen)
+}
+
+private func generatedLegalPerformancePositions(seedCount: Int, pliesPerSeed: Int) throws -> [Position] {
+    let serializer = FENSerializer()
+    let startingPosition = try serializer.position(from: PGNSerializer.standardStartingFEN)
+    var positions = [Position]()
+
+    for seed in 0..<seedCount {
+        let game = Game(position: startingPosition)
+        var generator = DeadPositionDeterministicGenerator(seed: UInt64(seed + 60_000))
+
+        for _ in 0..<pliesPerSeed {
+            positions.append(game.position)
+
+            let legalMoves = game.legalMoves.sorted { $0.description < $1.description }
+            guard !legalMoves.isEmpty else {
+                break
+            }
+
+            game.apply(move: legalMoves[generator.nextIndex(upperBound: legalMoves.count)])
+        }
+    }
+
+    return positions
+}
+
+private struct DeadPositionDeterministicGenerator {
+    var state: UInt64
+
+    init(seed: UInt64) {
+        self.state = seed &+ 0x9e37_79b9_7f4a_7c15
+    }
+
+    mutating func nextIndex(upperBound: Int) -> Int {
+        state = state &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+        return Int(state % UInt64(upperBound))
+    }
 }
 
 private extension Position {

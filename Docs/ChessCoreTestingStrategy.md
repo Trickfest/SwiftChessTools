@@ -103,16 +103,21 @@ Game-status and outcome coverage currently includes:
 - ongoing positions, checkmate with winner color, stalemate, `isDraw`,
   `isStalemate`, and `outcome`
 - insufficient-material positives for bare kings, king and bishop versus king,
-  king and knight versus king, same-color bishop-only positions, and
-  promotion-like multiple-bishop positions
+  king and knight versus king, same-color bishop-only positions, and multiple
+  same-color bishop shapes for both colors
 - insufficient-material negatives for pawns, rooks, queens, bishop and knight,
-  two knights, opposing knights, opposite-color bishops, and mixed minor-piece
-  combinations
+  two knights, opposing knights, opposite-color bishops, single minor pieces
+  plus enemy self-blocking pawns, same-color bishops plus pawns, and mixed
+  minor-piece combinations
 - `DeadPositionAnalyzer` positives for material-only dead positions and sealed
-  immobile pawn-barrier positions with trapped sliding pieces
+  immobile pawn-barrier positions with trapped rooks, queens, bishops, and
+  mixed sliding pieces
 - dead-position symmetry checks under file mirrors and board/color swaps
-- dead-position near-misses for open pawn gaps, legal captures, jumping knights,
-  and attacking material already beyond the pawn barrier
+- dead-position near-misses for open pawn gaps, legal pawn captures, legal
+  bishop/rook/queen captures, jumping knights, and attacking material already
+  beyond the pawn barrier
+- dead-position status/analyzer performance smoke coverage over the
+  dead-position corpus plus generated legal middlegame positions
 - fifty-move draw claims at 100 halfmoves and seventy-five-move automatic draws
   at 150 halfmoves
 - quiet moves that cross fifty/seventy-five-move thresholds, plus pawn moves
@@ -248,7 +253,8 @@ Current high-priority API coverage includes:
   en-passant targets, and inactive-side check
 - game replay/reset and explicit draw-claim behavior
 - dead-position analyzer coverage for material-only draws, sealed immobile pawn
-  barriers, symmetry invariants, and false-positive near-misses
+  barriers with trapped sliding pieces, symmetry invariants, false-positive
+  near-misses, and a status/analyzer performance smoke pass
 - PGN result/status conflicts for terminal checkmate and automatic draw
   positions, including dead-position draws
 
