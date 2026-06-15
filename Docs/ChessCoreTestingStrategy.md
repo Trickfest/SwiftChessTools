@@ -10,28 +10,38 @@ cases should be synthetic or hand-authored.
 
 ## Current Coverage Shape
 
-- Rule-engine tests cover 27 known perft positions, focused legal move lists,
+- Rule-engine tests cover 40 known perft positions, focused legal move lists,
   pawn movement, castling restrictions, king safety, pins, checks, double check,
   discovered-check exposure, en passant edge cases, promotion choices, king
   capture exclusion, protected-piece captures, black and white castling stress,
-  checkmate, and stalemate.
+  checkmate, stalemate, promotion-heavy positions, and underpromotion mates.
 - Game-state invariant tests cover move counters, en passant lifecycle,
   castling-right mutation, promotion application, game copy independence, and
   board-only position counting.
 - Game-status tests cover checkmate, stalemate, insufficient material,
   fifty/seventy-five-move rules, threefold/fivefold repetition, repetition-key
   identity, real-move threshold transitions, draw-claim application,
-  replay/reset behavior, and status precedence.
+  replay/reset behavior, status precedence, and a terminal-position corpus with
+  promotion mates, underpromotion mates, promoted-piece stalemates, and
+  promoted-material insufficient-material draws. They also cover overlapping
+  automatic draw reasons and insufficient-material positions where the side to
+  move is in check.
 - FEN tests cover serialization round trips, generated legal-position round
-  trips, malformed input errors, and strict semantic position validation.
+  trips, malformed input errors, and strict semantic position validation,
+  including multi-issue reporting, castling-right piece mismatches, en-passant
+  target and halfmove-clock consistency, and white/black en-passant exposure
+  cases.
 - SAN tests cover parse/export behavior, checkmate, castling spelling,
   en-passant SAN, pawn-file case sensitivity, generated legal-move round trips,
-  targeted ambiguity, optional/decorative check suffixes, promotion, and parser
-  failures.
+  targeted three-or-more-piece ambiguity, optional/decorative check suffixes,
+  promotion, underpromotion mate, castling checks for both colors, and parser
+  failures. Targeted stress fixtures also round-trip every legal move through
+  SAN in ambiguity-heavy, en-passant, castling, and promotion-heavy positions.
 - PGN tests cover validated import/export, multi-game parsing, FEN-backed games,
-  UTF-8 BOM input, sparse tag rosters, odd tag names, comments, NAGs, malformed
-  input, result mismatches, terminal result/status conflicts, Lichess CC0
-  samples, generated legal-game round trips, and long deterministic stress
+  UTF-8 BOM input, `%` escape lines, sparse tag rosters, odd and repeated tag
+  names, empty/brace/semicolon comments, clock/eval/EMT comment variants, NAGs,
+  malformed input, result mismatches, terminal result/status conflicts, Lichess
+  CC0 samples, generated legal-game round trips, and long deterministic stress
   games.
 
 ## Phase 2 Boundary: Game-State Invariants
@@ -105,9 +115,13 @@ tests verify:
 - castling rights require the matching king and rook on their starting squares
 - en-passant targets require an empty target square, the capturable pawn, and at
   least one legal en-passant capture
+- en-passant targets require a zero halfmove clock because the previous move
+  must have been a pawn move
 - en-passant targets are rejected when the apparent capture would expose the
   moving side's king
 - the inactive side's king may not already be in check
+- independent semantic issues are reported together instead of stopping after
+  the first issue
 
 Full FIDE dead-position reachability for blocked structures remains future work
 and is intentionally not part of this boundary.
@@ -141,7 +155,7 @@ FEN/SAN round trips, and new regression tests for every bug found.
 The second rule-engine corpus milestone deepens the first pass without trying to
 test every possible chess position. It is complete when tests add:
 
-- a larger perft corpus, currently 27 deterministic positions
+- a larger perft corpus, currently 40 deterministic positions
 - extra castling positions for missing rooks, attacked transit squares, and
   attacked destination squares
 - extra pinned-piece cases, including pinned knights and bishops
@@ -161,6 +175,7 @@ The first notation round-trip milestone is complete when tests cover:
   parse back to the same concrete move
 - targeted SAN ambiguity, en-passant check, and promotion-capture checkmate
   cases
+- every legal move in targeted high-stress positions round trips through SAN
 - malformed FEN boundary cases such as too many ranks, rank overflow, adjacent
   empty-square digits, invalid castling strings, invalid en-passant squares, and
   counters outside `Int` range
@@ -189,20 +204,20 @@ classified as:
 | Pieces | Symbol parsing, equality, hashing. | Piece equality and character mapping are covered. | Covered | Low |
 | Board storage | Default/empty boards, get/set/remove pieces, color lookup, piece maps. | Board square/index/coordinate access, copy independence, and enumeration are covered. | Covered | Low |
 | FEN syntax | Valid FEN, malformed FEN, counters, en-passant fields, castling fields. | Serialization, malformed fields, generated round trips, adjacent digit rejection, and counter bounds are covered. | Covered | Low |
-| FEN semantic status | Bad castling rights, multiple kings, impossible or inconsistent positions. | `PositionValidator` and `FENSerializer.validatedPosition(from:)` cover king counts, pawn ranks, castling rights, en-passant availability, and inactive-side check. Full dead-position reachability remains future work. | Covered | Low |
+| FEN semantic status | Bad castling rights, multiple kings, impossible or inconsistent positions. | `PositionValidator` and `FENSerializer.validatedPosition(from:)` cover king counts, pawn ranks, castling rights, en-passant availability, en-passant halfmove-clock consistency, inactive-side check, and multi-issue reporting. Full dead-position reachability remains future work. | Covered | Low |
 | EPD | EPD parsing, operations, best-move fields. | ChessCore does not support EPD. | Out of scope | Low |
-| Legal move generation | Legal move lists, move counts, perft-style fixtures, pseudo-legal distinctions. | Focused legal-move fixtures and 27 perft positions are covered, including more castling, en-passant, promotion, checkmate, and stalemate positions. | Covered | Low |
+| Legal move generation | Legal move lists, move counts, perft-style fixtures, pseudo-legal distinctions. | Focused legal-move fixtures and 40 perft positions are covered, including more castling, en-passant, promotion, underpromotion mate, checkmate, and stalemate positions. | Covered | Low |
 | Castling | SAN castling, selective castling, missing/invalid rights, rook/king edge cases, Chess960 castling. | Standard castling rights, missing rooks, matching rook color, attacked transit/destination, in-check rejection, b-file occupancy, rook-path attack tolerance, and application are covered. Chess960 is out of scope. | Covered | Low |
 | En passant | Legal captures, attackers, impossible/skewered captures, check evasion, pinned-file cases. | En passant lifecycle, SAN/PGN replay, discovered-check rejection, horizontal skewers for both colors, and pawn-check evasion for both colors are covered. | Covered | Low |
-| Promotion | Promotion generation, SAN, check/checkmate promotion, underpromotion. | Promotion choices, application, SAN, PGN promotion, and underpromotion are covered. More promotion-check and promotion-capture variants are useful. | Add next | Medium |
+| Promotion | Promotion generation, SAN, check/checkmate promotion, underpromotion. | Promotion choices, application, SAN, PGN promotion, promotion captures, underpromotion, and underpromotion mate fixtures are covered. | Covered | Low |
 | Attacks and pins | Attack maps, pin direction, pin while in check. | Public legal-move behavior for pins, double check, shielding pieces, and protected-piece king captures is covered. Direct attack-map APIs are not public. | Add next | Medium |
-| Checkmate and stalemate | Scholar's mate, mate detection, stalemate, legal moves after terminal states. | Check, checkmate, and stalemate have focused coverage. A larger terminal-position corpus would be useful. | Add next | Medium |
+| Checkmate and stalemate | Scholar's mate, mate detection, stalemate, legal moves after terminal states. | Check, checkmate, stalemate, terminal legal-move exhaustion, promotion mates, underpromotion mates, and promoted-piece stalemate fixtures are covered. | Covered | Low |
 | Draw and outcome rules | Insufficient material, threefold/fivefold repetition, fifty/seventy-five move rules, outcome. | `Game.status`, `Game.outcome`, draw claims, claimed draws, automatic draws, rules-relevant repetition keys, replay, and reset behavior are covered. `positionCounts` remains board-only by design. | Covered | Low |
-| SAN parsing/export | SAN generation, parsing, ambiguous moves, castling, promotion, checkmate, long algebraic notation. | Core SAN, generated round trips, ambiguity, en-passant, promotion, checkmate, optional/decorative check suffixes, coordinate-notation rejection, and missing-disambiguation rejection are covered. Long algebraic notation is not currently accepted as SAN. | Covered | Low |
+| SAN parsing/export | SAN generation, parsing, ambiguous moves, castling, promotion, checkmate, long algebraic notation. | Core SAN, generated round trips, every-legal-move stress round trips, ambiguity, en-passant, promotion, checkmate, optional/decorative check suffixes, coordinate-notation rejection, and missing-disambiguation rejection are covered. Long algebraic notation is not currently accepted as SAN. | Covered | Low |
 | PGN basic import/export | Tag roster, setup/FEN, comments, NAGs, headers, no tag roster, empty games, export visitors. | Mainline import/export, sparse and full tag rosters, odd tag names, FEN-backed games, empty games, leading comments, comments, NAGs, invalid NAGs, malformed input, terminal result/status validation, and round trips are covered. | Covered | Low |
-| PGN dialect tolerance | UTF-8 BOM, semicolon comments, odd headers, empty lines, UCI/LAN movetext, ChessBase quirks. | UTF-8 BOM input, compact movetext, escape lines, semicolon comments, odd tag names, empty games, and Lichess samples are covered. Non-SAN UCI/LAN movetext and broader ChessBase quirks remain future decisions. | Add next | Medium |
+| PGN dialect tolerance | UTF-8 BOM, semicolon comments, odd headers, empty lines, UCI/LAN movetext, ChessBase quirks. | UTF-8 BOM input, compact movetext, `%` escape lines, semicolon comments, empty comments, repeated extra tags, odd tag names, empty games, and Lichess-style samples are covered. Non-SAN UCI/LAN movetext and broader ChessBase quirks remain future decisions. | Covered | Low |
 | PGN variations | Tree traversal, promote/demote variations, recursive variation handling. | Recursive variations are intentionally rejected in the first PGN milestone. | Future API | Medium |
-| PGN annotation details | Symbolic annotations, eval comments, clock comments, elapsed-move-time fields. | Comments, NAGs, Lichess clock/eval comments are covered. Symbolic annotation mapping and elapsed-time variants can be deepened. | Add next | Medium |
+| PGN annotation details | Symbolic annotations, eval comments, clock comments, elapsed-move-time fields. | Comments, NAGs, symbolic annotation mapping, Lichess clock/eval comments, and elapsed-move-time variants are covered. | Covered | Low |
 | PGN variants | Chess960, Crazyhouse, antichess, and other variant PGNs. | ChessCore currently targets standard chess. | Out of scope | Low |
 | Opening books | Polyglot reader behavior. | ChessCore does not read opening books. | Out of scope | Low |
 | Engine protocols | UCI/XBoard engine communication. | Engine integration belongs outside ChessCore; this workspace has separate Stockfish work. | Out of scope | Low |
@@ -214,7 +229,7 @@ classified as:
 
 The high-priority current-API audit pass is complete when tests cover:
 
-- a 27-position perft corpus with added castling, en-passant, promotion,
+- a 40-position perft corpus with added castling, en-passant, promotion,
   checkmate, and stalemate positions
 - castling edge cases for matching rook color, b-file occupancy, rook-path
   attack tolerance, and in-check rejection

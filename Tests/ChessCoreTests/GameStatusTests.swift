@@ -47,6 +47,139 @@ import Testing
     #expect(stalemateGame.isStalemate)
 }
 
+private struct TerminalStatusCorpusCase: Sendable {
+    var name: String
+    var fen: String
+    var expectedStatus: GameStatus
+    var expectedOutcome: GameOutcome?
+    var isCheck: Bool
+    var isStalemate: Bool
+}
+
+private let terminalStatusCorpus: [TerminalStatusCorpusCase] = [
+    TerminalStatusCorpusCase(
+        name: "Queen promotion mate",
+        fen: "1Q2k3/8/4K3/8/8/8/8/8 b - - 0 1",
+        expectedStatus: .checkmate(winner: .white),
+        expectedOutcome: .win(.white),
+        isCheck: true,
+        isStalemate: false
+    ),
+    TerminalStatusCorpusCase(
+        name: "Rook underpromotion mate",
+        fen: "R7/8/8/8/8/k7/8/KQ6 b - - 0 1",
+        expectedStatus: .checkmate(winner: .white),
+        expectedOutcome: .win(.white),
+        isCheck: true,
+        isStalemate: false
+    ),
+    TerminalStatusCorpusCase(
+        name: "Bishop underpromotion mate",
+        fen: "B7/8/8/8/8/8/5Q2/K6k b - - 0 1",
+        expectedStatus: .checkmate(winner: .white),
+        expectedOutcome: .win(.white),
+        isCheck: true,
+        isStalemate: false
+    ),
+    TerminalStatusCorpusCase(
+        name: "Knight underpromotion discovered-line mate",
+        fen: "QN6/8/8/8/8/8/8/k1K5 b - - 0 1",
+        expectedStatus: .checkmate(winner: .white),
+        expectedOutcome: .win(.white),
+        isCheck: true,
+        isStalemate: false
+    ),
+    TerminalStatusCorpusCase(
+        name: "Black queen promotion mate",
+        fen: "8/8/8/8/8/4k3/8/1q2K3 w - - 0 2",
+        expectedStatus: .checkmate(winner: .black),
+        expectedOutcome: .win(.black),
+        isCheck: true,
+        isStalemate: false
+    ),
+    TerminalStatusCorpusCase(
+        name: "Black rook underpromotion mate",
+        fen: "kq6/8/K7/8/8/8/8/r7 w - - 0 2",
+        expectedStatus: .checkmate(winner: .black),
+        expectedOutcome: .win(.black),
+        isCheck: true,
+        isStalemate: false
+    ),
+    TerminalStatusCorpusCase(
+        name: "Black bishop underpromotion mate",
+        fen: "k6K/5q2/8/8/8/8/8/b7 w - - 0 2",
+        expectedStatus: .checkmate(winner: .black),
+        expectedOutcome: .win(.black),
+        isCheck: true,
+        isStalemate: false
+    ),
+    TerminalStatusCorpusCase(
+        name: "Black knight underpromotion discovered-line mate",
+        fen: "K1k5/8/8/8/8/8/8/qn6 w - - 0 2",
+        expectedStatus: .checkmate(winner: .black),
+        expectedOutcome: .win(.black),
+        isCheck: true,
+        isStalemate: false
+    ),
+    TerminalStatusCorpusCase(
+        name: "Promoted-piece stalemate",
+        fen: "7k/5K2/5NQ1/8/8/8/8/8 b - - 0 1",
+        expectedStatus: .draw(.stalemate),
+        expectedOutcome: .draw,
+        isCheck: false,
+        isStalemate: true
+    ),
+    TerminalStatusCorpusCase(
+        name: "Mirrored promoted-piece stalemate",
+        fen: "8/8/8/8/8/5nq1/5k2/7K w - - 0 1",
+        expectedStatus: .draw(.stalemate),
+        expectedOutcome: .draw,
+        isCheck: false,
+        isStalemate: true
+    ),
+    TerminalStatusCorpusCase(
+        name: "Same-color bishops with promoted-material shape",
+        fen: "8/8/8/8/8/8/3b4/K1k1B1B1 w - - 0 1",
+        expectedStatus: .draw(.insufficientMaterial),
+        expectedOutcome: .draw,
+        isCheck: false,
+        isStalemate: false
+    ),
+    TerminalStatusCorpusCase(
+        name: "Same-color bishops across both sides",
+        fen: "8/8/8/8/8/8/8/KBkB1b2 w - - 0 1",
+        expectedStatus: .draw(.insufficientMaterial),
+        expectedOutcome: .draw,
+        isCheck: false,
+        isStalemate: false
+    ),
+]
+
+@Test("Terminal position corpus", arguments: terminalStatusCorpus)
+private func terminalStatusCorpusMatches(testCase: TerminalStatusCorpusCase) {
+    let game = game(from: testCase.fen)
+
+    #expect(game.status == testCase.expectedStatus, "\(testCase.name)")
+    #expect(game.outcome == testCase.expectedOutcome, "\(testCase.name)")
+    #expect(game.isCheck == testCase.isCheck, "\(testCase.name)")
+    #expect(game.isStalemate == testCase.isStalemate, "\(testCase.name)")
+    #expect(game.isDraw == (testCase.expectedOutcome == GameOutcome.draw), "\(testCase.name)")
+}
+
+@Test func enPassantCheckEvasionKeepsGameOngoing() throws {
+    let game = game(from: "4k3/8/8/3pP3/4K3/8/8/8 w - d6 0 1")
+
+    #expect(game.isCheck)
+    #expect(game.status == .ongoing(drawClaims: Set<GameDrawClaim>()))
+    #expect(game.outcome == nil)
+    #expect(game.legalMoves.contains(try Move(string: "e5d6")))
+
+    try applyLegalCoordinate("e5d6", to: game)
+
+    #expect(!game.isCheck)
+    #expect(game.status == .ongoing(drawClaims: Set<GameDrawClaim>()))
+}
+
 @Test func insufficientMaterialDrawsCoverBareKingsAndSingleMinorPieces() {
     let insufficientMaterialFENs = [
         "8/8/8/8/8/8/8/K6k w - - 0 1",
@@ -262,6 +395,25 @@ import Testing
     #expect(fivefoldWithFiftyMoveClaim.currentRepetitionCount == 5)
     #expect(fivefoldWithFiftyMoveClaim.drawClaims == Set<GameDrawClaim>())
     #expect(fivefoldWithFiftyMoveClaim.status == .draw(.fivefoldRepetition))
+
+    let seventyFiveMoveAndFivefold = game(from: "8/8/8/8/8/6k1/8/R3K3 w - - 134 1")
+    for _ in 0..<4 {
+        try applyQuietKingCycle(to: seventyFiveMoveAndFivefold)
+    }
+
+    #expect(seventyFiveMoveAndFivefold.position.counter.halfMoves == 150)
+    #expect(seventyFiveMoveAndFivefold.currentRepetitionCount == 5)
+    #expect(seventyFiveMoveAndFivefold.drawClaims == Set<GameDrawClaim>())
+    #expect(seventyFiveMoveAndFivefold.status == .draw(.seventyFiveMoveRule))
+}
+
+@Test func insufficientMaterialDrawCanStillBeReportedWhileSideToMoveIsInCheck() {
+    let checkedInsufficientMaterial = game(from: "8/8/8/8/8/8/1b6/K1k1B1B1 w - - 0 1")
+
+    #expect(checkedInsufficientMaterial.isCheck)
+    #expect(!checkedInsufficientMaterial.legalMoves.isEmpty)
+    #expect(checkedInsufficientMaterial.status == .draw(.insufficientMaterial))
+    #expect(checkedInsufficientMaterial.outcome == .draw)
 }
 
 @Test func repetitionClaimsAndAutomaticDrawsUseCurrentRepetitionKey() throws {

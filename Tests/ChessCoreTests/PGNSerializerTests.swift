@@ -95,6 +95,105 @@ import Testing
     #expect(game.moveRecords[3].nags.map(\.rawValue) == [6])
 }
 
+@Test func pgnParsesDialectCommentsEscapeLinesRepeatedTagsAndResultAdjacency() throws {
+    let pgn = #"""
+        % ignored escape line before tags
+        [Event "Synthetic Dialect Stress"]
+        [Site "https://lichess.org/synthetic"]
+        [Date "2026.06.14"]
+        [Round "?"]
+        [White "Escaped \"White\""]
+        [Black "Backslash \\ Black"]
+        [Result "*"]
+        [Annotator "Primary"]
+        [Annotator ""]
+
+        { loose pre-game comment is ignored }
+        % ignored escape line before movetext
+        1. e4 {} ; semicolon comments attach to the previous move
+        % ignored escape line between moves
+        1... e5 {[%emt 0:00:01]} 2. Nf3 {   } Nc6 { [%clk 0:03:00] [%eval 0.24] [%emt 0:00:02] } { trailing move comment } * { post-result comment is ignored }
+        """#
+
+    let serializer = PGNSerializer()
+    let game = try serializer.game(from: pgn)
+    let exported = serializer.pgn(from: game, lineWidth: 120)
+
+    #expect(game.tagValue(for: "White") == #"Escaped "White""#)
+    #expect(game.tagValue(for: "Black") == #"Backslash \ Black"#)
+    #expect(game.tagPairs.filter { $0.name == "Annotator" }.map(\.value) == ["Primary", ""])
+    #expect(game.moveRecords.map(\.san) == ["e4", "e5", "Nf3", "Nc6"])
+    #expect(game.moveRecords[0].comments == ["", "semicolon comments attach to the previous move"])
+    #expect(game.moveRecords[1].comments == ["[%emt 0:00:01]"])
+    #expect(game.moveRecords[2].comments == [""])
+    #expect(game.moveRecords[3].comments == [
+        "[%clk 0:03:00] [%eval 0.24] [%emt 0:00:02]",
+        "trailing move comment",
+    ])
+    #expect(exported.contains(#"[White "Escaped \"White\""]"#))
+    #expect(exported.contains(#"[Black "Backslash \\ Black"]"#))
+    #expect(exported.contains("[Annotator \"Primary\"]"))
+    #expect(exported.contains("[Annotator \"\"]"))
+}
+
+@Test func pgnParsesLichessStyleElapsedTimeMiniCorpus() throws {
+    let database = """
+        [Event "Rated blitz game"]
+        [Site "https://lichess.org/synthetic-emt-1"]
+        [Date "2026.06.14"]
+        [Round "-"]
+        [White "White"]
+        [Black "Black"]
+        [Result "*"]
+        [UTCDate "2026.06.14"]
+        [UTCTime "12:00:00"]
+        [WhiteElo "1500"]
+        [BlackElo "1500"]
+        [TimeControl "180+2"]
+        [Termination "Unterminated"]
+
+        1. e4 { [%clk 0:03:00] [%eval 0.20] [%emt 0:00:01] } c5 2. Nf3 d6 *
+
+        [Event "Rated classical game"]
+        [Site "https://lichess.org/synthetic-emt-2"]
+        [Date "2026.06.14"]
+        [Round "-"]
+        [White "White"]
+        [Black "Black"]
+        [Result "1/2-1/2"]
+        [TimeControl "1800+0"]
+        [Termination "Normal"]
+
+        1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 1/2-1/2
+
+        [Event "Rated bullet game"]
+        [Site "https://lichess.org/synthetic-emt-3"]
+        [Date "2026.06.14"]
+        [Round "-"]
+        [White "White"]
+        [Black "Black"]
+        [Result "0-1"]
+        [TimeControl "60+0"]
+        [Termination "Normal"]
+
+        1. f3 { [%clk 0:01:00] } e5 { [%clk 0:01:00] [%eval -0.20] } 2. g4?? Qh4# 0-1
+        """
+
+    let games = try PGNSerializer().games(from: database)
+
+    #expect(games.count == 3)
+    #expect(games.map { $0.tagValue(for: "Site") } == [
+        "https://lichess.org/synthetic-emt-1",
+        "https://lichess.org/synthetic-emt-2",
+        "https://lichess.org/synthetic-emt-3",
+    ])
+    #expect(games.map(\.result) == [.unfinished, .draw, .blackWins])
+    #expect(games.map { $0.moveRecords.count } == [4, 6, 4])
+    #expect(games[0].moveRecords[0].comments == ["[%clk 0:03:00] [%eval 0.20] [%emt 0:00:01]"])
+    #expect(games[2].moveRecords[2].nags.map(\.rawValue) == [4])
+    #expect(games[2].moveRecords[3].san == "Qh4#")
+}
+
 @Test func pgnParsesEscapedTagValuesAndExportsThem() throws {
     let pgn = #"""
         [Event "Quote \" and slash \\"]

@@ -16,7 +16,10 @@ display.
 - Result/status validation for terminal final positions: checkmate must match
   the winning side, and automatic draws must use `1/2-1/2`.
 - FEN-backed games with `[SetUp "1"]` and `[FEN "..."]`.
-- Brace comments, semicolon comments, Lichess clock/eval comments, and NAGs.
+- Brace comments, empty comments, semicolon comments, `%` escape lines, Lichess
+  clock/eval/elapsed-move-time comments, and NAGs.
+- Repeated nonstandard tags are preserved in source order; tag lookup returns
+  the first matching tag value.
 - Deterministic PGN export with the seven tag roster first.
 
 Ongoing final positions may still carry decisive or drawn results because real

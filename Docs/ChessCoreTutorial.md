@@ -104,9 +104,9 @@ let validated = try fenSerializer.validatedPosition(
 
 Semantic validation rejects positions with missing or multiple kings, pawns on
 the first or eighth rank, castling rights without the matching king and rook,
-invalid en-passant targets, or a non-active side whose king is already in
-check. Keep using `position(from:)` when you intentionally need syntax-only FEN
-parsing.
+invalid en-passant targets, en-passant targets with a nonzero halfmove clock,
+or a non-active side whose king is already in check. Keep using
+`position(from:)` when you intentionally need syntax-only FEN parsing.
 
 Inspect pieces by square or coordinate:
 

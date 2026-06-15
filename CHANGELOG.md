@@ -90,6 +90,13 @@ release. Replace `TBD` with the release date when a release is tagged.
 - Added coverage for game replay/reset, explicit draw claims, semantic FEN
   validation, PGN terminal result/status conflicts, and result-aware generated
   PGN stress games.
+- Expanded ChessCore hardening coverage for PGN dialect imports, terminal
+  positions, semantic FEN validation, SAN stress cases, and a 40-position perft
+  corpus cross-checked with a temporary `python-chess` oracle.
+- Added a second ChessCore hardening layer for multi-issue FEN semantic
+  validation, every-legal-move SAN stress round trips, automatic draw precedence
+  overlaps, checked insufficient-material positions, and generated game-status
+  invariants.
 
 ### Changed
 
@@ -127,6 +134,8 @@ release. Replace `TBD` with the release date when a release is tagged.
 - Fixed draw-claim precedence so checkmate, stalemate, insufficient material,
   seventy-five-move automatic draws, and fivefold repetition remain authoritative
   over claimable draw rules.
+- Fixed semantic FEN validation so an en-passant target with a nonzero halfmove
+  clock is rejected as internally inconsistent.
 
 ## 1.0.0 - TBD
 

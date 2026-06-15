@@ -19,6 +19,10 @@ import Testing
         "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
         "rnbqkbnr/pp2pppp/8/2ppP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3",
         "4k3/8/8/8/8/8/Q7/4K3 w - - 100 1",
+        "QN6/8/8/8/8/8/8/k1K5 b - - 0 1",
+        "K1k5/8/8/8/8/8/8/qn6 w - - 0 2",
+        "n1bqkbnr/P1P1P1P1/8/8/8/8/p1p1p1p1/N1BQKBNR w - - 0 1",
+        "4k3/8/8/8/3Pp3/8/8/4K3 b - d3 0 1",
     ])
 func positionValidatorAcceptsPlayablePositions(fen: String) throws {
     let position = try FENSerializer().position(from: fen)
@@ -75,6 +79,14 @@ func positionValidatorAcceptsPlayablePositions(fen: String) throws {
             .invalidCastlingRight(Piece(kind: .queen, color: .black)),
         ]
     )
+
+    expectValidationIssues(
+        for: "n3k2r/8/8/8/8/8/8/N3K2R w KQkq - 0 1",
+        [
+            .invalidCastlingRight(Piece(kind: .queen, color: .white)),
+            .invalidCastlingRight(Piece(kind: .queen, color: .black)),
+        ]
+    )
 }
 
 @Test func positionValidatorReportsInvalidEnPassantTargets() throws {
@@ -98,6 +110,27 @@ func positionValidatorAcceptsPlayablePositions(fen: String) throws {
             .invalidEnPassantTarget(Square(coordinate: "f6")),
         ]
     )
+
+    expectValidationIssues(
+        for: "8/8/8/8/R4Ppk/8/8/4K3 b - f3 0 1",
+        [
+            .invalidEnPassantTarget(Square(coordinate: "f3")),
+        ]
+    )
+
+    expectValidationIssues(
+        for: "4k3/8/8/3pP3/8/8/8/4K3 w - d6 1 1",
+        [
+            .invalidEnPassantTarget(Square(coordinate: "d6")),
+        ]
+    )
+
+    expectValidationIssues(
+        for: "4k3/8/8/8/3Pp3/8/8/4K3 b - d3 1 1",
+        [
+            .invalidEnPassantTarget(Square(coordinate: "d3")),
+        ]
+    )
 }
 
 @Test func positionValidatorReportsInactiveSideInCheck() throws {
@@ -112,6 +145,32 @@ func positionValidatorAcceptsPlayablePositions(fen: String) throws {
         for: "4k3/4q3/8/8/8/8/8/4K3 b - - 0 1",
         [
             .inactiveKingInCheck(.white),
+        ]
+    )
+
+    expectValidationIssues(
+        for: "8/8/8/8/4k3/4K3/8/8 w - - 0 1",
+        [
+            .inactiveKingInCheck(.black),
+        ]
+    )
+
+    expectValidationIssues(
+        for: "8/8/8/8/4k3/4K3/8/8 b - - 0 1",
+        [
+            .inactiveKingInCheck(.white),
+        ]
+    )
+}
+
+@Test func positionValidatorReportsMultipleIndependentIssues() throws {
+    expectValidationIssues(
+        for: "P3k3/8/8/8/8/8/8/8 w K d6 1 1",
+        [
+            .missingKing(.white),
+            .pawnOnInvalidRank(Square(coordinate: "a8")),
+            .invalidCastlingRight(Piece(kind: .king, color: .white)),
+            .invalidEnPassantTarget(Square(coordinate: "d6")),
         ]
     )
 }

@@ -143,8 +143,9 @@ engine-analysis, and product-specific concepts belong in app-level docs.
   FEN field syntax and returns a `Position`.
 - **Semantic FEN Validation**: `FENSerializer.validatedPosition(from:)`, which
   parses FEN syntax and then rejects impossible or inconsistent positions such
-  as missing kings, invalid castling rights, invalid en-passant targets, pawns
-  on invalid ranks, or inactive-side check.
+  as missing kings, invalid castling rights, invalid en-passant targets,
+  en-passant targets with a nonzero halfmove clock, pawns on invalid ranks, or
+  inactive-side check.
 - **SAN**: Standard Algebraic Notation, the human-readable move notation used in
   movetext, such as `Nf3`, `exd5`, `O-O`, or `Qxf7#`.
 - **PGN**: Portable Game Notation, a text format for complete game records.

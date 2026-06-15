@@ -129,6 +129,10 @@ public struct PositionValidator: Sendable {
     }
 
     private func isValidEnPassantTarget(_ target: Square, in position: Position) -> Bool {
+        guard position.counter.halfMoves == 0 else {
+            return false
+        }
+
         guard position.board[target] == nil else {
             return false
         }

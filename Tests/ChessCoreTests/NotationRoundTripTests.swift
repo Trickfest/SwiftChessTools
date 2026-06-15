@@ -57,6 +57,57 @@ func generatedLegalMovesRoundTripThroughSAN(seed: Int) throws {
     }
 }
 
+@Test(
+    "Generated legal game status invariants",
+    arguments: Array(0..<20)
+)
+func generatedLegalGameStatusInvariantsStayCoherent(seed: Int) throws {
+    let game = Game(position: try FENSerializer().position(from: PGNSerializer.standardStartingFEN))
+    var generator = NotationDeterministicGenerator(seed: UInt64(seed + 30_000))
+
+    for ply in 0..<100 {
+        let legalMoves = game.legalMoves.sorted { $0.description < $1.description }
+
+        switch game.status {
+        case let .ongoing(drawClaims):
+            #expect(!legalMoves.isEmpty, "Seed \(seed), ply \(ply)")
+            #expect(game.outcome == nil, "Seed \(seed), ply \(ply)")
+            if drawClaims.contains(.fiftyMoveRule) {
+                #expect(game.position.counter.halfMoves >= 100, "Seed \(seed), ply \(ply)")
+            }
+            if drawClaims.contains(.threefoldRepetition) {
+                #expect(game.currentRepetitionCount >= 3, "Seed \(seed), ply \(ply)")
+            }
+        case let .checkmate(winner):
+            #expect(legalMoves.isEmpty, "Seed \(seed), ply \(ply)")
+            #expect(game.isCheck, "Seed \(seed), ply \(ply)")
+            #expect(winner == game.position.state.turn.opposite, "Seed \(seed), ply \(ply)")
+            #expect(game.outcome == .win(winner), "Seed \(seed), ply \(ply)")
+            return
+        case let .draw(reason):
+            #expect(game.outcome == .draw, "Seed \(seed), ply \(ply)")
+            switch reason {
+            case .stalemate:
+                #expect(legalMoves.isEmpty, "Seed \(seed), ply \(ply)")
+                #expect(!game.isCheck, "Seed \(seed), ply \(ply)")
+            case .insufficientMaterial:
+                #expect(game.drawClaims.isEmpty, "Seed \(seed), ply \(ply)")
+            case .seventyFiveMoveRule:
+                #expect(game.position.counter.halfMoves >= 150, "Seed \(seed), ply \(ply)")
+            case .fivefoldRepetition:
+                #expect(game.currentRepetitionCount >= 5, "Seed \(seed), ply \(ply)")
+            case .fiftyMoveRule:
+                #expect(game.claimedDraw == .fiftyMoveRule, "Seed \(seed), ply \(ply)")
+            case .threefoldRepetition:
+                #expect(game.claimedDraw == .threefoldRepetition, "Seed \(seed), ply \(ply)")
+            }
+            return
+        }
+
+        game.apply(move: legalMoves[generator.nextIndex(upperBound: legalMoves.count)])
+    }
+}
+
 private struct NotationDeterministicGenerator {
     var state: UInt64
 

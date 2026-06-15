@@ -115,6 +115,16 @@ private let perftCases: [PerftCase] = [
         expectedNodeCounts: [1: 8, 2: 44, 3: 316]
     ),
     PerftCase(
+        name: "White en passant opens discovered rook check",
+        fen: "4k3/8/8/3pP3/8/8/4R3/4K3 w - d6 0 1",
+        expectedNodeCounts: [1: 15, 2: 85, 3: 1_435]
+    ),
+    PerftCase(
+        name: "Black en passant opens discovered rook check",
+        fen: "4k3/8/8/4r3/3Pp3/8/8/4K3 b - d3 0 1",
+        expectedNodeCounts: [1: 16, 2: 96, 3: 1_603]
+    ),
+    PerftCase(
         name: "White queen-side castling ignores attack on b1",
         fen: "4k3/8/8/8/8/8/b7/R3K3 w Q - 0 1",
         expectedNodeCounts: [1: 10, 2: 109, 3: 1_631]
@@ -140,9 +150,64 @@ private let perftCases: [PerftCase] = [
         expectedNodeCounts: [1: 4, 2: 52, 3: 1_296]
     ),
     PerftCase(
+        name: "Castling rejected while king is in bishop check",
+        fen: "4k2r/8/8/8/8/8/5b2/4K2R w Kk - 0 1",
+        expectedNodeCounts: [1: 5, 2: 111, 3: 1_609]
+    ),
+    PerftCase(
+        name: "Queen-side castling rejected when destination is attacked",
+        fen: "r3k3/8/8/8/8/8/2b5/R3K3 w Qq - 0 1",
+        expectedNodeCounts: [1: 14, 2: 301, 3: 4_643]
+    ),
+    PerftCase(
         name: "Promotion captures include all choices",
         fen: "3r3k/4P3/8/8/8/8/8/4K3 w - - 0 1",
         expectedNodeCounts: [1: 11, 2: 91, 3: 933]
+    ),
+    PerftCase(
+        name: "White promotion captures on both sides include all choices",
+        fen: "3r3k/4P1n1/8/8/8/8/8/4K3 w - - 0 1",
+        expectedNodeCounts: [1: 11, 2: 113, 3: 1_125]
+    ),
+    PerftCase(
+        name: "Black promotion captures on both sides include all choices",
+        fen: "4k3/8/8/8/8/8/4p1N1/3R3K b - - 0 1",
+        expectedNodeCounts: [1: 11, 2: 113, 3: 1_125]
+    ),
+    PerftCase(
+        name: "White rook underpromotion mate start",
+        fen: "8/P7/8/8/8/k7/8/KQ6 w - - 0 1",
+        expectedNodeCounts: [1: 24, 2: 37, 3: 981]
+    ),
+    PerftCase(
+        name: "White bishop underpromotion mate start",
+        fen: "8/P7/8/8/8/8/5Q2/K6k w - - 0 1",
+        expectedNodeCounts: [1: 29, 2: 37, 3: 1_034]
+    ),
+    PerftCase(
+        name: "White knight underpromotion discovered-line mate start",
+        fen: "Qr6/P7/8/8/8/8/8/k1K5 w - - 0 1",
+        expectedNodeCounts: [1: 15, 2: 147, 3: 3_359]
+    ),
+    PerftCase(
+        name: "Black rook underpromotion mate start",
+        fen: "kq6/8/K7/8/8/8/p7/8 b - - 0 1",
+        expectedNodeCounts: [1: 24, 2: 37, 3: 981]
+    ),
+    PerftCase(
+        name: "Black bishop underpromotion mate start",
+        fen: "k6K/5q2/8/8/8/8/p7/8 b - - 0 1",
+        expectedNodeCounts: [1: 29, 2: 37, 3: 1_034]
+    ),
+    PerftCase(
+        name: "Black knight underpromotion discovered-line mate start",
+        fen: "K1k5/8/8/8/8/8/p7/qR6 b - - 0 1",
+        expectedNodeCounts: [1: 15, 2: 147, 3: 3_359]
+    ),
+    PerftCase(
+        name: "Dense promoted-material move generation",
+        fen: "n1bqkbnr/P1P1P1P1/8/8/8/8/p1p1p1p1/N1BQKBNR w - - 0 1",
+        expectedNodeCounts: [1: 52, 2: 2_003, 3: 81_124]
     ),
     PerftCase(
         name: "Fool's mate has no legal continuations",
