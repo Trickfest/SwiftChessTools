@@ -398,11 +398,9 @@ public struct PGNGame: Equatable, Sendable {
 public final class PGNSerializer {
 
     /// Full FEN for the standard starting position.
-    public static let standardStartingFEN =
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    public static let standardStartingFEN = Position.standardStartingFEN
 
-    private static let standardInitialPosition =
-        try! FENSerializer().position(from: PGNSerializer.standardStartingFEN)
+    private static let standardInitialPosition = Position.standard
 
     private static let standardTagNames = [
         "Event", "Site", "Date", "Round", "White", "Black", "Result",

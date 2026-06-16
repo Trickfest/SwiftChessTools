@@ -1,126 +1,142 @@
 # ChessCore Tutorial
 
-This tutorial introduces the `ChessCore` module without using `ChessUI`.
-`ChessCore` owns the reusable chess model, rules, and notation APIs in
-SwiftChessTools.
+This tutorial introduces `ChessCore`, the non-UI module in SwiftChessTools.
+`ChessCore` owns chess positions, legal move generation, game status, FEN, SAN,
+and PGN. `ChessUI` can render values produced by `ChessCore`, but it does not
+own chess rules or game-record parsing.
 
-The working theme:
+The working model:
 
-> FEN gives you positions, moves mutate positions through `Game`, SAN gives you
-> human move notation, and PGN gives you complete validated game records.
+> `Position` stores a complete board state, `Game` applies legal moves, SAN
+> names moves in context, PGN stores validated game records, and status APIs
+> explain whether a game is ongoing, won, drawn, or claimable.
 
-## Audience
+## 1. Install And Import
 
-This tutorial is for Swift developers who want to use `ChessCore` for rules,
-move validation, notation, PGN import/export, or chess data processing.
-
-The examples assume you have already added SwiftChessTools as a package
-dependency and can import `ChessCore`.
-
-## 1. What ChessCore Is
-
-`ChessCore` is the non-UI layer of SwiftChessTools. It models chess positions,
-generates legal moves, applies moves, parses and exports notation, and validates
-PGN game records.
-
-Use `ChessCore` when you need:
-
-- board state
-- legal moves
-- move application
-- game status and outcome inspection
-- FEN parsing and export
-- SAN parsing and export
-- PGN parsing and export
-
-Use `ChessUI` later when you want SwiftUI board rendering or board interaction.
-UI code should consume values from `ChessCore`; it should not own rules,
-notation, PGN parsing, or engine analysis.
-
-Minimal setup:
+Add SwiftChessTools as a package dependency, then depend on the `ChessCore`
+product from your target.
 
 ```swift
 import ChessCore
 ```
 
-## 2. Core Types And Mental Model
+For local development in this workspace, use a path dependency:
 
-The most common model types are:
+```swift
+.package(path: "../SwiftChessTools")
+```
 
-- `Square`: a board coordinate such as `e4`.
-- `Piece`: a piece kind and color, such as white queen or black knight.
-- `Move`: a concrete coordinate move such as `e2e4`.
+## 2. The Fastest Useful Program
+
+Start a standard chess game, apply legal coordinate moves, inspect status, and
+export the current position as FEN:
+
+```swift
+let game = Game()
+
+try game.applyLegal(move: "e2e4")
+try game.applyLegal(move: "e7e5")
+try game.applyLegal(move: "g1f3")
+
+let fen = FENSerializer().fen(from: game.position)
+let legalReplies = game.legalMoves.map(\.description)
+let status = game.status
+```
+
+Use `applyLegal(move:)` for input from users, engines, files, or services. It
+parses coordinate notation and checks legality before mutating the game.
+
+`Game.apply(move:)` is still available for internal code that already has a
+legal move, but it deliberately assumes legality.
+
+## 3. Core Types
+
+These are the types most apps use first:
+
+- `Square`: a coordinate such as `e4`.
+- `Piece`: a piece kind and color.
+- `Move`: a concrete coordinate move such as `e2e4` or `e7e8q`.
 - `Board`: piece placement only.
-- `Position`: complete playable state.
-- `Game`: playable state plus move history.
-- `GameStatus`: current game state, including checkmate, automatic draws, and
-  claimable draws.
+- `Position`: board plus side to move, castling rights, en-passant target, and
+  move counters.
+- `Game`: a playable wrapper around `Position` with legal moves, move history,
+  repetition state, draw claims, and status.
 
-The key distinction:
+Use `Position` when you need to store, validate, or serialize one board state.
+Use `Game` when moves are involved.
 
-- `Board` knows where pieces are.
-- `Position` adds side to move, castling rights, en passant target, and move
-  counters.
-- `Game` wraps a `Position` so you can ask for legal moves, apply moves, and
-  track history.
+## 4. Standard Starting Position
 
-Most app and parser code should use `Game` once moves are involved. Use
-`Position` when you only need to store, inspect, or serialize one board state.
-
-## 3. Creating And Inspecting Positions
-
-FEN is the fastest way to create a complete position.
+For normal chess, use the standard entry points:
 
 ```swift
-let fenSerializer = FENSerializer()
-let position = try fenSerializer.position(
-    from: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-)
+let position = Position.standard
+let fen = Position.standardStartingFEN
+let game = Game()
 ```
 
-The standard starting position is also available through `PGNSerializer`:
+`Position.standardStartingFEN` is the full six-field FEN:
+
+```text
+rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+```
+
+`Game()` is equivalent to `Game(position: .standard)`.
+
+## 5. FEN Parsing And Export
+
+FEN is the most compact way to load or store a complete position.
 
 ```swift
-let startingPosition = try FENSerializer().position(
-    from: PGNSerializer.standardStartingFEN
-)
+let serializer = FENSerializer()
+let position = try serializer.position(from: fenText)
+let exported = serializer.fen(from: position)
 ```
 
-Export a position back to FEN:
+`position(from:)` checks FEN syntax: six fields, piece placement, active color,
+castling field syntax, en-passant square syntax, and move-counter syntax.
+
+For external FEN, prefer strict semantic validation:
 
 ```swift
-let fen = fenSerializer.fen(from: position)
+let position = try FENSerializer().validatedPosition(from: fenText)
 ```
 
-`position(from:)` validates FEN syntax. Use `validatedPosition(from:)` when
-accepting external FEN that should also satisfy ChessCore's semantic position
-checks:
+Semantic validation rejects internally inconsistent positions, including:
 
-```swift
-let validated = try fenSerializer.validatedPosition(
-    from: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-)
-```
+- missing or multiple kings
+- pawns on the first or eighth rank
+- castling rights without the matching king and rook
+- invalid en-passant targets
+- en-passant targets with a nonzero halfmove clock
+- positions where the inactive side's king is already in check
 
-Use `validationResult(for:)` when you want to show diagnostics without using
+Use syntax-only parsing when you intentionally need to inspect malformed chess
+states, migration data, or legacy fixtures.
+
+## 6. Non-Throwing FEN Diagnostics
+
+Use `validationResult(for:)` when you want UI-friendly diagnostics without
 throwing control flow:
 
 ```swift
-let result = fenSerializer.validationResult(for: externalFEN)
+let result = FENSerializer().validationResult(for: fenText)
 
 switch result {
 case .valid(let position):
-    print("Ready to play: \(position)")
+    print("Ready: \(position)")
+
 case .invalidSyntax(let error):
-    print("Malformed FEN: \(error)")
+    print("Malformed FEN: \(error.description)")
+
 case .invalidPosition(let validation):
     for issue in validation.issues {
-        print("Position issue: \(issue)")
+        print("Position issue: \(issue.description)")
     }
 }
 ```
 
-For an already parsed `Position`, use `PositionValidator` directly:
+If you already have a parsed `Position`, validate it directly:
 
 ```swift
 let validation = PositionValidator().validationResult(for: position)
@@ -133,13 +149,13 @@ if validation.isValid {
 }
 ```
 
-Semantic validation rejects positions with missing or multiple kings, pawns on
-the first or eighth rank, castling rights without the matching king and rook,
-invalid en-passant targets, en-passant targets with a nonzero halfmove clock,
-or a non-active side whose king is already in check. Keep using
-`position(from:)` when you intentionally need syntax-only FEN parsing.
+`FENValidationResult.validatedPosition()` and
+`PositionValidationResult.validatedPosition()` bridge back to the throwing API
+when that is more convenient.
 
-Inspect pieces by square or coordinate:
+## 7. Inspecting Positions
+
+Read pieces by square or coordinate:
 
 ```swift
 let e4 = Square(coordinate: "e4")
@@ -167,10 +183,10 @@ let fullmoveNumber = position.counter.fullMoves
 
 Those fields are why a `Board` alone is not enough to decide legal moves.
 
-## 4. Working With Moves
+## 8. Coordinate Moves
 
-Coordinate moves use source and destination squares, with an optional promotion
-piece.
+Coordinate moves use source and destination squares, plus an optional promotion
+piece:
 
 ```swift
 let e4 = try Move(string: "e2e4")
@@ -184,97 +200,120 @@ print(e4.description)        // e2e4
 print(promotion.description) // e7e8q
 ```
 
-Create a `Game` when you need legality:
+To apply app-boundary input safely:
 
 ```swift
-let game = Game(position: startingPosition)
-let move = try Move(string: "e2e4")
-
-if game.legalMoves.contains(move) {
-    game.apply(move: move)
-}
+let game = Game()
+try game.applyLegal(move: "e2e4")
 ```
 
-`Game.apply(move:)` assumes the move is legal. Check `game.legalMoves` before
-accepting moves from a user, parser, engine, or file.
-
-Reject illegal coordinate moves at the app boundary:
+To validate a parsed `Move` before applying it:
 
 ```swift
-struct IllegalMoveError: Error {
-    let coordinate: String
-}
-
-let candidate = try Move(string: "e2e5")
-
-guard game.legalMoves.contains(candidate) else {
-    throw IllegalMoveError(coordinate: candidate.description)
-}
-
-game.apply(move: candidate)
+let move = try Move(string: "g1f3")
+try game.applyLegal(move: move)
 ```
 
-Print all legal coordinate moves:
+If the move is malformed, `applyLegal(move: String)` throws `MoveParsingError`.
+If the move is well-formed but illegal in the current position, it throws
+`GameApplyError.illegalMove`.
+
+Use `legalMoves` when you need to drive UI affordances:
 
 ```swift
-let legalCoordinates = game.legalMoves.map(\.description)
-print(legalCoordinates.joined(separator: " "))
+let legalCoordinateMoves = game.legalMoves.map(\.description)
 ```
 
-Build a move list from coordinate notation:
+## 9. Replaying Move Lists
 
-```swift
-let game = Game(position: startingPosition)
-let coordinates = ["e2e4", "e7e5", "g1f3"]
-
-for coordinate in coordinates {
-    let move = try Move(string: coordinate)
-    guard game.legalMoves.contains(move) else {
-        throw IllegalMoveError(coordinate: coordinate)
-    }
-    game.apply(move: move)
-}
-
-let finalPosition = game.position
-let moveHistory = game.moveHistory
-```
-
-Replay an already-known concrete move list when you want ChessCore to rebuild
-the resulting position, move counters, move history, and repetition state:
+Use `Game.replay(initialPosition:moves:)` when you already have concrete moves
+and want ChessCore to rebuild the resulting position, counters, history, and
+repetition state:
 
 ```swift
 let moves = try ["e2e4", "e7e5", "g1f3"].map { try Move(string: $0) }
-let replayed = try Game.replay(initialPosition: startingPosition, moves: moves)
+let replayed = try Game.replay(initialPosition: .standard, moves: moves)
 ```
 
 `Game(position:moveHistory:)` stores `moveHistory` as metadata only. It does not
-replay moves or rebuild counters. Use `Game.replay(initialPosition:moves:)` for
-validated reconstruction.
+replay moves or rebuild counters. Use `Game.replay` for validated
+reconstruction.
 
-Inspect status and outcome after moves:
+## 10. SAN
+
+SAN is Standard Algebraic Notation: `Nf3`, `exd5`, `O-O`, `e8=Q`, `Qxf7#`.
+
+SAN always needs game context. The same SAN text can resolve differently in
+different positions, and correct spelling can depend on capture, promotion,
+check, checkmate, and disambiguation.
+
+Convert a legal move to SAN:
+
+```swift
+let game = Game()
+let move = try Move(string: "e2e4")
+let san = SANSerializer().san(for: move, in: game) // e4
+```
+
+Parse SAN back to a concrete move:
+
+```swift
+let game = Game()
+let move = try SANSerializer().move(for: "e4", in: game)
+try game.applyLegal(move: move)
+```
+
+Replay SAN movetext:
+
+```swift
+let game = Game()
+let sanMoves = ["e4", "e5", "Nf3", "Nc6", "Bb5"]
+let sanSerializer = SANSerializer()
+
+for san in sanMoves {
+    let move = try sanSerializer.move(for: san, in: game)
+    try game.applyLegal(move: move)
+}
+```
+
+`SANSerializer` handles quiet moves, captures, checks, checkmates, castling,
+promotion, promotion captures, en-passant captures, and disambiguation.
+
+When SAN parsing fails, treat it as a validation failure for the current game
+state, not just a malformed string.
+
+## 11. Game Status And Outcome
+
+`Game.status` describes the current game state:
 
 ```swift
 switch game.status {
 case .ongoing(let drawClaims):
     if drawClaims.contains(.threefoldRepetition) {
-        print("A threefold repetition claim is available.")
+        print("Threefold repetition can be claimed.")
     }
+
 case .checkmate(let winner):
     print("\(winner) won by checkmate.")
+
 case .draw(let reason):
     print("Draw: \(reason)")
 }
 ```
 
-For simpler app logic, use the convenience properties:
+Convenience properties cover common UI and app logic:
 
 ```swift
+if game.isCheck {
+    print("Check")
+}
+
 if game.isStalemate {
     print("Stalemate")
 }
 
 if game.isDraw {
-    print("Automatic draw")
+    print("Automatic or claimed draw")
 }
 
 if let outcome = game.outcome {
@@ -282,36 +321,17 @@ if let outcome = game.outcome {
 }
 ```
 
-`Game.drawClaims` reports claimable draw rules for the current position, such as
-the fifty-move rule or threefold repetition. `Game.status` reports automatic
-draws such as stalemate, insufficient material, dead position, the
-seventy-five-move rule, and fivefold repetition.
+Terminal statuses include:
 
-Material-only dead positions are reported as `.draw(.insufficientMaterial)` for
-compatibility with common chess terminology. Other proven FIDE dead positions,
-such as sealed immobile pawn barriers where neither side can ever reach mate,
-are reported as `.draw(.deadPosition)`.
+- checkmate
+- stalemate
+- insufficient material
+- proven dead position
+- seventy-five-move automatic draw
+- fivefold repetition automatic draw
+- a claimed fifty-move or threefold-repetition draw
 
-Use `DeadPositionAnalyzer` directly when you need to ask the same question for a
-raw `Position`:
-
-```swift
-let analyzer = DeadPositionAnalyzer()
-
-if analyzer.hasInsufficientMatingMaterial(in: game.position) {
-    print("Draw by insufficient material.")
-}
-
-if analyzer.isDeadPosition(game.position) {
-    print("Neither side can ever checkmate.")
-}
-```
-
-`DeadPositionAnalyzer` is conservative. If it cannot prove that the position is
-dead, it returns `false` and `Game.status` remains ongoing unless another
-terminal rule applies.
-
-Claim an available draw explicitly:
+Claimable statuses are represented separately:
 
 ```swift
 if game.drawClaims.contains(.fiftyMoveRule) {
@@ -320,80 +340,51 @@ if game.drawClaims.contains(.fiftyMoveRule) {
 ```
 
 After a successful claim, `game.status` becomes `.draw(.fiftyMoveRule)` or
-`.draw(.threefoldRepetition)`. Terminal positions such as checkmate, stalemate,
-insufficient material, seventy-five-move automatic draws, and fivefold
-repetition do not expose claimable draws. A claimed draw is also terminal for
-`drawClaims`; use `claimedDraw` to inspect which claim was made.
+`.draw(.threefoldRepetition)`.
 
-Reset a reusable game object to a new position:
+## 12. Dead-Position Behavior
 
-```swift
-game.reset(to: startingPosition)
-```
+FIDE dead positions are positions where neither side can possibly checkmate by
+any legal sequence of moves.
 
-`reset(to:)` replaces the position, clears derived repetition state, clears any
-claimed draw, and optionally stores metadata-only move history.
+`Game.status` reports:
 
-## 5. SAN Notation
+- `.draw(.insufficientMaterial)` for standard material-only dead positions
+- `.draw(.deadPosition)` for other dead positions ChessCore can prove
 
-SAN is Standard Algebraic Notation, such as `Nf3`, `exd5`, `O-O`, `e8=Q`, or
-`Qxf7#`.
-
-SAN requires position context. The same SAN text can resolve differently in
-different positions, and the correct spelling can depend on check, checkmate,
-captures, promotion, and disambiguation.
-
-Convert a legal move to SAN:
+Use `DeadPositionAnalyzer` directly when you need the same question for a raw
+`Position`:
 
 ```swift
-let game = Game(position: startingPosition)
-let serializer = SANSerializer()
-let move = try Move(string: "e2e4")
+let analyzer = DeadPositionAnalyzer()
 
-let san = serializer.san(for: move, in: game) // e4
-```
+if analyzer.hasInsufficientMatingMaterial(in: position) {
+    print("Draw by insufficient material.")
+}
 
-Parse SAN back to a concrete move:
-
-```swift
-let parsedMove = try serializer.move(for: "e4", in: game)
-game.apply(move: parsedMove)
-```
-
-Replay a SAN sequence through a `Game`:
-
-```swift
-let game = Game(position: startingPosition)
-let sanMoves = ["e4", "e5", "Nf3", "Nc6", "Bb5"]
-let sanSerializer = SANSerializer()
-
-for san in sanMoves {
-    let move = try sanSerializer.move(for: san, in: game)
-    game.apply(move: move)
+if analyzer.isDeadPosition(position) {
+    print("Neither side can ever checkmate.")
 }
 ```
 
-Common SAN cases that `SANSerializer` handles:
+The analyzer is conservative. If `isDeadPosition(_:)` returns `true`, ChessCore
+has proved a FIDE-recognized dead position. If it returns `false`, that means
+"not proven dead by this analyzer," not "definitely live."
 
-- quiet moves: `Nf3`
-- captures: `Bxc4`
-- checks: `Qh5+`
-- checkmate: `Qxf7#`
-- castling: `O-O` and `O-O-O`
-- promotion: `e8=Q`
-- promotion captures: `cxb8=Q#`
-- disambiguation: `Nbd2`, `R1e2`, `Qh4e1`
+The current analyzer proves material-only cases, sealed immobile pawn-barrier
+cases, and bounded legal-state reachability cases. It avoids false positives
+by leaving uncertain positions ongoing.
 
-When SAN parsing fails, treat it as a validation failure for the current game
-state, not just a malformed string.
+## 13. PGN Import
 
-## 6. PGN Import Basics
+PGN is Portable Game Notation: tag pairs, movetext, comments, annotations, and a
+result marker.
 
-PGN is Portable Game Notation: tags, movetext, comments, annotations, and a
-result marker. `PGNSerializer` parses PGN syntax first, then validates every SAN
-move by replaying it through `Game`.
+`PGNSerializer` first parses PGN syntax, then semantically replays every SAN
+move through `Game` and `SANSerializer`. Parsed move records therefore contain
+validated concrete `Move` values, not just strings.
 
-Parse one PGN game:
+Parse one game:
 
 ```swift
 let pgnText = """
@@ -408,8 +399,7 @@ let pgnText = """
     1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0
     """
 
-let serializer = PGNSerializer()
-let pgnGame = try serializer.game(from: pgnText)
+let pgnGame = try PGNSerializer().game(from: pgnText)
 ```
 
 Read the core game data:
@@ -422,57 +412,42 @@ let records = pgnGame.moveRecords
 let finalFEN = FENSerializer().fen(from: pgnGame.finalPosition)
 ```
 
-Read a specific tag:
+Read tags by name:
 
 ```swift
 let white = pgnGame.tagValue(for: "White") ?? "?"
 let black = pgnGame.tagValue(for: "Black") ?? "?"
 ```
 
-Export the parsed game back to deterministic PGN:
+Use `games(from:)` for PGN database text containing multiple games:
 
 ```swift
-let exported = try serializer.pgn(from: pgnGame)
+let games = try PGNSerializer().games(from: databaseText)
 ```
 
-The first PGN milestone supports validated mainlines, tag pairs, comments, NAGs,
-FEN-backed games, UTF-8 BOM input, and multi-game database parsing. Recursive
-annotation variations are detected and reported as unsupported until ChessCore
-grows a PGN tree model.
+Supported PGN features include mainline SAN, tag pairs, FEN-backed games,
+comments, semicolon comments, empty comments, Lichess clock/eval/EMT comments,
+numeric annotation glyphs, symbolic annotation suffixes, UTF-8 BOM input, `%`
+escape lines, and repeated nonstandard tags.
 
-PGN result markers are checked against terminal final positions. If replay ends
-in checkmate, the result must name the winning side. If replay ends in an
-automatic draw, the result must be `1/2-1/2`. Ongoing positions can still carry a
-decisive or drawn result because real PGNs may end by resignation, timeout, or
-agreement before the board position is terminal.
+Recursive annotation variations are detected and rejected as future API until
+ChessCore has a public move-tree model.
 
-Use `finalStatus`, `finalOutcome`, and `resultMatchesFinalStatus` when a PGN
-browser, importer, or training tool needs to explain the final state:
-
-```swift
-let finalStatus = pgnGame.finalStatus
-let finalOutcome = pgnGame.finalOutcome
-
-if !pgnGame.resultMatchesFinalStatus {
-    print("Result \(pgnGame.result) conflicts with \(finalStatus)")
-}
-```
-
-## 7. PGN Move Records
+## 14. PGN Move Records
 
 `PGNMoveRecord` is where raw PGN movetext becomes validated chess data.
 
 Important fields:
 
-- `ply`: one-based half-move index in the mainline.
-- `moveNumber`: full move number.
-- `color`: side that made the move.
-- `sourceSAN`: SAN token from the PGN source after symbolic annotations are
-  normalized.
-- `san`: canonical SAN generated by ChessCore.
-- `move`: concrete resolved `Move`.
-- `comments`: comments attached to the move.
-- `nags`: numeric annotation glyphs attached to the move.
+- `ply`: one-based half-move index in the mainline
+- `moveNumber`: full move number
+- `color`: side that made the move
+- `sourceSAN`: SAN token from the PGN source after symbolic annotation suffixes
+  are removed
+- `san`: canonical SAN generated by ChessCore
+- `move`: concrete resolved `Move`
+- `comments`: comments attached to the move
+- `nags`: numeric annotation glyphs attached to the move
 
 Print a compact move list:
 
@@ -494,7 +469,7 @@ for record in pgnGame.moveRecords where record.sourceSAN != record.san {
 }
 ```
 
-Read comments and NAGs:
+Comments and NAGs are preserved:
 
 ```swift
 for record in pgnGame.moveRecords {
@@ -508,62 +483,53 @@ for record in pgnGame.moveRecords {
 }
 ```
 
-Lichess clock and evaluation comments are preserved as ordinary PGN comments.
+## 15. PGN Result And Status Validation
 
-## 8. PGN Databases
-
-A PGN database is text containing one or more games. Use `games(from:)` when a
-file may contain multiple games.
+`PGNGame.finalStatus` stores the status after ChessCore replays the mainline.
 
 ```swift
-let games = try PGNSerializer().games(from: databaseText)
-print("Imported \(games.count) games")
+let status = pgnGame.finalStatus
+let outcome = pgnGame.finalOutcome
 ```
 
-Print common tags:
+PGN import and export reject result markers that contradict terminal statuses
+ChessCore can prove:
+
+- checkmate for White requires `1-0`
+- checkmate for Black requires `0-1`
+- automatic draws require `1/2-1/2`
+
+Ongoing final positions may still carry decisive or drawn results because real
+PGNs often end by resignation, timeout, adjudication, or draw agreement before
+the board position itself is terminal.
+
+Use these helpers when explaining an imported game:
 
 ```swift
-for game in games {
-    let event = game.tagValue(for: "Event") ?? "?"
-    let white = game.tagValue(for: "White") ?? "?"
-    let black = game.tagValue(for: "Black") ?? "?"
-    let result = game.result
+if let required = pgnGame.requiredResultForFinalStatus {
+    print("Terminal status requires result \(required)")
+}
 
-    print("\(event): \(white) vs \(black), \(result)")
+if !pgnGame.resultMatchesFinalStatus {
+    print("PGN result conflicts with final status")
 }
 ```
 
-Filter by tag:
+For games parsed by `PGNSerializer`, result/status conflicts have already been
+rejected. The helpers are most useful when displaying status or when validating
+manually constructed `PGNGame` values before export.
 
-```swift
-let carlsenGames = games.filter { game in
-    game.tagValue(for: "White") == "Carlsen, Magnus"
-        || game.tagValue(for: "Black") == "Carlsen, Magnus"
-}
-```
+## 16. FEN-Backed PGNs
 
-Collect final positions for analysis or indexing:
-
-```swift
-let finalFENs = games.map { game in
-    FENSerializer().fen(from: game.finalPosition)
-}
-```
-
-For large import pipelines, keep parsing deterministic: read text, parse games,
-validate records, then transform into your app's storage model.
-
-## 9. FEN-Backed PGNs
-
-Most PGNs start from the standard chess starting position. Some start from a
-custom position using both tags:
+Most PGNs start from the standard position. Setup PGNs start from an explicit
+FEN:
 
 ```pgn
 [SetUp "1"]
 [FEN "4k3/8/8/8/8/8/P7/4K3 w - - 0 1"]
 ```
 
-Parse a FEN-backed game the same way:
+Parse them normally:
 
 ```swift
 let game = try PGNSerializer().game(from: fenBackedPGN)
@@ -571,17 +537,10 @@ let initial = game.initialPosition
 let final = game.finalPosition
 ```
 
-Verify the initial position:
+Export from a custom initial position:
 
 ```swift
-let initialFEN = FENSerializer().fen(from: game.initialPosition)
-print(initialFEN)
-```
-
-Export moves from an explicit initial position:
-
-```swift
-let initialPosition = try FENSerializer().position(
+let initialPosition = try FENSerializer().validatedPosition(
     from: "4k3/8/8/8/8/8/P7/4K3 w - - 0 1"
 )
 
@@ -593,18 +552,18 @@ let exported = try PGNSerializer().pgn(
 )
 ```
 
-When exporting from a non-standard initial position, `PGNSerializer` includes
+When exporting from a non-standard initial position, `PGNSerializer` adds
 `SetUp` and `FEN` tags automatically.
 
-## 10. Exporting PGN
+## 17. PGN Export
 
-Export an imported `PGNGame`:
+Export a parsed `PGNGame`:
 
 ```swift
 let exported = try PGNSerializer().pgn(from: pgnGame)
 ```
 
-Export concrete moves from the standard starting position:
+Build and export a game from concrete moves:
 
 ```swift
 let moves = [
@@ -640,48 +599,25 @@ precondition(reparsed.mainlineMoves == pgnGame.mainlineMoves)
 precondition(reparsed.finalPosition == pgnGame.finalPosition)
 ```
 
-The exporter writes a standard seven tag roster, preserves non-standard tags,
-adds a `Result` tag matching the game result, and includes setup tags when the
-initial position is not the standard starting position.
+The exporter writes a deterministic reduced export style. It emits the standard
+seven tag roster first, preserves nonstandard tags, escapes tag strings, writes
+comments and NAGs, and validates supplied `PGNGame` models before serialization.
 
-## 11. Handling Errors
+## 18. Error Handling
 
-ChessCore parser and serializer errors are typed.
+ChessCore uses typed errors:
 
-Common errors:
+- `MoveParsingError`: malformed coordinate move text
+- `GameApplyError`: a well-formed move is illegal in the current position
+- `FENParsingError`: malformed FEN syntax
+- `PositionValidationError`: syntactically valid FEN failed semantic validation
+- `SANParsingError`: SAN does not identify exactly one legal move
+- `PGNParsingError`: malformed PGN or semantic replay failure
+- `PGNSerializationError`: invalid move list or inconsistent `PGNGame` export
+- `GameReplayError`: illegal move during replay
+- `GameDrawClaimError`: unavailable draw claim
 
-- `MoveParsingError`: malformed coordinate move text.
-- `FENParsingError`: malformed FEN.
-- `PositionValidationError`: syntactically valid FEN that fails strict semantic
-  position validation.
-- `SANParsingError`: SAN cannot be parsed in the current game context.
-- `PGNParsingError`: malformed PGN or semantic replay failure.
-- `PGNSerializationError`: an invalid move list or inconsistent `PGNGame` model
-  was supplied for export.
-- `GameReplayError`: an illegal move was supplied while replaying a concrete
-  move list.
-- `GameDrawClaimError`: a draw claim was requested when it is not currently
-  available.
-
-For FEN validation in forms, importers, or command-line tools,
-`FENSerializer.validationResult(for:)` returns a `FENValidationResult` instead
-of throwing. Use `validatedPosition()` on the result when you want the same
-throwing behavior as `validatedPosition(from:)`.
-
-Catch PGN parser errors:
-
-```swift
-do {
-    let game = try PGNSerializer().game(from: pgnText)
-    print(game.finalPosition)
-} catch let error as PGNParsingError {
-    print(error.description)
-} catch {
-    print(error)
-}
-```
-
-Handle specific PGN failures:
+Handle PGN failures with context:
 
 ```swift
 do {
@@ -692,19 +628,34 @@ do {
     print("Result tag \(tag) does not match \(movetext) at \(context)")
 } catch PGNParsingError.resultConflictsWithFinalStatus(let result, let status, let context) {
     print("Result \(result) conflicts with final status \(status) at \(context)")
-} catch {
-    print(error)
+} catch let error as PGNParsingError {
+    print(error.description)
 }
 ```
 
-When presenting errors to users, prefer the typed error's description. PGN
-errors often include game index, ply, move number, token text, or source
-location.
+PGN errors often include game index, ply, move number, token text, or source
+location through `PGNParsingContext`.
 
-## 12. Testing Your ChessCore Integration
+## 19. Building Move-List Records
 
-Good ChessCore tests assert concrete chess facts rather than only checking that
-parsing did not throw.
+`ChessMoveRecordBuilder` builds display-ready SAN move records for UI code
+without requiring a full PGN:
+
+```swift
+let moves = try ["e2e4", "e7e5", "g1f3"].map { try Move(string: $0) }
+let records = try ChessMoveRecordBuilder().records(
+    initialPosition: .standard,
+    moves: moves
+)
+```
+
+Each `ChessMoveRecord` contains ply, full move number, side, coordinate move,
+and SAN. `ChessUI` can render these records, but the builder itself stays in
+`ChessCore`.
+
+## 20. Testing Your Integration
+
+Good ChessCore tests assert concrete chess facts.
 
 Final FEN assertion:
 
@@ -737,86 +688,44 @@ do {
 }
 ```
 
-Useful test categories:
+Useful categories:
 
-- final FEN for short known games
-- FEN round trips for generated legal positions
-- SAN round trips for generated legal moves
+- final FEN for known games
+- legal move counts for known positions
+- FEN syntax and semantic validation failures
+- SAN round trips from legal positions
 - PGN parse, export, and reparse
-- malformed FEN, SAN, and PGN
-- multi-game database parsing
-- synthetic edge cases for rules and notation
-- Lichess CC0 PGN fixtures for real-world import patterns
+- PGN dialect fixtures from Lichess-style input
+- terminal result/status conflicts
+- dead-position positives and false-positive guards
+- generated legal-game invariants
 
-If an expected move count or SAN spelling is not obvious, cross-check it with an
-independent tool before committing it as a fixture.
+If an expected move count, status, or SAN spelling is not obvious, cross-check
+it with an independent tool before committing it as a fixture.
 
-## 13. Capstone: Build A Tiny PGN Inspector
+## 21. Runnable Example
 
-This command-line example reads PGN text from standard input, parses one or more
-games, prints core tags, prints the mainline, prints the final FEN, and prints
-normalized PGN.
+See [Examples/ChessCoreRecipes](../Examples/ChessCoreRecipes) for a small
+command-line example that parses PGN from standard input, prints tags, final
+FEN, final status, and normalized PGN, then demonstrates FEN validation and
+safe move application.
 
-```swift
-import ChessCore
-import Foundation
+Run it from the package root:
 
-@main
-struct PGNInspector {
-    static func main() throws {
-        let inputData = FileHandle.standardInput.readDataToEndOfFile()
-        let input = String(data: inputData, encoding: .utf8) ?? ""
-
-        let pgnSerializer = PGNSerializer()
-        let fenSerializer = FENSerializer()
-        let games = try pgnSerializer.games(from: input)
-
-        for (index, game) in games.enumerated() {
-            let event = game.tagValue(for: "Event") ?? "?"
-            let white = game.tagValue(for: "White") ?? "?"
-            let black = game.tagValue(for: "Black") ?? "?"
-            let finalFEN = fenSerializer.fen(from: game.finalPosition)
-
-            print("Game \(index + 1)")
-            print("Event: \(event)")
-            print("Players: \(white) vs \(black)")
-            print("Result: \(game.result)")
-            print("Moves:")
-
-            for record in game.moveRecords {
-                let prefix = record.color == .white
-                    ? "\(record.moveNumber)."
-                    : "\(record.moveNumber)..."
-                print("  \(prefix) \(record.san) [\(record.move)]")
-            }
-
-            print("Final FEN: \(finalFEN)")
-            print("Normalized PGN:")
-            print(try pgnSerializer.pgn(from: game))
-        }
-    }
-}
+```sh
+swift run --package-path Examples/ChessCoreRecipes
 ```
 
-This stays ChessCore-only. There is no SwiftUI board, engine, evaluation, or
-display policy.
+Or pipe PGN into it:
 
-## 14. Using ChessCore With A UI
+```sh
+cat game.pgn | swift run --package-path Examples/ChessCoreRecipes
+```
+
+## 22. Using ChessCore With A UI
 
 After `ChessCore` has parsed or built a game record, pass the values your UI
-needs into your presentation layer. For example, a PGN browser might use:
-
-- `PGNGame.tagPairs` for game metadata.
-- `PGNGame.moveRecords` for a move list.
-- `PGNGame.mainlineMoves` for replay.
-- `PGNGame.initialPosition` as the starting board.
-- `PGNGame.finalPosition` for indexing, summaries, or final-board display.
-
-`ChessUI` can render boards, legal move hints, and move lists, but your app
-still decides which game is selected, which ply is visible, how PGN metadata is
-shown, and whether engine analysis is involved.
-
-A typical flow is:
+needs into your presentation layer:
 
 ```swift
 let pgnGame = try PGNSerializer().game(from: pgnText)
@@ -824,8 +733,7 @@ let displayedPosition = pgnGame.finalPosition
 let moveRows = pgnGame.moveRecords
 ```
 
-For interactive playback, replay `mainlineMoves` up to the ply the user
-selected:
+For interactive playback, replay `mainlineMoves` up to the selected ply:
 
 ```swift
 let selectedPly = 12
@@ -837,15 +745,10 @@ let playback = try Game.replay(
 let positionToDisplay = playback.position
 ```
 
-That keeps the data pipeline simple: `ChessCore` validates and models the chess
-record, then your app or `ChessUI` decides how to present it.
+That keeps the data pipeline simple: `ChessCore` validates and models chess
+data, then your app or `ChessUI` decides how to present it.
 
-## Appendix A: Glossary
-
-For terminology, see [ChessCoreGlossary.md](ChessCoreGlossary.md). The glossary
-is kept separate so it can serve both this tutorial and API reference material.
-
-## Appendix B: Common Recipes
+## Appendix A: Common Recipes
 
 ### Parse One PGN Game
 
@@ -900,21 +803,39 @@ let result = FENSerializer().validationResult(for: fen)
 
 if let syntaxError = result.syntaxError {
     print("Syntax error: \(syntaxError)")
-} else if result.isValid == false {
+} else if !result.isValid {
     print(result.positionIssues)
 }
+```
+
+### Start A Standard Game
+
+```swift
+let game = Game()
+```
+
+### Apply A Legal Coordinate Move
+
+```swift
+try game.applyLegal(move: "e2e4")
 ```
 
 ### Replay Concrete Moves
 
 ```swift
-let game = try Game.replay(initialPosition: startingPosition, moves: moves)
+let game = try Game.replay(initialPosition: .standard, moves: moves)
 ```
 
 ### Claim A Draw
 
 ```swift
 try game.claimDraw(.threefoldRepetition)
+```
+
+### Check Dead Position
+
+```swift
+let isDead = DeadPositionAnalyzer().isDeadPosition(position)
 ```
 
 ### Export A PGNGame
@@ -933,16 +854,6 @@ let exported = try PGNSerializer().pgn(
 )
 ```
 
-### Handle PGNParsingError
-
-```swift
-do {
-    _ = try PGNSerializer().game(from: pgnText)
-} catch let error as PGNParsingError {
-    print(error.description)
-}
-```
-
 ### Detect Unsupported Recursive Variations
 
 ```swift
@@ -952,3 +863,7 @@ do {
     print("Unsupported PGN variation at \(context)")
 }
 ```
+
+## Appendix B: Glossary
+
+For terminology, see [ChessCoreGlossary.md](ChessCoreGlossary.md).

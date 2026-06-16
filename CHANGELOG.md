@@ -94,6 +94,12 @@ release. Replace `TBD` with the release date when a release is tagged.
   `PositionValidator.validationResult(for:)`, and
   `FENSerializer.validationResult(for:)` so callers can inspect FEN syntax and
   semantic position diagnostics without using throwing control flow.
+- Added `Position.standard`, `Position.standardStartingFEN`, `Game()`, and
+  `Game.applyLegal(move:)` as ergonomic ChessCore entry points for standard
+  games and safe app-boundary move application.
+- Added `Examples/ChessCoreRecipes`, a ChessCore-only command-line example for
+  PGN import/export, FEN validation, status reporting, and safe move
+  application.
 - Added PGN result/status validation so terminal checkmate and automatic-draw
   final positions reject incompatible PGN result markers during import and
   export.
@@ -138,6 +144,8 @@ release. Replace `TBD` with the release date when a release is tagged.
   only and does not replay moves or rebuild counters/repetition state.
 - Changed `Game.drawClaims` so terminal positions and already-claimed draws no
   longer expose claimable draw rules.
+- Reworked the ChessCore tutorial and glossary around the current public APIs,
+  including PGN, semantic validation, game status, and dead-position behavior.
 
 ### Fixed
 

@@ -22,12 +22,11 @@ import ChessCore
 }
 
 @Test func parserAPIsArePubliclyUsable() {
-    let position = try! FENSerializer().position(
-        from: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-    )
+    let position = Position.standard
     let game = Game(position: position)
     let move = try! Move(string: "e2e4")
 
+    #expect(Position.standardStartingFEN == FENSerializer().fen(from: Position.standard))
     #expect(SANSerializer().san(for: move, in: game) == "e4")
     #expect(FENParsingError.invalidFieldCount(expected: 6, actual: 1).description.isEmpty == false)
     #expect(MoveParsingError.invalidLength("e2").description.isEmpty == false)
@@ -93,7 +92,19 @@ import ChessCore
     let replayed = try! Game.replay(initialPosition: startingPosition, moves: [move])
     #expect(replayed.moveHistory == [move])
     #expect(GameReplayError.illegalMove(move: move, ply: 1).description.isEmpty == false)
+    #expect(GameApplyError.illegalMove(move: move, ply: 1).description.isEmpty == false)
     #expect(GameDrawClaimError.unavailable(.threefoldRepetition).description.isEmpty == false)
+}
+
+@Test func ergonomicGameEntryPointsArePubliclyUsable() {
+    let game = Game()
+    let move = try! Move(string: "e2e4")
+
+    #expect(game.position == Position.standard)
+    try! game.applyLegal(move: move)
+    #expect(game.moveHistory == [move])
+    try! game.applyLegal(move: "e7e5")
+    #expect(game.moveHistory == [move, try! Move(string: "e7e5")])
 }
 
 @Test func positionValidationAPIsArePubliclyUsable() {

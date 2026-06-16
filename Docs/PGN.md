@@ -4,7 +4,7 @@ PGN support lives in `ChessCore`, not `ChessUI`. The parser models game records
 and validates moves; UI layers can decide later how much of a game record to
 display.
 
-## Supported In The First Pass
+## Current Support
 
 - Single-game parsing with `PGNSerializer.game(from:)`.
 - Multi-game database parsing with `PGNSerializer.games(from:)`.
@@ -36,13 +36,13 @@ ChessCore only rejects result contradictions it can prove. Claimable draws, such
 as fifty-move or threefold-repetition claims, remain ongoing until claimed and
 therefore may still be exported or imported with any PGN result marker.
 
-## Future API
+## Future Release API
 
 Recursive annotation variations are lexed and reported with a specific
 `PGNParsingError.unsupportedRecursiveVariation` error. Full variation modeling
-is intentionally deferred as future API. It should be added only as a separate
-milestone with a public move-tree model that can represent variation trees
-cleanly instead of flattening them.
+is intentionally deferred until a future release. It should be added with a
+public move-tree model that can represent variation trees cleanly instead of
+flattening them.
 
 ## Fixture Policy
 
@@ -55,3 +55,13 @@ explicit and compatible with this package.
 Checked-in Lichess fixtures should stay small, static, and offline. Fetch from
 Lichess only when refreshing the corpus, then commit the selected PGN text so
 normal tests never require network access.
+
+## Learning Path
+
+For a ChessCore-first walkthrough that covers PGN together with FEN validation,
+SAN, game status, and dead-position behavior, see
+[ChessCoreTutorial.md](ChessCoreTutorial.md).
+
+For a runnable command-line example that parses PGN, prints validated move
+records, reports final status, exports normalized PGN, and demonstrates FEN
+validation, see [Examples/ChessCoreRecipes](../Examples/ChessCoreRecipes).

@@ -11,6 +11,13 @@
 /// Complete board state for a single point in a game.
 public struct Position: Hashable, Sendable {
 
+    /// Full FEN for the standard chess starting position.
+    public static let standardStartingFEN =
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+    /// Standard chess starting position.
+    public static let standard = try! FENSerializer().position(from: Self.standardStartingFEN)
+
     /// State that belongs to a position but is not stored directly on the board.
     public struct State: Hashable, Sendable {
         /// Side to move.

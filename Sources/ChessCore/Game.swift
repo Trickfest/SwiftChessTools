@@ -174,6 +174,11 @@ public class Game {
         self.rules = StandardRules()
     }
 
+    /// Creates a game from the standard chess starting position.
+    public convenience init() {
+        self.init(position: .standard)
+    }
+
     /// Creates a game with a specific rule implementation.
     ///
     /// - Parameters:
@@ -224,6 +229,34 @@ public class Game {
     /// - Throws: `MoveParsingError` when `coordinateMove` is malformed.
     public func apply(move coordinateMove: String) throws {
         let move = try Move(string: coordinateMove)
+        self.apply(move: move)
+    }
+
+    /// Parses and applies a coordinate move only if it is legal.
+    ///
+    /// Prefer this method for user input, engine output, imported coordinate
+    /// notation, and other app-boundary data that has not already been checked
+    /// against `legalMoves`.
+    ///
+    /// - Throws: `MoveParsingError` when `coordinateMove` is malformed, or
+    ///   `GameApplyError.illegalMove` when the parsed move is not legal in the
+    ///   current position.
+    public func applyLegal(move coordinateMove: String) throws {
+        try self.applyLegal(move: Move(string: coordinateMove))
+    }
+
+    /// Applies a move only if it is legal in the current position.
+    ///
+    /// Prefer this method for user input, engine output, imported coordinate
+    /// notation, and other app-boundary data that has not already been checked
+    /// against `legalMoves`.
+    ///
+    /// - Throws: `GameApplyError.illegalMove` when `move` is not legal in the
+    ///   current position.
+    public func applyLegal(move: Move) throws {
+        guard self.legalMoves.contains(move) else {
+            throw GameApplyError.illegalMove(move: move, ply: self.moveHistory.count + 1)
+        }
         self.apply(move: move)
     }
 

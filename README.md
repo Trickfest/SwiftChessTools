@@ -63,16 +63,10 @@ without any SwiftUI dependency:
 ```swift
 import ChessCore
 
-let startingFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-
 let fenSerializer = FENSerializer()
-let game = Game(position: try fenSerializer.position(from: startingFEN))
+let game = Game()
 
-let move = try Move(string: "e2e4")
-
-if game.legalMoves.contains(move) {
-    game.apply(move: move)
-}
+try game.applyLegal(move: "e2e4")
 
 let updatedFEN = fenSerializer.fen(from: game.position)
 let legalReplies = game.legalMoves.map(\.description)
@@ -82,19 +76,21 @@ FEN, SAN, and coordinate-move parsing APIs are throwing entry points:
 
 ```swift
 do {
-    let position = try FENSerializer().position(from: startingFEN)
+    let position = try FENSerializer().position(from: Position.standardStartingFEN)
     let coordinateGame = Game(position: position)
     let sanGame = Game(position: position)
     let coordinateMove = try Move(string: "g1f3")
     let sanMove = try SANSerializer().move(for: "e4", in: sanGame)
-    coordinateGame.apply(move: coordinateMove)
-    sanGame.apply(move: sanMove)
+    try coordinateGame.applyLegal(move: coordinateMove)
+    try sanGame.applyLegal(move: sanMove)
 } catch let error as FENParsingError {
     // Handle malformed FEN.
 } catch let error as SANParsingError {
     // Handle SAN that does not identify exactly one legal move.
 } catch let error as MoveParsingError {
     // Handle malformed coordinate notation.
+} catch let error as GameApplyError {
+    // Handle a coordinate move that is well-formed but illegal.
 } catch {
     // Handle any other error.
 }
@@ -104,8 +100,8 @@ When accepting external FEN, use strict semantic validation or inspect a
 non-throwing validation result:
 
 ```swift
-let position = try FENSerializer().validatedPosition(from: startingFEN)
-let validation = FENSerializer().validationResult(for: startingFEN)
+let position = try FENSerializer().validatedPosition(from: Position.standardStartingFEN)
+let validation = FENSerializer().validationResult(for: Position.standardStartingFEN)
 ```
 
 ### PGN Import And Export
@@ -137,7 +133,7 @@ Use `games(from:)` for PGN database text containing multiple games. FEN-backed
 PGNs with `[SetUp "1"]` and `[FEN "..."]` are supported. Comments, including
 Lichess clock and evaluation comments, and numeric annotation glyphs are
 preserved on move records. Recursive annotation variations are intentionally
-reported as unsupported in the first PGN milestone.
+reported as unsupported until ChessCore has a public move-tree model.
 
 `PGNGame.finalStatus` reports the replayed final status. PGN import and export
 reject result markers that contradict terminal statuses ChessCore can prove,
@@ -145,7 +141,9 @@ while still accepting external decisive or drawn results for ongoing positions.
 
 For a ChessCore-only walkthrough, see
 [Docs/ChessCoreTutorial.md](Docs/ChessCoreTutorial.md). For terminology, see
-[Docs/ChessCoreGlossary.md](Docs/ChessCoreGlossary.md).
+[Docs/ChessCoreGlossary.md](Docs/ChessCoreGlossary.md). For a runnable
+ChessCore-only command-line example, see
+[Examples/ChessCoreRecipes](Examples/ChessCoreRecipes).
 
 ## ChessUI Quick Start
 

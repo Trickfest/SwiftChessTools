@@ -94,6 +94,23 @@ public enum GameReplayError: Error, Equatable, CustomStringConvertible, Localize
     }
 }
 
+/// Errors thrown when safely applying a move to a game.
+public enum GameApplyError: Error, Equatable, CustomStringConvertible, LocalizedError {
+    case illegalMove(move: Move, ply: Int)
+
+    /// Human-readable error text.
+    public var description: String {
+        switch self {
+        case let .illegalMove(move, ply):
+            return "Illegal move \(move) at ply \(ply)."
+        }
+    }
+
+    public var errorDescription: String? {
+        description
+    }
+}
+
 /// Errors thrown when claiming a draw.
 public enum GameDrawClaimError: Error, Equatable, CustomStringConvertible, LocalizedError {
     case unavailable(GameDrawClaim)

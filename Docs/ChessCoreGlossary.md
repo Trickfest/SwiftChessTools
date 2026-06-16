@@ -28,6 +28,11 @@ engine-analysis, and product-specific concepts belong in app-level docs.
 - **Dead Position Analyzer**: `DeadPositionAnalyzer`, the ChessCore API that
   proves whether a position is dead because neither side can possibly
   checkmate.
+- **Safe Move Application**: Applying a move with `Game.applyLegal(move:)` so
+  ChessCore parses and checks legality before mutating the game.
+- **Unchecked Move Application**: Applying a move with `Game.apply(move:)`.
+  This lower-level API assumes the move is already legal in the current
+  position.
 - **Serialization Error**: A typed error thrown while exporting values, such as
   attempting to export an illegal concrete move list as PGN.
 - **Sendable**: A Swift concurrency marker used by value types that can safely
@@ -50,6 +55,8 @@ engine-analysis, and product-specific concepts belong in app-level docs.
   rights, en passant target, halfmove clock, and fullmove number.
 - **Game**: A playable wrapper around `Position` that applies moves, exposes
   legal moves, and tracks move history.
+- **Standard Game**: `Game()`, a playable game initialized from
+  `Position.standard`.
 - **Game Status**: A high-level description of the current game state, exposed
   as `Game.status`.
 - **Game Outcome**: The final result of a completed game: a win for one side or
@@ -70,8 +77,8 @@ engine-analysis, and product-specific concepts belong in app-level docs.
 - **Final Status**: The `GameStatus` after replaying all moves in a game or PGN
   mainline. `PGNGame.finalStatus` stores this status for parsed and generated
   PGN records.
-- **Standard Starting Position**: The normal chess starting position, represented
-  by `PGNSerializer.standardStartingFEN`.
+- **Standard Starting Position**: The normal chess starting position,
+  represented by `Position.standard` and `Position.standardStartingFEN`.
 
 ## Rule Terms
 
@@ -196,9 +203,9 @@ engine-analysis, and product-specific concepts belong in app-level docs.
   `Round`, `White`, `Black`, and `Result`.
 - **Movetext**: The PGN move section after the tag pairs.
 - **Mainline**: The primary sequence of moves in a PGN game.
-- **Variation**: An alternate PGN line written in parentheses. First-pass
-  ChessCore PGN support detects recursive variations but reports them as
-  unsupported.
+- **Variation**: An alternate PGN line written in parentheses. Current
+  ChessCore PGN support detects recursive variations and reports them as
+  unsupported until a public move-tree model is added.
 - **Comment**: Text annotation in a PGN game, usually written in braces or as a
   semicolon comment.
 - **NAG**: Numeric Annotation Glyph, such as `$1`, used for move annotations.
@@ -219,7 +226,8 @@ engine-analysis, and product-specific concepts belong in app-level docs.
 - **Reduced Export Style**: PGN output that writes deterministic tags and
   movetext without trying to preserve the exact original whitespace.
 - **Recursive Annotation Variation**: A PGN variation tree. ChessCore detects
-  these in the first PGN milestone, but does not yet model them.
+  these today, but does not model them until a future release adds a public
+  move-tree API.
 
 ## Testing Terms
 
@@ -235,16 +243,16 @@ engine-analysis, and product-specific concepts belong in app-level docs.
   redistributable corpus coverage.
 - **Oracle**: An independent implementation or trusted data source used to
   confirm expected test values before adding them to ChessCore tests.
-- **Coverage Matrix**: A planning table that classifies edge cases as already
-  covered, worth adding next, future API work, or out of scope.
+- **Coverage Matrix**: A release-readiness table that classifies edge cases as
+  covered, future release work, or out of scope.
 
 ## Current Scope Notes
 
 - **Standard Chess Only**: ChessCore currently targets standard chess rules, not
   Chess960 or other variants.
-- **Mainline PGN First**: PGN support validates mainline games and preserves
-  comments/NAGs. Recursive variations are Future API because they need a public
-  move-tree model.
+- **Mainline PGN Support**: PGN support validates mainline games and preserves
+  comments/NAGs. Recursive variations are deferred to a future release because
+  they need a public move-tree model.
 - **Board-Based Position Counts**: `Game.positionCounts` tracks board
   occurrences by piece placement. Draw-claim repetition uses
   `Game.repetitionCounts` and `GameRepetitionKey` instead.

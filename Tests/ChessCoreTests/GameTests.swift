@@ -76,6 +76,27 @@ import Testing
     #expect(game.position.counter.halfMoves == 1)
 }
 
+@Test func applyLegalMoveValidatesBeforeMutatingGame() {
+    let game = Game()
+    let startingPosition = game.position
+
+    do {
+        try game.applyLegal(move: "e2e5")
+        Issue.record("Expected illegal move to fail")
+    } catch GameApplyError.illegalMove(let move, let ply) {
+        #expect(move == (try! Move(string: "e2e5")))
+        #expect(ply == 1)
+    } catch {
+        Issue.record("Expected GameApplyError, got: \(error)")
+    }
+
+    #expect(game.position == startingPosition)
+    #expect(game.moveHistory.isEmpty)
+
+    try! game.applyLegal(move: "e2e4")
+    #expect(game.moveHistory == [try! Move(string: "e2e4")])
+}
+
 @Test func losesKingSideCastlingRight() {
     let fenSerializer = FENSerializer()
     let fen = "r1bqk1nr/pppp1ppp/2n5/2b5/2BpP3/5N2/PPP2PPP/RNBQK2R w KQkq - 2 5"

@@ -19,10 +19,11 @@ cases should be synthetic or hand-authored.
   stalemate, promotion-heavy positions, and underpromotion mates.
 - Game-state invariant tests cover move counters, en passant lifecycle,
   castling-right mutation, promotion application, game copy independence, and
-  board-only position counting. Generated legal-game mutation tests also check
-  FEN stability, SAN parse/export stability, halfmove/fullmove counter updates,
-  en-passant target updates, king counts, status coherence, and sampled legal
-  continuations.
+  board-only position counting. Public API tests also cover standard-game
+  convenience entry points and safe legal move application. Generated
+  legal-game mutation tests also check FEN stability, SAN parse/export
+  stability, halfmove/fullmove counter updates, en-passant target updates, king
+  counts, status coherence, and sampled legal continuations.
 - Game-status tests cover checkmate, stalemate, insufficient material, proven
   dead positions, fifty/seventy-five-move rules, threefold/fivefold repetition,
   repetition-key identity, real-move threshold transitions, draw-claim
@@ -82,6 +83,8 @@ tool, such as a temporary `python-chess` install, before being checked in.
 Game-state invariant coverage currently includes:
 
 - quiet piece moves increment the halfmove clock
+- `Game()` starts from `Position.standard`
+- `Game.applyLegal(move:)` validates legality before mutating the game
 - black moves increment the fullmove number
 - pawn moves, captures, en passant, and promotion reset the halfmove clock
 - en-passant targets are created only by two-square pawn advances
@@ -188,7 +191,7 @@ Notation round-trip coverage currently includes:
   empty-square digits, invalid castling strings, invalid en-passant squares, and
   counters outside `Int` range
 
-## python-chess Coverage Audit Matrix
+## python-chess Coverage Matrix
 
 `python-chess` is useful as an external coverage checklist and temporary oracle,
 but its GPL-licensed tests and fixtures should not be copied into this package.
@@ -200,15 +203,15 @@ When oracle data is useful, check in the generated expectations as Swift test
 fixtures instead of making the test suite shell out to Python. The normal test
 suite must stay self-contained and network-free.
 
-This audit is based on an inspection of upstream `python-chess` test categories
-from commit `8330cfd5dbb9401f0e85be92cf408d6482505642`. The categories are
-classified as:
+This release-readiness matrix is based on an inspection of upstream
+`python-chess` test categories from commit
+`8330cfd5dbb9401f0e85be92cf408d6482505642`. The categories are classified as:
 
 - `Covered`: Current ChessCore tests already exercise the category adequately.
-- `Future API`: Useful only after ChessCore exposes more public behavior.
+- `Future Release`: Useful after ChessCore exposes more public behavior.
 - `Out of scope`: Not a current ChessCore responsibility.
 
-| Area | python-chess coverage signal | ChessCore status | Action | Priority |
+| Area | python-chess coverage signal | ChessCore status | Release status | Priority |
 | --- | --- | --- | --- | --- |
 | Squares | Square construction, parsing, shifts, distance helpers. | Construction, coordinates, and translation are covered. Distance helpers are not public ChessCore API. | Covered | Low |
 | Moves | UCI-style move parsing, invalid move text, copy/equality, null/drop moves. | Coordinate parsing, invalid inputs, equality, and promotion spelling are covered. Null moves and drops are not standard ChessCore API. | Covered | Low |
@@ -227,7 +230,7 @@ classified as:
 | SAN parsing/export | SAN generation, parsing, ambiguous moves, castling, promotion, checkmate, long algebraic notation. | Core SAN, generated round trips, every-legal-move stress round trips, ambiguity, en-passant, promotion, checkmate, optional/decorative check suffixes, coordinate-notation rejection, and missing-disambiguation rejection are covered. Long algebraic notation is not currently accepted as SAN. | Covered | Low |
 | PGN basic import/export | Tag roster, setup/FEN, comments, NAGs, headers, no tag roster, empty games, export visitors. | Mainline import/export, sparse and full tag rosters, odd tag names, FEN-backed games, empty games, leading comments, comments, NAGs, invalid NAGs, malformed input, explicit terminal result/status validation, external ongoing-result acceptance, validating `PGNGame` export, 22 checked-in Lichess CC0 fixtures, and round trips are covered. | Covered | Low |
 | PGN dialect tolerance | UTF-8 BOM, semicolon comments, odd headers, empty lines, UCI/LAN movetext, ChessBase quirks. | UTF-8 BOM input, compact movetext, `%` escape lines, semicolon comments, empty comments, result-boundary comments, repeated extra tags, escaped strings, odd tag names, empty games, Lichess-style samples, and real Lichess standard-game headers are covered. Non-SAN UCI/LAN movetext and broader ChessBase quirks remain future decisions. | Covered | Low |
-| PGN variations | Tree traversal, promote/demote variations, recursive variation handling. | Recursive variations are intentionally rejected by the current PGN implementation and intentionally deferred until ChessCore has a public move-tree API. | Future API | Medium |
+| PGN variations | Tree traversal, promote/demote variations, recursive variation handling. | Recursive variations are intentionally rejected by the current PGN implementation and deferred until ChessCore has a public move-tree API. | Future Release | Medium |
 | PGN annotation details | Symbolic annotations, eval comments, clock comments, elapsed-move-time fields. | Comments, NAGs including `$0` and leading-zero values, symbolic annotation mapping, Lichess clock/eval comments, elapsed-move-time variants, arrow comments, and colored-square comments are covered. | Covered | Low |
 | PGN variants | Chess960, Crazyhouse, antichess, and other variant PGNs. | ChessCore currently targets standard chess. | Out of scope | Low |
 | Opening books | Polyglot reader behavior. | ChessCore does not read opening books. | Out of scope | Low |
@@ -236,9 +239,9 @@ classified as:
 | Rendering | SVG board and piece rendering. | Rendering belongs to ChessUI or app code, not ChessCore. | Out of scope | Low |
 | Variants | Suicide, Atomic, Racing Kings, Horde, Three-check, Crazyhouse, Giveaway. | ChessCore currently targets standard chess only. | Out of scope | Low |
 
-### Current API Coverage Summary
+### Current Release Coverage Summary
 
-Current high-priority API coverage includes:
+Current high-priority release coverage includes:
 
 - a 40-position perft corpus with added castling, en-passant, promotion,
   checkmate, and stalemate positions
@@ -257,6 +260,7 @@ Current high-priority API coverage includes:
 - semantic FEN validation for king counts, pawn ranks, castling rights,
   en-passant targets, and inactive-side check
 - game replay/reset and explicit draw-claim behavior
+- ergonomic standard-game and safe move-application APIs
 - dead-position analyzer coverage for material-only draws, sealed immobile pawn
   barriers with trapped sliding pieces, symmetry invariants, false-positive
   near-misses, and a status/analyzer performance smoke pass
@@ -265,9 +269,9 @@ Current high-priority API coverage includes:
   plus explicit external-result acceptance for ongoing and claimable-draw
   positions
 
-No current-API high-priority rows remain open in the audit matrix. Rows marked
-`Future API` or `Out of scope` should stay out of this pass unless the package
-direction changes.
+No current-release high-priority rows remain open in the coverage matrix. Rows
+marked `Future Release` or `Out of scope` should remain outside the first public
+release unless the package direction changes.
 
 ## Regression Policy
 
