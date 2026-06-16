@@ -90,6 +90,10 @@ release. Replace `TBD` with the release date when a release is tagged.
 - Added `PositionValidator`, `PositionValidationIssue`,
   `PositionValidationError`, and `FENSerializer.validatedPosition(from:)` for
   strict semantic validation of syntactically parsed FEN positions.
+- Added `PositionValidationResult`, `FENValidationResult`,
+  `PositionValidator.validationResult(for:)`, and
+  `FENSerializer.validationResult(for:)` so callers can inspect FEN syntax and
+  semantic position diagnostics without using throwing control flow.
 - Added PGN result/status validation so terminal checkmate and automatic-draw
   final positions reject incompatible PGN result markers during import and
   export.

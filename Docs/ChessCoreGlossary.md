@@ -20,6 +20,11 @@ engine-analysis, and product-specific concepts belong in app-level docs.
 - **Position Validator**: `PositionValidator`, the ChessCore API that checks
   whether a syntactically parsed `Position` satisfies strict semantic position
   constraints.
+- **Position Validation Result**: `PositionValidationResult`, the non-throwing
+  result value returned when semantically validating an already parsed
+  `Position`.
+- **FEN Validation Result**: `FENValidationResult`, the non-throwing result
+  value returned when parsing and semantically validating FEN text.
 - **Dead Position Analyzer**: `DeadPositionAnalyzer`, the ChessCore API that
   proves whether a position is dead because neither side can possibly
   checkmate.
@@ -156,7 +161,8 @@ engine-analysis, and product-specific concepts belong in app-level docs.
   parses FEN syntax and then rejects impossible or inconsistent positions such
   as missing kings, invalid castling rights, invalid en-passant targets,
   en-passant targets with a nonzero halfmove clock, pawns on invalid ranks, or
-  inactive-side check.
+  inactive-side check. Use `FENSerializer.validationResult(for:)` when callers
+  need to inspect syntax and semantic validation failures without throwing.
 - **SAN**: Standard Algebraic Notation, the human-readable move notation used in
   movetext, such as `Nf3`, `exd5`, `O-O`, or `Qxf7#`.
 - **PGN**: Portable Game Notation, a text format for complete game records.

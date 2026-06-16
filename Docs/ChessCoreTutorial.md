@@ -102,6 +102,37 @@ let validated = try fenSerializer.validatedPosition(
 )
 ```
 
+Use `validationResult(for:)` when you want to show diagnostics without using
+throwing control flow:
+
+```swift
+let result = fenSerializer.validationResult(for: externalFEN)
+
+switch result {
+case .valid(let position):
+    print("Ready to play: \(position)")
+case .invalidSyntax(let error):
+    print("Malformed FEN: \(error)")
+case .invalidPosition(let validation):
+    for issue in validation.issues {
+        print("Position issue: \(issue)")
+    }
+}
+```
+
+For an already parsed `Position`, use `PositionValidator` directly:
+
+```swift
+let validation = PositionValidator().validationResult(for: position)
+
+if validation.isValid {
+    let playable = try validation.validatedPosition()
+    print(playable)
+} else {
+    print(validation.issues)
+}
+```
+
 Semantic validation rejects positions with missing or multiple kings, pawns on
 the first or eighth rank, castling rights without the matching king and rook,
 invalid en-passant targets, en-passant targets with a nonzero halfmove clock,
@@ -632,6 +663,11 @@ Common errors:
 - `GameDrawClaimError`: a draw claim was requested when it is not currently
   available.
 
+For FEN validation in forms, importers, or command-line tools,
+`FENSerializer.validationResult(for:)` returns a `FENValidationResult` instead
+of throwing. Use `validatedPosition()` on the result when you want the same
+throwing behavior as `validatedPosition(from:)`.
+
 Catch PGN parser errors:
 
 ```swift
@@ -855,6 +891,18 @@ let finalFEN = FENSerializer().fen(from: game.finalPosition)
 
 ```swift
 let position = try FENSerializer().validatedPosition(from: fen)
+```
+
+### Inspect FEN Validation Issues
+
+```swift
+let result = FENSerializer().validationResult(for: fen)
+
+if let syntaxError = result.syntaxError {
+    print("Syntax error: \(syntaxError)")
+} else if result.isValid == false {
+    print(result.positionIssues)
+}
 ```
 
 ### Replay Concrete Moves

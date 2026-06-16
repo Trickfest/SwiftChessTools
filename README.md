@@ -100,6 +100,14 @@ do {
 }
 ```
 
+When accepting external FEN, use strict semantic validation or inspect a
+non-throwing validation result:
+
+```swift
+let position = try FENSerializer().validatedPosition(from: startingFEN)
+let validation = FENSerializer().validationResult(for: startingFEN)
+```
+
 ### PGN Import And Export
 
 `PGNSerializer` parses Portable Game Notation in `ChessCore`. It lexes PGN

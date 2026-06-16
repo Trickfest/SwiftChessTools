@@ -26,7 +26,11 @@ import Testing
     ])
 func positionValidatorAcceptsPlayablePositions(fen: String) throws {
     let position = try FENSerializer().position(from: fen)
+    let result = PositionValidator().validationResult(for: position)
 
+    #expect(result.isValid)
+    #expect(result.issues.isEmpty)
+    #expect(try result.validatedPosition() == position)
     #expect(PositionValidator().issues(in: position).isEmpty)
     #expect(try FENSerializer().validatedPosition(from: fen) == position)
 }
@@ -173,6 +177,79 @@ func positionValidatorAcceptsPlayablePositions(fen: String) throws {
             .invalidEnPassantTarget(Square(coordinate: "d6")),
         ]
     )
+}
+
+@Test func positionValidationResultReportsSemanticIssuesWithoutThrowing() throws {
+    let position = try FENSerializer().position(from: "P3k3/8/8/8/8/8/8/8 w K d6 1 1")
+    let result = PositionValidator().validationResult(for: position)
+
+    #expect(result.position == position)
+    #expect(result.isValid == false)
+    #expect(result.issues.contains(.missingKing(.white)))
+    #expect(result.issues.contains(.pawnOnInvalidRank(Square(coordinate: "a8"))))
+    #expect(result.issues.contains(.invalidCastlingRight(Piece(kind: .king, color: .white))))
+    #expect(result.issues.contains(.invalidEnPassantTarget(Square(coordinate: "d6"))))
+
+    do {
+        _ = try result.validatedPosition()
+        Issue.record("Expected semantic validation result to throw")
+    } catch let error as PositionValidationError {
+        #expect(error == .invalidPosition(result.issues))
+    } catch {
+        Issue.record("Expected PositionValidationError, got: \(error)")
+    }
+}
+
+@Test func fenValidationResultReportsValidPositions() throws {
+    let serializer = FENSerializer()
+    let position = try serializer.position(from: PGNSerializer.standardStartingFEN)
+    let result = serializer.validationResult(for: PGNSerializer.standardStartingFEN)
+
+    #expect(result == .valid(position))
+    #expect(result.isValid)
+    #expect(result.position == position)
+    #expect(result.syntaxError == nil)
+    #expect(result.positionIssues.isEmpty)
+    #expect(try result.validatedPosition() == position)
+}
+
+@Test func fenValidationResultReportsSyntaxErrorsWithoutThrowing() {
+    let result = FENSerializer().validationResult(for: "8/8/8/8/8/8/8 w - - 0 1")
+
+    #expect(result.isValid == false)
+    #expect(result.position == nil)
+    #expect(result.syntaxError == .invalidPiecePlacement("8/8/8/8/8/8/8"))
+    #expect(result.positionIssues.isEmpty)
+
+    do {
+        _ = try result.validatedPosition()
+        Issue.record("Expected syntax-invalid FEN result to throw")
+    } catch let error as FENParsingError {
+        #expect(error == .invalidPiecePlacement("8/8/8/8/8/8/8"))
+    } catch {
+        Issue.record("Expected FENParsingError, got: \(error)")
+    }
+}
+
+@Test func fenValidationResultReportsSemanticIssuesWithoutThrowing() throws {
+    let fen = "8/8/8/8/8/8/8/8 w - - 0 1"
+    let parsedPosition = try FENSerializer().position(from: fen)
+    let result = FENSerializer().validationResult(for: fen)
+
+    #expect(result.isValid == false)
+    #expect(result.position == parsedPosition)
+    #expect(result.syntaxError == nil)
+    #expect(result.positionIssues.contains(.missingKing(.white)))
+    #expect(result.positionIssues.contains(.missingKing(.black)))
+
+    do {
+        _ = try result.validatedPosition()
+        Issue.record("Expected semantically invalid FEN result to throw")
+    } catch let error as PositionValidationError {
+        #expect(error == .invalidPosition(result.positionIssues))
+    } catch {
+        Issue.record("Expected PositionValidationError, got: \(error)")
+    }
 }
 
 @Test func fenValidatedPositionPreservesSyntaxErrorsAndThrowsSemanticErrors() throws {

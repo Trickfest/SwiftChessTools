@@ -151,6 +151,10 @@ Semantic FEN validation coverage currently includes:
 
 - `FENSerializer.position(from:)` remains syntax-only
 - `FENSerializer.validatedPosition(from:)` returns valid playable positions
+- `FENSerializer.validationResult(for:)` reports syntax and semantic failures
+  without throwing
+- `PositionValidator.validationResult(for:)` reports semantic issues for an
+  already parsed `Position`
 - missing kings and multiple kings are reported
 - pawns on the first or eighth rank are reported
 - castling rights require the matching king and rook on their starting squares
@@ -211,7 +215,7 @@ classified as:
 | Pieces | Symbol parsing, equality, hashing. | Piece equality and character mapping are covered. | Covered | Low |
 | Board storage | Default/empty boards, get/set/remove pieces, color lookup, piece maps. | Board square/index/coordinate access, copy independence, and enumeration are covered. | Covered | Low |
 | FEN syntax | Valid FEN, malformed FEN, counters, en-passant fields, castling fields. | Serialization, malformed fields, generated round trips, adjacent digit rejection, and counter bounds are covered. | Covered | Low |
-| FEN semantic status | Bad castling rights, multiple kings, impossible or inconsistent positions. | `PositionValidator` and `FENSerializer.validatedPosition(from:)` cover king counts, pawn ranks, castling rights, en-passant availability, en-passant halfmove-clock consistency, inactive-side check, and multi-issue reporting. Dead-position adjudication is covered separately by `Game.status` and `DeadPositionAnalyzer`. | Covered | Low |
+| FEN semantic status | Bad castling rights, multiple kings, impossible or inconsistent positions. | `PositionValidator`, `PositionValidator.validationResult(for:)`, `FENSerializer.validatedPosition(from:)`, and `FENSerializer.validationResult(for:)` cover king counts, pawn ranks, castling rights, en-passant availability, en-passant halfmove-clock consistency, inactive-side check, syntax-vs-semantic diagnostics, and multi-issue reporting. Dead-position adjudication is covered separately by `Game.status` and `DeadPositionAnalyzer`. | Covered | Low |
 | EPD | EPD parsing, operations, best-move fields. | ChessCore does not support EPD. | Out of scope | Low |
 | Legal move generation | Legal move lists, move counts, perft-style fixtures, pseudo-legal distinctions. | Focused legal-move fixtures, 40 perft positions, a 53-position exact legal-move corpus, and 48 generated move-count/status positions created with a temporary `python-chess` oracle are covered, including castling, en-passant, promotion, underpromotion mate, checkmate, stalemate, and generated midgame positions. | Covered | Low |
 | Castling | SAN castling, selective castling, missing/invalid rights, rook/king edge cases, Chess960 castling. | Standard castling rights, missing rooks, matching rook color, attacked transit/destination, in-check rejection, b-file occupancy, rook-path attack tolerance, and application are covered. Chess960 is out of scope. | Covered | Low |

@@ -56,6 +56,36 @@ public enum PositionValidationError: Error, Equatable, CustomStringConvertible, 
     }
 }
 
+/// Result of semantically validating a parsed chess position.
+public struct PositionValidationResult: Equatable, Sendable {
+
+    /// The position that was checked.
+    public let position: Position
+
+    /// Semantic issues found in the position.
+    public let issues: [PositionValidationIssue]
+
+    /// Creates a validation result for a parsed position.
+    public init(position: Position, issues: [PositionValidationIssue]) {
+        self.position = position
+        self.issues = issues
+    }
+
+    /// `true` when no semantic validation issues were found.
+    public var isValid: Bool {
+        issues.isEmpty
+    }
+
+    /// Returns `position`, or throws the same error as strict validation.
+    public func validatedPosition() throws -> Position {
+        guard isValid else {
+            throw PositionValidationError.invalidPosition(issues)
+        }
+        return position
+    }
+
+}
+
 /// Performs semantic validation for parsed chess positions.
 public struct PositionValidator: Sendable {
 
@@ -101,12 +131,14 @@ public struct PositionValidator: Sendable {
         return issues
     }
 
+    /// Returns a semantic validation result for `position`.
+    public func validationResult(for position: Position) -> PositionValidationResult {
+        PositionValidationResult(position: position, issues: self.issues(in: position))
+    }
+
     /// Throws when `position` has semantic validation issues.
     public func validate(_ position: Position) throws {
-        let issues = self.issues(in: position)
-        guard issues.isEmpty else {
-            throw PositionValidationError.invalidPosition(issues)
-        }
+        _ = try self.validationResult(for: position).validatedPosition()
     }
 
     private func isValidCastlingRight(_ right: Piece, in position: Position) -> Bool {

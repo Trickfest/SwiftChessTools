@@ -99,9 +99,16 @@ import ChessCore
 @Test func positionValidationAPIsArePubliclyUsable() {
     let serializer = FENSerializer()
     let position = try! serializer.validatedPosition(from: PGNSerializer.standardStartingFEN)
+    let fenResult = serializer.validationResult(for: PGNSerializer.standardStartingFEN)
+    let positionResult = PositionValidator().validationResult(for: position)
     let issues = PositionValidator().issues(in: position)
 
+    #expect(fenResult.isValid)
+    #expect(try! fenResult.validatedPosition() == position)
+    #expect(positionResult.isValid)
+    #expect(try! positionResult.validatedPosition() == position)
     #expect(issues.isEmpty)
+    #expect(FENValidationResult.invalidSyntax(.invalidFieldCount(expected: 6, actual: 1)).isValid == false)
     #expect(PositionValidationIssue.missingKing(.white).description.isEmpty == false)
     #expect(
         PositionValidationError.invalidPosition([.missingKing(.white)])

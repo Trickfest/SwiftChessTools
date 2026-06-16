@@ -44,6 +44,70 @@ public enum FENParsingError: Error, Equatable, CustomStringConvertible, Localize
     }
 }
 
+/// Result of parsing and semantically validating a FEN string.
+public enum FENValidationResult: Equatable, Sendable {
+
+    /// FEN syntax and semantic position validation both passed.
+    case valid(Position)
+
+    /// FEN syntax parsing failed before a `Position` could be created.
+    case invalidSyntax(FENParsingError)
+
+    /// FEN syntax parsed, but the resulting `Position` failed semantic checks.
+    case invalidPosition(PositionValidationResult)
+
+    /// `true` when the FEN string parsed and the resulting position is
+    /// semantically valid.
+    public var isValid: Bool {
+        if case .valid = self {
+            return true
+        }
+        return false
+    }
+
+    /// Parsed position, when FEN syntax was valid.
+    public var position: Position? {
+        switch self {
+        case let .valid(position):
+            return position
+        case let .invalidPosition(result):
+            return result.position
+        case .invalidSyntax:
+            return nil
+        }
+    }
+
+    /// Syntax parsing error, when FEN syntax was malformed.
+    public var syntaxError: FENParsingError? {
+        if case let .invalidSyntax(error) = self {
+            return error
+        }
+        return nil
+    }
+
+    /// Semantic position issues, when FEN syntax parsed successfully.
+    public var positionIssues: [PositionValidationIssue] {
+        if case let .invalidPosition(result) = self {
+            return result.issues
+        }
+        return []
+    }
+
+    /// Returns the parsed position, or throws the same error as strict
+    /// validation.
+    public func validatedPosition() throws -> Position {
+        switch self {
+        case let .valid(position):
+            return position
+        case let .invalidSyntax(error):
+            throw error
+        case let .invalidPosition(result):
+            return try result.validatedPosition()
+        }
+    }
+
+}
+
 /// Converts between `Position` values and Forsyth-Edwards Notation.
 public class FENSerializer {
 
@@ -83,9 +147,24 @@ public class FENSerializer {
     /// playable-position constraints such as king counts, castling rights, pawn
     /// ranks, en-passant availability, and inactive-side check.
     public func validatedPosition(from fen: String) throws -> Position {
-        let position = try self.position(from: fen)
-        try PositionValidator().validate(position)
-        return position
+        try self.validationResult(for: fen).validatedPosition()
+    }
+
+    /// Parses and semantically validates a FEN string without throwing.
+    ///
+    /// Use this method when callers need UI-friendly diagnostics or want to
+    /// distinguish malformed FEN syntax from semantic position issues without
+    /// using throwing control flow.
+    public func validationResult(for fen: String) -> FENValidationResult {
+        do {
+            let position = try self.position(from: fen)
+            let result = PositionValidator().validationResult(for: position)
+            return result.isValid ? .valid(position) : .invalidPosition(result)
+        } catch let error as FENParsingError {
+            return .invalidSyntax(error)
+        } catch {
+            preconditionFailure("Unexpected FEN parsing error: \(error)")
+        }
     }
 
     /// Formats a position as a full six-field FEN string.
