@@ -117,11 +117,8 @@ private struct WorkbenchView: View {
 
     private var boardView: some View {
         ChessBoardView(model: boardModel)
-            .onMove { move, isLegal, _, _, _, promotion in
-                let appliedMove = promotion.map {
-                    Move(from: move.from, to: move.to, promotion: $0)
-                } ?? move
-                handleBoardMove(move: appliedMove, isLegal: isLegal)
+            .onMove { attempt in
+                handleBoardMove(move: attempt.move, isLegal: attempt.isLegal)
             }
     }
 
@@ -529,7 +526,7 @@ private struct WorkbenchView: View {
             return
         }
 
-        if !FENValidator.isValid(newValue) {
+        if (try? FENSerializer().position(from: newValue)) == nil {
             showError = true
             errorMessage = "Invalid FEN notation."
             return

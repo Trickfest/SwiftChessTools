@@ -59,8 +59,7 @@ struct HarnessView: View {
     }
 
     private func configureModel() {
-        model.validatesMoves = true
-        model.allowsOpponentMoves = false
+        model.interactionMode = .legalMovesOnly
         model.showsLegalMoveHighlights = true
         model.showsLastMoveHighlight = true
         model.moveAnimationDuration = 0.08
@@ -88,27 +87,16 @@ struct HarnessView: View {
         configureModel()
     }
 
-    private func handleMove(
-        move: Move,
-        isLegal: Bool,
-        sourceSquare: String,
-        targetSquare: String,
-        coordinateMove: String,
-        promotion: PieceKind?
-    ) {
-        guard isLegal else {
-            lastMove = "Rejected \(coordinateMove)"
+    private func handleMove(_ attempt: ChessBoardMoveAttempt) {
+        guard attempt.isLegal else {
+            lastMove = "Rejected \(attempt.coordinateMove)"
             return
         }
 
-        let appliedMove = promotion.map {
-            Move(from: move.from, to: move.to, promotion: $0)
-        } ?? move
-
-        model.game.apply(move: appliedMove)
+        model.game.apply(move: attempt.move)
         let fen = FENSerializer().fen(from: model.game.position)
-        model.setFEN(fen, animatedMove: appliedMove)
+        model.setFEN(fen, animatedMove: attempt.move)
         currentFEN = fen
-        lastMove = "\(sourceSquare)\(targetSquare)\(promotion?.rawValue ?? "")"
+        lastMove = attempt.coordinateMove
     }
 }

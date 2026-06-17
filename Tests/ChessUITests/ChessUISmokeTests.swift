@@ -17,7 +17,7 @@ import ChessUI
     let model = ChessBoardModel(fen: initialFEN)
     let serializer = FENSerializer()
 
-    #expect(FENValidator.isValid(model.fen))
+    #expect((try? serializer.position(from: model.fen)) != nil)
     #expect(serializer.fen(from: model.game.position) == model.fen)
     #expect(try! Move(string: "e2e4").description == "e2e4")
 }
@@ -224,7 +224,7 @@ import ChessUI
         fen: initialFEN,
         perspective: .black,
         boardTheme: .blueStudy,
-        allowsOpponentMoves: true,
+        interactionMode: .freeSetup,
         showsLegalMoveHighlights: false,
         moveAnimationDuration: -2,
         showsLastMoveHighlight: false
@@ -233,10 +233,37 @@ import ChessUI
     #expect(model.perspective == .black)
     #expect(model.shouldFlipBoard)
     #expect(model.boardTheme == .blueStudy)
-    #expect(model.allowsOpponentMoves)
+    #expect(model.interactionMode == .freeSetup)
     #expect(model.showsLegalMoveHighlights == false)
     #expect(model.moveAnimationDuration == 0)
     #expect(model.showsLastMoveHighlight == false)
+}
+
+@Test func interactionModesDescribeMoveReportingPolicy() {
+    #expect(ChessBoardInteractionMode.allCases == [
+        .readOnly,
+        .legalMovesOnly,
+        .reportsIllegalAttempts,
+        .freeSetup,
+    ])
+}
+
+@Test func moveAttemptCarriesMoveContext() throws {
+    let move = try Move(string: "e2e4")
+    let attempt = ChessBoardMoveAttempt(
+        move: move,
+        isLegal: true,
+        sourceSquare: "e2",
+        targetSquare: "e4",
+        coordinateMove: "e2e4"
+    )
+
+    #expect(attempt.move == move)
+    #expect(attempt.isLegal)
+    #expect(attempt.sourceSquare == "e2")
+    #expect(attempt.targetSquare == "e4")
+    #expect(attempt.coordinateMove == "e2e4")
+    #expect(attempt.promotion == nil)
 }
 
 @Test func clearLastMoveHighlightKeepsOtherMoveFeedback() {

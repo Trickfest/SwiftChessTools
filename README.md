@@ -183,17 +183,13 @@ struct BoardDemoView: View {
             }
 
             ChessBoardView(model: model)
-                .onMove { move, isLegal, _, _, _, promotion in
-                    guard isLegal else { return }
+                .onMove { attempt in
+                    guard attempt.isLegal else { return }
 
-                    let appliedMove = promotion.map {
-                        Move(from: move.from, to: move.to, promotion: $0)
-                    } ?? move
-
-                    model.game.apply(move: appliedMove)
+                    model.game.apply(move: attempt.move)
 
                     let fen = FENSerializer().fen(from: model.game.position)
-                    model.setFEN(fen, animatedMove: appliedMove)
+                    model.setFEN(fen, animatedMove: attempt.move)
                 }
                 .frame(width: 320, height: 320)
         }
@@ -207,6 +203,9 @@ struct BoardDemoView: View {
 ChessUI includes runtime registries for bundled piece sets and board themes.
 Use `ChessPieceSet.availableSets` and `ChessBoardTheme.availableThemes` to build
 pickers for the options bundled by the current package version.
+Use `ChessBoardModel.interactionMode` to choose whether the board is read-only,
+reports only legal moves, reports illegal attempts, or acts as a free setup
+surface where either side's pieces can be dragged.
 
 ### Evaluation Bar
 

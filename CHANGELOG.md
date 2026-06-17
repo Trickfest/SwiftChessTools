@@ -9,6 +9,9 @@ release. Replace `TBD` with the release date when a release is tagged.
 
 ### Added
 
+- Added `ChessBoardMoveAttempt` and `ChessBoardInteractionMode` to make
+  ChessUI move callbacks and board interaction policy explicit before the
+  public release.
 - Added selectable built-in ChessUI piece sets: Sashite Merida,
   Art Deco Monochrome, Brutalist Monochrome, Origami Monochrome,
   Circuit Board Monochrome, Blueprint Monochrome, and Sports Monochrome.
@@ -128,6 +131,14 @@ release. Replace `TBD` with the release date when a release is tagged.
 
 ### Changed
 
+- Changed `ChessBoardMoveHandler` and `ChessBoardView.onMove(_:)` to pass one
+  `ChessBoardMoveAttempt` value instead of six positional closure arguments.
+- Replaced `ChessBoardModel.validatesMoves` and `allowsOpponentMoves` with
+  `ChessBoardModel.interactionMode`, covering read-only, legal-only,
+  illegal-attempt reporting, and free-setup board behavior.
+- Removed ChessUI's thin `FENValidator` wrapper; callers should use
+  `ChessCore.FENSerializer` validation/parsing APIs directly.
+- Removed ChessUI's broad public `View.modifier` helper extension.
 - Changed `PGNSerializer.pgn(from:)` to validate the supplied `PGNGame` and
   throw `PGNSerializationError` when the model is internally inconsistent or
   its result conflicts with a terminal final status.

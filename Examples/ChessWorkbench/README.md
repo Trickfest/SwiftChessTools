@@ -15,6 +15,8 @@ also hosts focused macOS UI tests for those workbench flows.
 - Loading and editing a FEN position.
 - Applying legal board moves through `ChessCore`.
 - Updating the FEN field after board moves.
+- Exercising the default ChessUI board interaction mode, where the board
+  reports move attempts and the workbench decides whether to apply them.
 - Piece-set selection, board-theme selection, board sizing, hints, reset
   behavior, and the promotion picker UI.
 - Fixed-size, scrolling `ChessMoveListView` display for legal moves made on the

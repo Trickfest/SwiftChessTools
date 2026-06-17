@@ -21,15 +21,89 @@ public let emptyFEN = "8/8/8/8/8/8/8/8 w - - 0 1"
 /// FEN for the standard chess starting position.
 public let initialFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
+/// Move attempt emitted by `ChessBoardView`.
+public struct ChessBoardMoveAttempt: Equatable, Sendable {
+    /// Coordinate move represented by the gesture or promotion choice.
+    public var move: Move
+
+    /// `true` when `move` is legal in the model's current game state.
+    public var isLegal: Bool
+
+    /// Source square in algebraic coordinate form, such as `e2`.
+    public var sourceSquare: String
+
+    /// Target square in algebraic coordinate form, such as `e4`.
+    public var targetSquare: String
+
+    /// Coordinate move string, such as `e2e4` or `e7e8q`.
+    public var coordinateMove: String
+
+    /// Promotion piece selected by the user, if the attempt is a promotion.
+    public var promotion: PieceKind?
+
+    /// Creates a move attempt value.
+    public init(
+        move: Move,
+        isLegal: Bool,
+        sourceSquare: String,
+        targetSquare: String,
+        coordinateMove: String,
+        promotion: PieceKind? = nil
+    ) {
+        self.move = move
+        self.isLegal = isLegal
+        self.sourceSquare = sourceSquare
+        self.targetSquare = targetSquare
+        self.coordinateMove = coordinateMove
+        self.promotion = promotion
+    }
+}
+
 /// Callback invoked when a user attempts a move on `ChessBoardView`.
-public typealias ChessBoardMoveHandler = (
-    _ move: Move,
-    _ isLegal: Bool,
-    _ sourceSquare: String,
-    _ targetSquare: String,
-    _ coordinateMove: String,
-    _ promotion: PieceKind?
-) -> Void
+public typealias ChessBoardMoveHandler = (ChessBoardMoveAttempt) -> Void
+
+/// User-interaction policy for `ChessBoardView`.
+public enum ChessBoardInteractionMode: String, CaseIterable, Identifiable, Sendable {
+    /// Disables tap and drag move gestures while still rendering board state.
+    case readOnly
+
+    /// Reports only legal move attempts for the side to move.
+    case legalMovesOnly
+
+    /// Reports legal and illegal move attempts for the side to move.
+    case reportsIllegalAttempts
+
+    /// Reports legal and illegal move attempts for either side's pieces.
+    ///
+    /// Use this for setup or editor-style surfaces where the app decides how
+    /// to interpret a piece drag. ChessUI still reports whether the coordinate
+    /// move is legal in the current `Game`.
+    case freeSetup
+
+    public var id: String { rawValue }
+
+    func canInteract(with piece: Piece, turn: PieceColor) -> Bool {
+        switch self {
+        case .readOnly:
+            false
+        case .legalMovesOnly, .reportsIllegalAttempts:
+            piece.color == turn
+        case .freeSetup:
+            true
+        }
+    }
+
+    func shouldReportMove(isLegal: Bool) -> Bool {
+        switch self {
+        case .readOnly:
+            false
+        case .legalMovesOnly:
+            isLegal
+        case .reportsIllegalAttempts, .freeSetup:
+            true
+        }
+    }
+}
 
 /// A zero-based board square used by ChessUI state and highlighting APIs.
 public struct BoardSquare: Identifiable, Hashable {
@@ -104,13 +178,8 @@ public class ChessBoardModel {
     /// Side to move in the current game state.
     public var turn: PieceColor { game.position.state.turn }
 
-    /// When `true`, move callbacks identify illegal attempted moves but the UI
-    /// does not apply them automatically.
-    public var validatesMoves: Bool = false
-
-    /// Allows selecting and moving pieces that do not belong to the side to
-    /// move.
-    public var allowsOpponentMoves = false
+    /// User-interaction policy for tap and drag move gestures.
+    public var interactionMode: ChessBoardInteractionMode = .reportsIllegalAttempts
 
     /// Controls whether the board shows a non-interactive waiting overlay.
     public var isWaiting = false
@@ -187,8 +256,8 @@ public class ChessBoardModel {
     ///   - perspective: Side displayed at the bottom of the board.
     ///   - boardTheme: Board styling used for squares, labels, and markers.
     ///   - pieceSet: Built-in piece artwork used by the board.
-    ///   - allowsOpponentMoves: Allows dragging pieces that do not belong to the
-    ///     side to move.
+    ///   - interactionMode: User-interaction policy for tap and drag move
+    ///     gestures.
     ///   - showsLegalMoveHighlights: Shows legal destination markers while a piece
     ///     is selected or dragged.
     ///   - moveAnimationDuration: Duration, in seconds, for move animations
@@ -199,7 +268,7 @@ public class ChessBoardModel {
                 perspective: PieceColor = .white,
                 boardTheme: ChessBoardTheme = .artDecoMonochrome,
                 pieceSet: ChessPieceSet = .sashiteMerida,
-                allowsOpponentMoves: Bool = false,
+                interactionMode: ChessBoardInteractionMode = .reportsIllegalAttempts,
                 showsLegalMoveHighlights: Bool = true,
                 moveAnimationDuration: Double = 0.45,
                 showsLastMoveHighlight: Bool = true)
@@ -214,14 +283,14 @@ public class ChessBoardModel {
         self.perspective = perspective
         self.boardTheme = boardTheme
         self.pieceSet = pieceSet
-        self.allowsOpponentMoves = allowsOpponentMoves
+        self.interactionMode = interactionMode
         self.showsLegalMoveHighlights = showsLegalMoveHighlights
         self.moveAnimationDuration = max(0, moveAnimationDuration)
         self.showsLastMoveHighlight = showsLastMoveHighlight
         self.lastMoveHighlightColor = boardTheme.lastMoveHighlight
     }
     
-    public var onMove: ChessBoardMoveHandler = { _, _, _, _, _, _ in }
+    public var onMove: ChessBoardMoveHandler = { _ in }
     
     public var dropTarget: (row: Int, column: Int)?
     
@@ -447,6 +516,30 @@ public class ChessBoardModel {
         withAnimation(.bouncy) {
             isWaiting = false
         }
+    }
+
+    func reportMove(
+        _ move: Move,
+        isLegal: Bool,
+        sourceSquare: String,
+        targetSquare: String,
+        coordinateMove: String,
+        promotion: PieceKind? = nil
+    ) {
+        guard interactionMode.shouldReportMove(isLegal: isLegal) else {
+            return
+        }
+
+        onMove(
+            ChessBoardMoveAttempt(
+                move: move,
+                isLegal: isLegal,
+                sourceSquare: sourceSquare,
+                targetSquare: targetSquare,
+                coordinateMove: coordinateMove,
+                promotion: promotion
+            )
+        )
     }
 }
 
@@ -881,13 +974,14 @@ public struct ChessBoardView: View {
                             let promotedCoordinateMove = promotedMove.description
                             let isLegal = boardModel.game.legalMoves.contains(promotedMove)
                             
-                            boardModel.onMove(
+                            boardModel.reportMove(
                                 promotedMove,
-                                isLegal,
-                                sourceSquare,
-                                targetSquare,
-                                promotedCoordinateMove,
-                                promotion)
+                                isLegal: isLegal,
+                                sourceSquare: sourceSquare,
+                                targetSquare: targetSquare,
+                                coordinateMove: promotedCoordinateMove,
+                                promotion: promotion
+                            )
                             
                             boardModel.dismissPromotionPicker()
                         } label: {
@@ -1116,29 +1210,23 @@ private struct ChessSquareView: View {
         }
         .font(.system(size: boardModel.size / 8 * 0.75))
         .frame(width: boardModel.size / 8, height: boardModel.size / 8)
-        .modifier {
+        .overlay {
             if let dropTarget = boardModel.dropTarget,
                !isDragging &&
                 dropTarget.row == row && dropTarget.column == column
             {
-                $0.overlay {
-                    RoundedRectangle(cornerRadius: 2)
-                        .stroke(boardModel.boardTheme.selected, lineWidth: 3.5)
-                }
+                RoundedRectangle(cornerRadius: 2)
+                    .stroke(boardModel.boardTheme.selected, lineWidth: 3.5)
             } else if isSelected {
-                $0.overlay {
-                    RoundedRectangle(cornerRadius: 2)
-                        .stroke(boardModel.boardTheme.selected, lineWidth: 3.5)
-                }
+                RoundedRectangle(cornerRadius: 2)
+                    .stroke(boardModel.boardTheme.selected, lineWidth: 3.5)
             } else if isHinted {
-                $0.overlay {
-                    RoundedRectangle(cornerRadius: 2)
-                        .stroke(boardModel.boardTheme.hinted, lineWidth: 3.5)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("Hint \(coordinate)")
-                        .accessibilityIdentifier("ChessUI.hint.\(coordinate)")
-                }
-            } else { $0 }
+                RoundedRectangle(cornerRadius: 2)
+                    .stroke(boardModel.boardTheme.hinted, lineWidth: 3.5)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Hint \(coordinate)")
+                    .accessibilityIdentifier("ChessUI.hint.\(coordinate)")
+            }
         }
     }
 
@@ -1240,11 +1328,13 @@ private struct ChessPieceView: View {
     }
     
     func onTapGesture() {
-        if boardModel.movingPiece != nil {
+        if boardModel.movingPiece != nil || boardModel.interactionMode == .readOnly {
             return
         }
         
-        if let piece, piece.color != boardModel.turn && boardModel.selectedSquare == nil {
+        if let piece,
+           !boardModel.interactionMode.canInteract(with: piece, turn: boardModel.turn),
+           boardModel.selectedSquare == nil {
             return
         }
         
@@ -1279,9 +1369,13 @@ private struct ChessPieceView: View {
             let requiresPromotionChoice = boardModel.requiresPromotionChoice(piece: selectedPiece, move: move)
             
             if !requiresPromotionChoice {
-                if !boardModel.validatesMoves || isLegal {
-                    boardModel.onMove(move, isLegal, sourceSquare, targetSquare, coordinateMove, nil)
-                }
+                boardModel.reportMove(
+                    move,
+                    isLegal: isLegal,
+                    sourceSquare: sourceSquare,
+                    targetSquare: targetSquare,
+                    coordinateMove: coordinateMove
+                )
             } else if ([PieceKind.queen, .rook, .bishop, .knight].contains { promotion in
                 boardModel.game.legalMoves.contains(Move(from: move.from, to: move.to, promotion: promotion))
             }) {
@@ -1289,8 +1383,14 @@ private struct ChessPieceView: View {
                                                   sourceSquare: sourceSquare,
                                                   targetSquare: targetSquare,
                                                   baseMove: move)
-            } else if !boardModel.validatesMoves || isLegal {
-                boardModel.onMove(move, isLegal, sourceSquare, targetSquare, coordinateMove, nil)
+            } else {
+                boardModel.reportMove(
+                    move,
+                    isLegal: isLegal,
+                    sourceSquare: sourceSquare,
+                    targetSquare: targetSquare,
+                    coordinateMove: coordinateMove
+                )
             }
         }
     }
@@ -1298,7 +1398,7 @@ private struct ChessPieceView: View {
     var dragGesture: some Gesture {
         DragGesture()
             .onChanged { value in
-                if boardModel.movingPiece != nil {
+                if boardModel.movingPiece != nil || boardModel.interactionMode == .readOnly {
                     return
                 }
                 
@@ -1306,9 +1406,9 @@ private struct ChessPieceView: View {
                     boardModel.deselect()
                 }
                 
-                if let piece, piece.color != boardModel.turn,
-                   !boardModel.allowsOpponentMoves && piece.color != boardModel.perspective
-                {
+                guard let piece,
+                      boardModel.interactionMode.canInteract(with: piece, turn: boardModel.turn)
+                else {
                     boardModel.selectedSquare = nil
                     isDragging = false
                     boardModel.clearLegalMoveHighlights()
@@ -1339,8 +1439,9 @@ private struct ChessPieceView: View {
                 isDragging = false
                 boardModel.clearLegalMoveHighlights()
                 
-                if let piece, piece.color != boardModel.turn,
-                   !boardModel.allowsOpponentMoves && piece.color != boardModel.perspective {
+                guard let piece,
+                      boardModel.interactionMode.canInteract(with: piece, turn: boardModel.turn)
+                else {
                     withAnimation {
                         offset = .zero
                     }
@@ -1383,9 +1484,13 @@ private struct ChessPieceView: View {
                 let requiresPromotionChoice = boardModel.requiresPromotionChoice(piece: selectedPiece, move: move)
                 
                 if !requiresPromotionChoice {
-                    if !boardModel.validatesMoves || isLegal {
-                        boardModel.onMove(move, isLegal, sourceSquare, targetSquare, coordinateMove, nil)
-                    }
+                    boardModel.reportMove(
+                        move,
+                        isLegal: isLegal,
+                        sourceSquare: sourceSquare,
+                        targetSquare: targetSquare,
+                        coordinateMove: coordinateMove
+                    )
                 } else if ([PieceKind.queen, .rook, .bishop, .knight].contains { promotion in
                     boardModel.game.legalMoves.contains(Move(from: move.from, to: move.to, promotion: promotion))
                 }) {
@@ -1393,8 +1498,14 @@ private struct ChessPieceView: View {
                                                       sourceSquare: sourceSquare,
                                                       targetSquare: targetSquare,
                                                       baseMove: move)
-                } else if !boardModel.validatesMoves || boardModel.game.legalMoves.contains(move) {
-                    boardModel.onMove(move, isLegal, sourceSquare, targetSquare, coordinateMove, nil)
+                } else {
+                    boardModel.reportMove(
+                        move,
+                        isLegal: isLegal,
+                        sourceSquare: sourceSquare,
+                        targetSquare: targetSquare,
+                        coordinateMove: coordinateMove
+                    )
                 }
             }
     }
@@ -1424,17 +1535,19 @@ private struct PieceImageView: View {
     private func renderedPieceImage(_ image: Image) -> some View {
         image
             .resizable()
-            .modifier { image in
-                switch pieceSet.imageInterpolation {
-                case .high:
-                    image.interpolation(.high)
-                case .none:
-                    image.interpolation(.none)
-                }
-            }
+            .interpolation(imageInterpolation)
             .scaledToFit()
             .scaleEffect(0.85)
             .contentShape(Rectangle())
+    }
+
+    private var imageInterpolation: Image.Interpolation {
+        switch pieceSet.imageInterpolation {
+        case .high:
+            .high
+        case .none:
+            .none
+        }
     }
 
     private static let bundledPieceImageNames = ChessPieceSet.bundledAssetNames
@@ -1456,10 +1569,4 @@ private struct PieceImageView: View {
             return (imageName, image)
         })
     }()
-}
-
-public extension View {
-    func modifier<ModifiedContent: View>(@ViewBuilder content: (_ content: Self) -> ModifiedContent) -> ModifiedContent {
-        content(self)
-    }
 }
