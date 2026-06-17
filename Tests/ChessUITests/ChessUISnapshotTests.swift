@@ -91,37 +91,43 @@ import ChessUI
 
 @MainActor
 @Test func moveListViewRendersEmptyState() throws {
-    let actualPNG = try renderPNG(
+    try assertViewSnapshot(
+        named: "move-list-empty",
+        size: CGSize(width: 264, height: 144)
+    ) {
         ChessMoveListView(records: [])
             .frame(width: 240, height: 120)
             .padding(12)
-            .background(Color.white),
-        size: CGSize(width: 264, height: 144)
-    )
-
-    try assertRenderedImageIsNotBlank(actualPNG, name: "move-list-empty")
+            .background(Color.white)
+    }
 }
 
 @MainActor
 @Test func moveListViewRendersMoveRows() throws {
-    let actualPNG = try renderPNG(
+    let records = try sampleMoveRecords()
+
+    try assertViewSnapshot(
+        named: "move-list-rows",
+        size: CGSize(width: 264, height: 184)
+    ) {
         ChessMoveListView(
-            records: sampleMoveRecords(),
+            records: records,
             selectedPly: 2,
             title: "Moves"
         ) { _ in }
         .frame(width: 240, height: 160)
         .padding(12)
-        .background(Color.white),
-        size: CGSize(width: 264, height: 184)
-    )
-
-    try assertRenderedImageIsNotBlank(actualPNG, name: "move-list-rows")
+        .background(Color.white)
+        .tint(.blue)
+    }
 }
 
 @MainActor
 @Test func moveListViewRendersLongHistoryInFixedViewport() throws {
-    let actualPNG = try renderPNG(
+    try assertViewSnapshot(
+        named: "move-list-long-history",
+        size: CGSize(width: 264, height: 144)
+    ) {
         ChessMoveListView(
             records: sampleLongMoveRecords(),
             selectedPly: 40,
@@ -129,16 +135,17 @@ import ChessUI
         ) { _ in }
         .frame(width: 240, height: 120)
         .padding(12)
-        .background(Color.white),
-        size: CGSize(width: 264, height: 144)
-    )
-
-    try assertRenderedImageIsNotBlank(actualPNG, name: "move-list-long-history")
+        .background(Color.white)
+        .tint(.blue)
+    }
 }
 
 @MainActor
 @Test func moveListViewRendersLongHistoryWithHiddenScrollIndicators() throws {
-    let actualPNG = try renderPNG(
+    try assertViewSnapshot(
+        named: "move-list-hidden-scroll-indicators",
+        size: CGSize(width: 264, height: 144)
+    ) {
         ChessMoveListView(
             records: sampleLongMoveRecords(),
             selectedPly: 40,
@@ -147,34 +154,38 @@ import ChessUI
         ) { _ in }
         .frame(width: 240, height: 120)
         .padding(12)
-        .background(Color.white),
-        size: CGSize(width: 264, height: 144)
-    )
-
-    try assertRenderedImageIsNotBlank(actualPNG, name: "move-list-hidden-scroll-indicators")
+        .background(Color.white)
+        .tint(.blue)
+    }
 }
 
 @MainActor
 @Test func moveListViewRendersHorizontalMoveRows() throws {
-    let actualPNG = try renderPNG(
+    let records = try sampleMoveRecords()
+
+    try assertViewSnapshot(
+        named: "move-list-horizontal-rows",
+        size: CGSize(width: 284, height: 80)
+    ) {
         ChessMoveListView(
-            records: sampleMoveRecords(),
+            records: records,
             selectedPly: 2,
             title: "Moves",
             layout: .horizontal
         ) { _ in }
         .frame(width: 260, height: 56)
         .padding(12)
-        .background(Color.white),
-        size: CGSize(width: 284, height: 80)
-    )
-
-    try assertRenderedImageIsNotBlank(actualPNG, name: "move-list-horizontal-rows")
+        .background(Color.white)
+        .tint(.blue)
+    }
 }
 
 @MainActor
 @Test func moveListViewRendersHorizontalLongHistoryInFixedViewport() throws {
-    let actualPNG = try renderPNG(
+    try assertViewSnapshot(
+        named: "move-list-horizontal-long-history",
+        size: CGSize(width: 284, height: 80)
+    ) {
         ChessMoveListView(
             records: sampleLongMoveRecords(),
             selectedPly: 40,
@@ -183,16 +194,17 @@ import ChessUI
         ) { _ in }
         .frame(width: 260, height: 56)
         .padding(12)
-        .background(Color.white),
-        size: CGSize(width: 284, height: 80)
-    )
-
-    try assertRenderedImageIsNotBlank(actualPNG, name: "move-list-horizontal-long-history")
+        .background(Color.white)
+        .tint(.blue)
+    }
 }
 
 @MainActor
 @Test func moveListViewRendersHorizontalWithHiddenScrollIndicators() throws {
-    let actualPNG = try renderPNG(
+    try assertViewSnapshot(
+        named: "move-list-horizontal-hidden-scroll-indicators",
+        size: CGSize(width: 284, height: 80)
+    ) {
         ChessMoveListView(
             records: sampleLongMoveRecords(),
             selectedPly: 40,
@@ -202,11 +214,131 @@ import ChessUI
         ) { _ in }
         .frame(width: 260, height: 56)
         .padding(12)
-        .background(Color.white),
-        size: CGSize(width: 284, height: 80)
-    )
+        .background(Color.white)
+        .tint(.blue)
+    }
+}
 
-    try assertRenderedImageIsNotBlank(actualPNG, name: "move-list-horizontal-hidden-scroll-indicators")
+@MainActor
+@Test func moveListViewRendersNarrowSelectedRows() throws {
+    try assertViewSnapshot(
+        named: "move-list-narrow-selected-rows",
+        size: CGSize(width: 172, height: 184)
+    ) {
+        ChessMoveListView(
+            records: sampleNotationHeavyMoveRecords(),
+            selectedPly: 5,
+            title: "Moves"
+        ) { _ in }
+        .frame(width: 148, height: 160)
+        .padding(12)
+        .background(Color.white)
+        .tint(.blue)
+    }
+}
+
+@MainActor
+@Test func moveListViewRendersHorizontalNarrowRows() throws {
+    try assertViewSnapshot(
+        named: "move-list-horizontal-narrow-rows",
+        size: CGSize(width: 184, height: 80)
+    ) {
+        ChessMoveListView(
+            records: sampleNotationHeavyMoveRecords(),
+            selectedPly: 5,
+            title: "Moves",
+            layout: .horizontal
+        ) { _ in }
+        .frame(width: 160, height: 56)
+        .padding(12)
+        .background(Color.white)
+        .tint(.blue)
+    }
+}
+
+@MainActor
+@Test func evaluationBarRendersVerticalCentipawnSnapshot() throws {
+    try assertViewSnapshot(
+        named: "evaluation-bar-vertical-centipawn",
+        size: CGSize(width: 60, height: 184)
+    ) {
+        ChessEvaluationBar(
+            evaluation: .centipawns(250),
+            orientation: .vertical,
+            whiteSide: .bottom,
+            maximumCentipawns: 800
+        )
+        .frame(width: 36, height: 160)
+        .padding(12)
+        .background(Color.white)
+    }
+}
+
+@MainActor
+@Test func evaluationBarRendersMateSnapshots() throws {
+    try assertViewSnapshot(
+        named: "evaluation-bar-mate-vertical",
+        size: CGSize(width: 108, height: 184)
+    ) {
+        HStack(spacing: 12) {
+            ChessEvaluationBar(evaluation: .mate(moves: 3, side: .white))
+                .frame(width: 36, height: 160)
+
+            ChessEvaluationBar(evaluation: .mate(moves: 2, side: .black))
+                .frame(width: 36, height: 160)
+        }
+        .padding(12)
+        .background(Color.white)
+    }
+}
+
+@MainActor
+@Test func evaluationBarRendersUnavailableSnapshot() throws {
+    try assertViewSnapshot(
+        named: "evaluation-bar-unavailable",
+        size: CGSize(width: 60, height: 184)
+    ) {
+        ChessEvaluationBar(evaluation: .unavailable)
+            .frame(width: 36, height: 160)
+            .padding(12)
+            .background(Color.white)
+    }
+}
+
+@MainActor
+@Test func evaluationBarRendersHorizontalSnapshot() throws {
+    try assertViewSnapshot(
+        named: "evaluation-bar-horizontal",
+        size: CGSize(width: 204, height: 60)
+    ) {
+        ChessEvaluationBar(
+            evaluation: .centipawns(-350),
+            orientation: .horizontal,
+            whiteSide: .leading,
+            maximumCentipawns: 800
+        )
+        .frame(width: 180, height: 36)
+        .padding(12)
+        .background(Color.white)
+    }
+}
+
+@MainActor
+@Test func evaluationBarRendersMinimumSizeSnapshot() throws {
+    try assertViewSnapshot(
+        named: "evaluation-bar-minimum-size",
+        size: CGSize(width: 46, height: 144)
+    ) {
+        ChessEvaluationBar(
+            evaluation: .centipawns(85),
+            orientation: .vertical,
+            whiteSide: .bottom,
+            maximumCentipawns: 800
+        )
+        .frame(width: 22, height: 120)
+        .padding(12)
+        .background(Color.white)
+    }
 }
 
 @MainActor
@@ -214,13 +346,20 @@ private func assertBoardSnapshot<Content: View>(
     named name: String,
     @ViewBuilder content: () -> Content
 ) throws {
-    let actualPNG = try renderPNG(
+    try assertViewSnapshot(named: name, size: CGSize(width: 320, height: 320)) {
         content()
             .frame(width: 320, height: 320)
-            .background(Color.white),
-        size: CGSize(width: 320, height: 320)
-    )
+            .background(Color.white)
+    }
+}
 
+@MainActor
+private func assertViewSnapshot<Content: View>(
+    named name: String,
+    size: CGSize,
+    @ViewBuilder content: () -> Content
+) throws {
+    let actualPNG = try renderPNG(content(), size: size)
     if ProcessInfo.processInfo.environment["RECORD_CHESSUI_SNAPSHOTS"] == "1" {
         let outputURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
@@ -296,26 +435,6 @@ private func assertImagesMatch(_ expectedPNG: Data, _ actualPNG: Data, snapshotN
     #expect(mismatchRatio <= 0.002, "\(snapshotName) pixel mismatch ratio: \(mismatchRatio)")
 }
 
-private func assertRenderedImageIsNotBlank(_ actualPNG: Data, name: String) throws {
-    let bitmap = try rgbaBitmap(from: actualPNG)
-    let pixelCount = bitmap.width * bitmap.height
-    var nonWhitePixels = 0
-
-    for index in stride(from: 0, to: bitmap.pixels.count, by: 4) {
-        let red = bitmap.pixels[index]
-        let green = bitmap.pixels[index + 1]
-        let blue = bitmap.pixels[index + 2]
-        let alpha = bitmap.pixels[index + 3]
-
-        if alpha > 0 && !(red > 245 && green > 245 && blue > 245) {
-            nonWhitePixels += 1
-        }
-    }
-
-    let nonWhiteRatio = Double(nonWhitePixels) / Double(pixelCount)
-    #expect(nonWhiteRatio > 0.002, "\(name) rendered image was effectively blank")
-}
-
 private func sampleMoveRecords() throws -> [ChessMoveRecord] {
     try ChessMoveRecordBuilder().records(
         initialPosition: FENSerializer().position(from: initialFEN),
@@ -325,6 +444,53 @@ private func sampleMoveRecords() throws -> [ChessMoveRecord] {
             Move(from: Square(coordinate: "g1"), to: Square(coordinate: "f3")),
         ]
     )
+}
+
+private func sampleNotationHeavyMoveRecords() -> [ChessMoveRecord] {
+    [
+        ChessMoveRecord(
+            ply: 1,
+            fullMoveNumber: 1,
+            side: .white,
+            move: Move(from: Square(coordinate: "e2"), to: Square(coordinate: "e4")),
+            san: "e4"
+        ),
+        ChessMoveRecord(
+            ply: 2,
+            fullMoveNumber: 1,
+            side: .black,
+            move: Move(from: Square(coordinate: "e7"), to: Square(coordinate: "e5")),
+            san: "e5"
+        ),
+        ChessMoveRecord(
+            ply: 3,
+            fullMoveNumber: 2,
+            side: .white,
+            move: Move(from: Square(coordinate: "g1"), to: Square(coordinate: "f3")),
+            san: "Nf3"
+        ),
+        ChessMoveRecord(
+            ply: 4,
+            fullMoveNumber: 2,
+            side: .black,
+            move: Move(from: Square(coordinate: "b8"), to: Square(coordinate: "c6")),
+            san: "Nc6"
+        ),
+        ChessMoveRecord(
+            ply: 5,
+            fullMoveNumber: 3,
+            side: .white,
+            move: Move(from: Square(coordinate: "e7"), to: Square(coordinate: "e8"), promotion: .queen),
+            san: "exd8=Q+"
+        ),
+        ChessMoveRecord(
+            ply: 6,
+            fullMoveNumber: 3,
+            side: .black,
+            move: Move(from: Square(coordinate: "e8"), to: Square(coordinate: "g8")),
+            san: "O-O+"
+        ),
+    ]
 }
 
 private func sampleLongMoveRecords() -> [ChessMoveRecord] {
