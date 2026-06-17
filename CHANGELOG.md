@@ -9,6 +9,10 @@ release. Replace `TBD` with the release date when a release is tagged.
 
 ### Added
 
+- Added `Docs/ChessUITutorial.md` as the public ChessUI walkthrough, covering
+  board model ownership, move callbacks, promotion handling, perspective,
+  highlights, read-only boards, piece and theme pickers, evaluation bars, move
+  lists, status display, accessibility, and ChessUI scope boundaries.
 - Added `ChessBoardMoveAttempt` and `ChessBoardInteractionMode` to make
   ChessUI move callbacks and board interaction policy explicit before the
   public release.

@@ -9,6 +9,9 @@ It is not a product app. Keep it around as a quick place to exercise
 `ChessCore` and `ChessUI` behavior from inside this package; its Xcode project
 also hosts focused macOS UI tests for those workbench flows.
 
+For the public ChessUI walkthrough, see
+[../../Docs/ChessUITutorial.md](../../Docs/ChessUITutorial.md).
+
 ## What It Exercises
 
 - Rendering a `ChessUI.ChessBoardView` on macOS.
@@ -21,6 +24,8 @@ also hosts focused macOS UI tests for those workbench flows.
   behavior, and the promotion picker UI.
 - Fixed-size, scrolling `ChessMoveListView` display for legal moves made on the
   board, including vertical and horizontal layouts and scroll-bar visibility.
+- `ChessGameStatusView` display for side-to-move, terminal statuses, and
+  claimable draw callbacks.
 - `ChessEvaluationBar` samples, placement, White-side orientation, label
   visibility, and centipawn scale controls.
 
