@@ -16,6 +16,7 @@ import XCTest
 final class ChessWorkbenchUITests: XCTestCase {
     private static let startingFEN = "5k2/1P2bn2/8/8/8/3Q4/3K4/8 w - - 0 1"
     private static let queenD7FEN = "5k2/1P1Qbn2/8/8/8/8/3K4/8 b - - 1 1"
+    private static let fiftyMoveClaimFEN = "4k3/8/8/8/8/8/Q7/4K3 w - - 100 1"
     private static let knightCycleFEN = "6nk/8/8/8/8/8/8/K5N1 w - - 0 1"
     private static let knightCycleFinalFEN = "6nk/8/8/8/8/8/8/K5N1 w - - 20 11"
 
@@ -131,6 +132,26 @@ final class ChessWorkbenchUITests: XCTestCase {
         waitForValue("Top", in: placementPicker)
         waitForValue("White at leading", in: whiteSidePicker)
         waitForFrameOrientation(bar, isHorizontal: true)
+    }
+
+    func testGameStatusViewTracksTurnsAndDrawClaims() {
+        let status = element("ChessUI.gameStatus.text")
+
+        assertExists(element("Workbench.gameStatus"))
+        waitForText("White to move", in: status)
+
+        moveQueenToD7()
+        waitForFEN(Self.queenD7FEN)
+        waitForText("Black to move", in: status)
+
+        setFEN(Self.fiftyMoveClaimFEN)
+        waitForText("White to move. Draw claim available: fifty-move rule", in: status)
+
+        let claimButton = app.buttons["ChessUI.gameStatus.claim.fiftyMoveRule"]
+        assertExists(claimButton)
+        claimButton.click()
+
+        waitForText("Draw by fifty-move rule", in: status)
     }
 
     func testSourceSquareClickSelectsPieceAndShowsLegalDestinations() {

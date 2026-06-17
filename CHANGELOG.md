@@ -12,6 +12,9 @@ release. Replace `TBD` with the release date when a release is tagged.
 - Added `ChessBoardMoveAttempt` and `ChessBoardInteractionMode` to make
   ChessUI move callbacks and board interaction policy explicit before the
   public release.
+- Added `ChessGameStatusView` and `ChessGameStatusDisplayState` so apps can
+  render caller-supplied `GameStatus` values and optional draw-claim actions
+  without moving game-state ownership into ChessUI.
 - Added selectable built-in ChessUI piece sets: Sashite Merida,
   Art Deco Monochrome, Brutalist Monochrome, Origami Monochrome,
   Circuit Board Monochrome, Blueprint Monochrome, and Sports Monochrome.

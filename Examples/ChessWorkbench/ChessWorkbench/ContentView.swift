@@ -41,6 +41,7 @@ private struct WorkbenchView: View {
     @State private var showsMoveListScrollIndicators = false
     @State private var moveRecords: [ChessMoveRecord] = []
     @State private var selectedMovePly: Int?
+    @State private var gameStatusRevision = 0
 
     @State private var boardModel = ChessBoardModel(
         fen: startingPosition,
@@ -236,6 +237,7 @@ private struct WorkbenchView: View {
                 inspectorHeader
                 actionSection
                 positionSection
+                statusSection
                 if moveListLayout == .vertical {
                     movesSection
                 }
@@ -256,6 +258,20 @@ private struct WorkbenchView: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var statusSection: some View {
+        WorkbenchSection("Status") {
+            ChessGameStatusView(
+                status: boardModel.game.status,
+                turn: boardModel.turn
+            ) { claim in
+                claimDraw(claim)
+            }
+            .id(gameStatusRevision)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityIdentifier("Workbench.gameStatus")
+        }
     }
 
     private var actionSection: some View {
@@ -556,6 +572,18 @@ private struct WorkbenchView: View {
             FENSerializer().fen(from: boardModel.game.position),
             animatedMove: move
         )
+    }
+
+    private func claimDraw(_ claim: GameDrawClaim) {
+        do {
+            try boardModel.game.claimDraw(claim)
+            showError = false
+            errorMessage = ""
+            gameStatusRevision += 1
+        } catch {
+            showError = true
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func appendMoveRecord(for move: Move) throws {

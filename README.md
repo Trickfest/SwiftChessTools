@@ -236,6 +236,26 @@ engine output before passing values into ChessUI. ChessUI only renders the
 current value; it does not start an engine, run analysis, choose moves, or
 interpret search output.
 
+### Game Status
+
+`ChessGameStatusView` renders caller-supplied `GameStatus` values from
+`ChessCore` as compact app-friendly text. It does not own `Game`, compute
+rules, apply moves, or decide app-specific endings such as resignation or
+timeout.
+
+```swift
+ChessGameStatusView(
+    status: game.status,
+    turn: game.position.state.turn
+) { claim in
+    try? game.claimDraw(claim)
+}
+```
+
+When `GameStatus.ongoing(drawClaims:)` contains claimable draw rules, the view
+can render claim buttons and call back with `GameDrawClaim` values. Omit the
+callback to show status text only.
+
 ### Move List
 
 `ChessMoveListView` renders caller-supplied move records as a compact SAN move
