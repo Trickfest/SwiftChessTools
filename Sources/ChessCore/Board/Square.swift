@@ -85,6 +85,7 @@ public struct Square: Hashable, Sendable {
 
 extension Square: CustomStringConvertible {
 
+    /// Algebraic coordinate for the square.
     public var description: String {
         return self.coordinate
     }

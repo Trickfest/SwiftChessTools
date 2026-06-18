@@ -48,8 +48,10 @@ public struct ChessMoveRecord: Identifiable, Equatable, Sendable {
 
 /// Errors thrown while building display-ready move records.
 public enum ChessMoveRecordBuilderError: Error, Equatable, CustomStringConvertible, LocalizedError {
+    /// The move was illegal at the supplied ply during replay.
     case illegalMove(move: Move, ply: Int)
 
+    /// Human-readable move-record building failure text.
     public var description: String {
         switch self {
         case let .illegalMove(move, ply):
@@ -57,6 +59,7 @@ public enum ChessMoveRecordBuilderError: Error, Equatable, CustomStringConvertib
         }
     }
 
+    /// Localized move-record building failure text.
     public var errorDescription: String? {
         description
     }

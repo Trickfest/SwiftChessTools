@@ -36,6 +36,7 @@ public enum ChessBoardTheme: String, CaseIterable, Identifiable, Sendable {
     /// Hardwood sports-court styling with subtle court-line accents.
     case sportsCourt
 
+    /// Stable identifier for picker and list usage.
     public var id: String { rawValue }
 
     /// Built-in themes currently bundled with ChessUI.

@@ -138,6 +138,7 @@ public struct ChessGameStatusView: View {
         self.onDrawClaim = onDrawClaim
     }
 
+    /// SwiftUI content for the status text and optional draw-claim controls.
     public var body: some View {
         let displayState = ChessGameStatusDisplayState(status: status, turn: turn)
 

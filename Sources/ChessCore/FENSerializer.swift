@@ -12,14 +12,28 @@ import Foundation
 
 /// Errors thrown while parsing Forsyth-Edwards Notation.
 public enum FENParsingError: Error, Equatable, CustomStringConvertible, LocalizedError {
+    /// The FEN string did not contain the expected number of fields.
     case invalidFieldCount(expected: Int, actual: Int)
+
+    /// The piece-placement field is malformed.
     case invalidPiecePlacement(String)
+
+    /// The active-color field is not `w` or `b`.
     case invalidActiveColor(String)
+
+    /// The castling-rights field is malformed.
     case invalidCastlingRights(String)
+
+    /// The en-passant target field is malformed or impossible for the active side.
     case invalidEnPassantSquare(String)
+
+    /// The halfmove-clock field is not a non-negative integer.
     case invalidHalfmoveClock(String)
+
+    /// The fullmove-number field is not a positive integer.
     case invalidFullmoveNumber(String)
 
+    /// Human-readable parsing failure text.
     public var description: String {
         switch self {
         case let .invalidFieldCount(expected, actual):
@@ -39,6 +53,7 @@ public enum FENParsingError: Error, Equatable, CustomStringConvertible, Localize
         }
     }
 
+    /// Localized parsing failure text.
     public var errorDescription: String? {
         description
     }

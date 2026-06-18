@@ -55,6 +55,7 @@ public struct ChessEvaluationBar: View {
         self.borderColor = borderColor
     }
 
+    /// SwiftUI content for the evaluation bar.
     public var body: some View {
         let displayState = ChessEvaluationBarDisplayState(
             evaluation: evaluation,

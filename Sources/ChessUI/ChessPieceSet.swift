@@ -33,6 +33,7 @@ public enum ChessPieceSet: String, CaseIterable, Identifiable, Sendable {
     /// Original monochrome Sports pieces generated for SwiftChessTools.
     case sportsMonochrome
 
+    /// Stable identifier for picker and list usage.
     public var id: String { rawValue }
 
     /// Built-in sets currently bundled with ChessUI.

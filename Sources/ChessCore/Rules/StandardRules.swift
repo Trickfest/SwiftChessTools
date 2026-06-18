@@ -160,6 +160,7 @@ public class StandardRules: Rules {
         return self.filterIllegal(moves: moves, for: position)
     }
 
+    /// Returns non-king squares attacked or reachable by the side to move.
     public func reachableSquares(in position: Position) -> [Square] {
         return self.piecesForSideToMove(in: position)
             .filter { $0.1.kind != .king }

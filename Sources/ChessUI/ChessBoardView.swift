@@ -80,6 +80,7 @@ public enum ChessBoardInteractionMode: String, CaseIterable, Identifiable, Senda
     /// move is legal in the current `Game`.
     case freeSetup
 
+    /// Stable identifier for picker and list usage.
     public var id: String { rawValue }
 
     func canInteract(with piece: Piece, turn: PieceColor) -> Bool {
@@ -118,20 +119,24 @@ public struct BoardSquare: Identifiable, Hashable, Sendable {
         self.row = row
         self.column = column
     }
-    
+
+    /// Stable identifier combining row and column.
     public var id: String {
         "\(row),\(column)"
     }
-    
+
+    /// Adds row and column to the supplied hasher.
     public func hash(into hasher: inout Hasher) {
         hasher.combine(row)
         hasher.combine(column)
     }
-    
+
+    /// Returns `true` when two board squares have the same row and column.
     public static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.row == rhs.row && lhs.column == rhs.column
     }
-    
+
+    /// Returns `true` when two board squares have different row or column values.
     public static func != (lhs: Self, rhs: Self) -> Bool {
         lhs.row != rhs.row || lhs.column != rhs.column
     }
@@ -302,11 +307,13 @@ public class ChessBoardModel {
         self.showsLastMoveHighlight = showsLastMoveHighlight
         self.lastMoveHighlightColor = boardTheme.lastMoveHighlight
     }
-    
+
+    /// Callback invoked when the user attempts a move on the board.
     public var onMove: ChessBoardMoveHandler = { _ in }
-    
+
+    /// Board square currently targeted by an active drag gesture.
     public var dropTarget: (row: Int, column: Int)?
-    
+
     /// Replaces the current board position and, when `animatedMove` is supplied,
     /// animates the moved piece from source to destination and highlights both
     /// squares.
@@ -352,12 +359,14 @@ public class ChessBoardModel {
     public func clearLastMoveHighlight() {
         lastMoveSquares = nil
     }
-    
+
+    /// Clears the current board selection and legal-move markers.
     public func deselect() {
         selectedSquare = nil
         legalMoveSquares.removeAll()
     }
-    
+
+    /// Refreshes legal destination markers for a selected or dragged square.
     public func updateLegalMoveHighlights(for square: BoardSquare) {
         guard showsLegalMoveHighlights else {
             legalMoveSquares.removeAll()
@@ -376,15 +385,18 @@ public class ChessBoardModel {
             }
         }
     }
-    
+
+    /// Clears all legal destination markers.
     public func clearLegalMoveHighlights() {
         legalMoveSquares.removeAll()
     }
-    
+
+    /// Adds a hint highlight for a board square.
     public func hint(_ square: BoardSquare) {
         hintedSquares.insert(square)
     }
-    
+
+    /// Adds a hint highlight for an algebraic coordinate such as `e4`.
     public func hint(_ square: String) {
         if square.count != 2 {
             return
@@ -405,23 +417,27 @@ public class ChessBoardModel {
         
         hint(BoardSquare(row: row, column: column))
     }
-    
+
+    /// Adds a hint highlight for a zero-based row and column.
     public func hint(row: Int, column: Int) {
         hint(BoardSquare(row: row, column: column))
     }
-    
+
+    /// Adds hint highlights for multiple board squares.
     public func hint(_ squares: [BoardSquare]) {
         for square in squares {
             hint(square)
         }
     }
-    
+
+    /// Adds hint highlights for multiple algebraic coordinates.
     public func hint(_ squares: [String]) {
         for square in squares {
             hint(square)
         }
     }
-    
+
+    /// Clears all hint highlights.
     public func clearHint() {
         hintedSquares.removeAll()
     }
@@ -430,7 +446,8 @@ public class ChessBoardModel {
     public func clearArrows() {
         arrows.removeAll()
     }
-    
+
+    /// Adds a coordinate hint, then clears all hints after `seconds`.
     @MainActor
     public func hint(_ square: String, for seconds: Double) {
         withAnimation {
@@ -445,7 +462,8 @@ public class ChessBoardModel {
             }
         }
     }
-    
+
+    /// Adds coordinate hints, then clears all hints after `seconds`.
     @MainActor
     public func hint(_ squares: [String], for seconds: Double) {
         withAnimation {
@@ -460,7 +478,8 @@ public class ChessBoardModel {
             }
         }
     }
-    
+
+    /// Adds board-square hints, then clears all hints after `seconds`.
     @MainActor
     public func hint(_ squares: [BoardSquare], for seconds: Double) {
         withAnimation {
@@ -475,7 +494,8 @@ public class ChessBoardModel {
             }
         }
     }
-    
+
+    /// Adds a board-square hint, then clears all hints after `seconds`.
     @MainActor
     public func hint(_ square: BoardSquare, for seconds: Double) {
         withAnimation {
@@ -490,7 +510,8 @@ public class ChessBoardModel {
             }
         }
     }
-    
+
+    /// Presents the built-in promotion picker for a pending promotion move.
     public func presentPromotionPicker(piece: Piece, sourceSquare: String, targetSquare: String, baseMove: Move) {
         promotionPiece = piece
         promotionSourceSquare = sourceSquare
@@ -501,7 +522,8 @@ public class ChessBoardModel {
             isPromotionPickerPresented = true
         }
     }
-    
+
+    /// Dismisses the built-in promotion picker and clears pending promotion state.
     public func dismissPromotionPicker() {
         promotionPiece = nil
         promotionSourceSquare = nil
@@ -512,24 +534,28 @@ public class ChessBoardModel {
             isPromotionPickerPresented = false
         }
     }
-    
+
+    /// Toggles presentation of the built-in promotion picker.
     public func togglePromotionPicker() {
         withAnimation(.bouncy) {
             isPromotionPickerPresented.toggle()
         }
     }
-    
+
+    /// Returns `true` when the move needs an explicit promotion-piece choice.
     public func requiresPromotionChoice(piece: Piece, move: Move) -> Bool {
         guard piece.kind == .pawn else { return false }
         return move.to.rank == (piece.color == .white ? 7 : 0)
     }
-    
+
+    /// Shows the non-interactive waiting overlay.
     public func showWaitingOverlay() {
         withAnimation(.bouncy) {
             isWaiting = true
         }
     }
-    
+
+    /// Hides the non-interactive waiting overlay.
     public func hideWaitingOverlay() {
         withAnimation(.bouncy) {
             isWaiting = false
@@ -904,7 +930,8 @@ public struct ChessBoardView: View {
     }
 
     private var boardModel: ChessBoardModel { model }
-    
+
+    /// SwiftUI content for the chessboard and its overlays.
     public var body: some View {
         GeometryReader { geometry in
             ZStack {

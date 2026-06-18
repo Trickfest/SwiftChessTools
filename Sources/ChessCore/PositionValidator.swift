@@ -12,11 +12,22 @@ import Foundation
 
 /// A semantic issue found in a parsed chess position.
 public enum PositionValidationIssue: Hashable, Sendable, CustomStringConvertible {
+    /// The position is missing the king for the supplied side.
     case missingKing(PieceColor)
+
+    /// The position has more than one king for the supplied side.
     case multipleKings(PieceColor, count: Int)
+
+    /// A pawn appears on the first or eighth rank.
     case pawnOnInvalidRank(Square)
+
+    /// A castling right is impossible for the current board placement.
     case invalidCastlingRight(Piece)
+
+    /// The en-passant target is impossible for the current board placement.
     case invalidEnPassantTarget(Square)
+
+    /// The side not to move is already in check.
     case inactiveKingInCheck(PieceColor)
 
     /// Human-readable issue text.
@@ -40,6 +51,7 @@ public enum PositionValidationIssue: Hashable, Sendable, CustomStringConvertible
 
 /// Error thrown when strict semantic position validation fails.
 public enum PositionValidationError: Error, Equatable, CustomStringConvertible, LocalizedError {
+    /// The position failed semantic validation with one or more issues.
     case invalidPosition([PositionValidationIssue])
 
     /// Human-readable error text.
@@ -51,6 +63,7 @@ public enum PositionValidationError: Error, Equatable, CustomStringConvertible, 
         }
     }
 
+    /// Localized validation failure text.
     public var errorDescription: String? {
         description
     }

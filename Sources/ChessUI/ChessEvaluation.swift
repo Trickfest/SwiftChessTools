@@ -34,6 +34,7 @@ public enum ChessEvaluationBarOrientation: String, CaseIterable, Identifiable, S
     /// Horizontal bar, usually placed above or below a board.
     case horizontal
 
+    /// Stable identifier for picker and list usage.
     public var id: String { rawValue }
 
     /// Human-readable name suitable for pickers and settings.
@@ -61,6 +62,7 @@ public enum ChessEvaluationBarWhiteSide: String, CaseIterable, Identifiable, Sen
     /// White advantage fills from the trailing edge.
     case trailing
 
+    /// Stable identifier for picker and list usage.
     public var id: String { rawValue }
 
     /// Human-readable name suitable for pickers and settings.

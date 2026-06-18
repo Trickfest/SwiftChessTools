@@ -143,6 +143,8 @@ release. Replace `TBD` with the release date when a release is tagged.
 
 ### Changed
 
+- Expanded DocC coverage comments across the public `ChessCore` and `ChessUI`
+  symbols in preparation for generated public package documentation.
 - Changed `ChessBoardMoveHandler` and `ChessBoardView.onMove(_:)` to pass one
   `ChessBoardMoveAttempt` value instead of six positional closure arguments.
 - Replaced `ChessBoardModel.validatesMoves` and `allowsOpponentMoves` with

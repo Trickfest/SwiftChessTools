@@ -12,11 +12,19 @@ import Foundation
 
 /// Errors thrown while parsing coordinate move notation.
 public enum MoveParsingError: Error, Equatable, CustomStringConvertible, LocalizedError {
+    /// The move text was not four coordinate characters plus an optional promotion piece.
     case invalidLength(String)
+
+    /// The source square text is not a valid board coordinate.
     case invalidSourceSquare(String)
+
+    /// The destination square text is not a valid board coordinate.
     case invalidDestinationSquare(String)
+
+    /// The promotion suffix is not a valid promotion piece.
     case invalidPromotion(String)
 
+    /// Human-readable parsing failure text.
     public var description: String {
         switch self {
         case let .invalidLength(value):
@@ -30,6 +38,7 @@ public enum MoveParsingError: Error, Equatable, CustomStringConvertible, Localiz
         }
     }
 
+    /// Localized parsing failure text.
     public var errorDescription: String? {
         description
     }

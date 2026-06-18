@@ -79,6 +79,7 @@ public enum GameOutcome: Equatable, Sendable {
 
 /// Errors thrown while replaying a concrete move list.
 public enum GameReplayError: Error, Equatable, CustomStringConvertible, LocalizedError {
+    /// A move in the replay sequence was illegal at the supplied ply.
     case illegalMove(move: Move, ply: Int)
 
     /// Human-readable error text.
@@ -89,6 +90,7 @@ public enum GameReplayError: Error, Equatable, CustomStringConvertible, Localize
         }
     }
 
+    /// Localized replay failure text.
     public var errorDescription: String? {
         description
     }
@@ -96,6 +98,7 @@ public enum GameReplayError: Error, Equatable, CustomStringConvertible, Localize
 
 /// Errors thrown when safely applying a move to a game.
 public enum GameApplyError: Error, Equatable, CustomStringConvertible, LocalizedError {
+    /// The supplied move was illegal at the current ply.
     case illegalMove(move: Move, ply: Int)
 
     /// Human-readable error text.
@@ -106,6 +109,7 @@ public enum GameApplyError: Error, Equatable, CustomStringConvertible, Localized
         }
     }
 
+    /// Localized move-application failure text.
     public var errorDescription: String? {
         description
     }
@@ -113,6 +117,7 @@ public enum GameApplyError: Error, Equatable, CustomStringConvertible, Localized
 
 /// Errors thrown when claiming a draw.
 public enum GameDrawClaimError: Error, Equatable, CustomStringConvertible, LocalizedError {
+    /// The supplied draw claim is not currently available.
     case unavailable(GameDrawClaim)
 
     /// Human-readable error text.
@@ -123,6 +128,7 @@ public enum GameDrawClaimError: Error, Equatable, CustomStringConvertible, Local
         }
     }
 
+    /// Localized draw-claim failure text.
     public var errorDescription: String? {
         description
     }

@@ -75,6 +75,7 @@ public struct ChessMoveListView: View {
         self.onSelectRecord = onSelectRecord
     }
 
+    /// SwiftUI content for the configured move list.
     public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let title {

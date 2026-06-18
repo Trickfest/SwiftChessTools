@@ -12,10 +12,16 @@ import Foundation
 
 /// Errors thrown while parsing Standard Algebraic Notation.
 public enum SANParsingError: Error, Equatable, CustomStringConvertible, LocalizedError {
+    /// The SAN string is empty after normalization.
     case emptySAN
+
+    /// No legal move in the current position matches the SAN string.
     case noMatchingLegalMove(String)
+
+    /// More than one legal move in the current position matches the SAN string.
     case ambiguousSAN(String)
 
+    /// Human-readable parsing failure text.
     public var description: String {
         switch self {
         case .emptySAN:
@@ -27,6 +33,7 @@ public enum SANParsingError: Error, Equatable, CustomStringConvertible, Localize
         }
     }
 
+    /// Localized parsing failure text.
     public var errorDescription: String? {
         description
     }

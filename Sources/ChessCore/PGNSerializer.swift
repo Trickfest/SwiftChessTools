@@ -90,21 +90,52 @@ public struct PGNParsingContext: Equatable, Sendable, CustomStringConvertible {
 
 /// Errors thrown while parsing Portable Game Notation.
 public enum PGNParsingError: Error, Equatable, CustomStringConvertible, LocalizedError {
+    /// The PGN input contains no parseable game text.
     case emptyInput
+
+    /// A single-game parser found zero or multiple games.
     case expectedSingleGame(actual: Int)
+
+    /// A quoted PGN string was not closed before the end of input.
     case unterminatedString(PGNSourceLocation)
+
+    /// A brace comment was not closed before the end of input.
     case unterminatedComment(PGNSourceLocation)
+
+    /// A tag pair is malformed.
     case invalidTag(PGNParsingContext)
+
+    /// A result marker is not one of the PGN result values.
     case invalidResultMarker(String, PGNParsingContext)
+
+    /// A numeric annotation glyph is malformed or out of range.
     case invalidNAG(String, PGNParsingContext)
+
+    /// The parser found a token that is not valid at its location.
     case unexpectedToken(String, PGNParsingContext)
+
+    /// A PGN game is missing its movetext result marker.
     case missingResult(PGNParsingContext)
+
+    /// The Result tag and movetext result marker disagree.
     case resultMismatch(tag: PGNResult, movetext: PGNResult, PGNParsingContext)
+
+    /// A SetUp tag value is not valid for setup-position import.
     case invalidSetUpValue(String, PGNParsingContext)
+
+    /// A setup game has SetUp enabled but no FEN tag.
     case missingFEN(PGNParsingContext)
+
+    /// The FEN tag could not be parsed.
     case fenParsingFailed(String, FENParsingError, PGNParsingContext)
+
+    /// A SAN token could not be resolved to exactly one legal move.
     case sanParsingFailed(String, SANParsingError, PGNParsingContext)
+
+    /// The PGN result contradicts the status reached by replaying the mainline.
     case resultConflictsWithFinalStatus(result: PGNResult, status: GameStatus, PGNParsingContext)
+
+    /// Recursive annotation variations are present but not supported.
     case unsupportedRecursiveVariation(PGNParsingContext)
 
     /// Human-readable error text.
@@ -145,6 +176,7 @@ public enum PGNParsingError: Error, Equatable, CustomStringConvertible, Localize
         }
     }
 
+    /// Localized parsing failure text.
     public var errorDescription: String? {
         description
     }
@@ -152,10 +184,19 @@ public enum PGNParsingError: Error, Equatable, CustomStringConvertible, Localize
 
 /// Errors thrown while building PGN from move lists.
 public enum PGNSerializationError: Error, Equatable, CustomStringConvertible, LocalizedError {
+    /// A move cannot be legally replayed while building PGN.
     case illegalMove(Move, PGNParsingContext)
+
+    /// A manually supplied move record does not match replayed game state.
     case invalidMoveRecord(PGNMoveRecordValidationFailure, PGNParsingContext)
+
+    /// A manually supplied final position does not match replayed moves.
     case finalPositionMismatch(expected: Position, actual: Position, PGNParsingContext)
+
+    /// A manually supplied final status does not match replayed moves.
     case finalStatusMismatch(expected: GameStatus, actual: GameStatus, PGNParsingContext)
+
+    /// The requested PGN result contradicts the replayed final status.
     case resultConflictsWithFinalStatus(result: PGNResult, status: GameStatus, PGNParsingContext)
 
     /// Human-readable error text.
@@ -174,6 +215,7 @@ public enum PGNSerializationError: Error, Equatable, CustomStringConvertible, Lo
         }
     }
 
+    /// Localized serialization failure text.
     public var errorDescription: String? {
         description
     }
@@ -181,9 +223,16 @@ public enum PGNSerializationError: Error, Equatable, CustomStringConvertible, Lo
 
 /// Validation failures for manually constructed PGN move records.
 public enum PGNMoveRecordValidationFailure: Equatable, Sendable, CustomStringConvertible {
+    /// The record's ply does not match its replay position.
     case ply(expected: Int, actual: Int)
+
+    /// The record's full-move number does not match its replay position.
     case moveNumber(expected: Int, actual: Int)
+
+    /// The record's side to move does not match its replay position.
     case color(expected: PieceColor, actual: PieceColor)
+
+    /// The record's SAN does not match canonical SAN for its replay position.
     case san(expected: String, actual: String)
 
     /// Human-readable validation failure text.
@@ -220,9 +269,16 @@ public struct PGNTagPair: Equatable, Sendable {
 
 /// A PGN game result.
 public enum PGNResult: String, CaseIterable, Equatable, Sendable, CustomStringConvertible {
+    /// White won the game.
     case whiteWins = "1-0"
+
+    /// Black won the game.
     case blackWins = "0-1"
+
+    /// The game ended in a draw.
     case draw = "1/2-1/2"
+
+    /// The game is unfinished or ended externally without a known result.
     case unfinished = "*"
 
     /// Creates a result from a PGN result marker.
