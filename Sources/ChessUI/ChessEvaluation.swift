@@ -15,6 +15,9 @@ import ChessCore
 /// ChessUI treats centipawn scores as White-positive: positive values favor
 /// White, negative values favor Black, and zero is equal. Apps that consume UCI
 /// engines should normalize raw engine scores before passing them to ChessUI.
+///
+/// ChessUI does not parse UCI search output, run analysis, or decide best
+/// moves. It only renders display-ready values.
 public enum ChessEvaluation: Equatable, Sendable {
     /// Centipawn score where `100` is one pawn and positive values favor White.
     case centipawns(Int)
@@ -103,6 +106,9 @@ public enum ChessEvaluationBarWhiteSide: String, CaseIterable, Identifiable, Sen
 }
 
 /// Normalized display data used by `ChessEvaluationBar`.
+///
+/// Use this type directly when you need the same label, fraction, or
+/// accessibility value outside SwiftUI.
 public struct ChessEvaluationBarDisplayState: Equatable, Sendable {
     /// Default centipawn value that maps to a full White or Black bar.
     public static let defaultMaximumCentipawns = 800

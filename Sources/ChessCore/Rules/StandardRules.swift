@@ -9,6 +9,10 @@
 //
 
 /// Standard chess rules for legal move generation and check detection.
+///
+/// Most applications should use `Game`, which owns position mutation and
+/// history. Use `StandardRules` directly when you need lower-level inspection
+/// of legal moves or attacked/reachable squares for a supplied `Position`.
 public class StandardRules: Rules {
 
     private let rays = Rays()
@@ -145,6 +149,10 @@ public class StandardRules: Rules {
     }
 
     /// Returns legal moves for the piece on `square`.
+    ///
+    /// The returned moves are filtered for king safety and standard castling,
+    /// en-passant, and promotion legality. If the square is empty or contains
+    /// the opponent's piece, the result is empty.
     public func legalMovesForPiece(at square: Square, in position: Position) -> [Move] {
         guard let piece = position.board[square] else {
             return []
@@ -161,6 +169,10 @@ public class StandardRules: Rules {
     }
 
     /// Returns non-king squares attacked or reachable by the side to move.
+    ///
+    /// This lower-level helper is useful for analysis and validation code. It
+    /// is not the same as `Game.legalMoves`, because it excludes king moves and
+    /// reports reachability rather than a playable move list.
     public func reachableSquares(in position: Position) -> [Square] {
         return self.piecesForSideToMove(in: position)
             .filter { $0.1.kind != .king }

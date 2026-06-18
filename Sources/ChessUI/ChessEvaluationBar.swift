@@ -14,6 +14,14 @@ import SwiftUI
 ///
 /// The view only renders values supplied by the caller. It does not know about
 /// Stockfish, analysis searches, move generation, or game playback.
+///
+/// ```swift
+/// ChessEvaluationBar(
+///     evaluation: .centipawns(85),
+///     orientation: .vertical,
+///     whiteSide: .bottom
+/// )
+/// ```
 public struct ChessEvaluationBar: View {
     private let evaluation: ChessEvaluation
     private let orientation: ChessEvaluationBarOrientation

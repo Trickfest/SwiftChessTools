@@ -9,6 +9,9 @@
 //
 
 /// The type of chess piece, independent of color.
+///
+/// Raw values are lowercase FEN characters. Combine a kind with `PieceColor`
+/// to get a concrete `Piece`.
 public enum PieceKind: String, CustomStringConvertible, Sendable {
 
     /// King.

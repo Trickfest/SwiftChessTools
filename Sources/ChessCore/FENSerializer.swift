@@ -60,6 +60,9 @@ public enum FENParsingError: Error, Equatable, CustomStringConvertible, Localize
 }
 
 /// Result of parsing and semantically validating a FEN string.
+///
+/// Use this non-throwing result when UI needs to distinguish malformed text
+/// from a syntactically valid but unplayable position.
 public enum FENValidationResult: Equatable, Sendable {
 
     /// FEN syntax and semantic position validation both passed.
@@ -124,12 +127,25 @@ public enum FENValidationResult: Equatable, Sendable {
 }
 
 /// Converts between `Position` values and Forsyth-Edwards Notation.
+///
+/// `position(from:)` performs FEN syntax parsing only. Use
+/// `validatedPosition(from:)` or `validationResult(for:)` when user-supplied
+/// FEN should also be checked for playable-position constraints.
+///
+/// ```swift
+/// let serializer = FENSerializer()
+/// let position = try serializer.validatedPosition(from: Position.standardStartingFEN)
+/// let fen = serializer.fen(from: position)
+/// ```
 public class FENSerializer {
 
     /// Creates a FEN serializer.
     public init() {}
 
     /// Parses a FEN string into a `Position`.
+    ///
+    /// This method checks FEN syntax and field shape, but it does not reject
+    /// semantic issues such as missing kings or impossible castling rights.
     ///
     /// - Parameter fen: A full six-field FEN string.
     /// - Returns: The position described by the FEN string.
@@ -183,6 +199,9 @@ public class FENSerializer {
     }
 
     /// Formats a position as a full six-field FEN string.
+    ///
+    /// Serialization reflects the supplied `Position` exactly; it does not
+    /// validate whether the position is playable.
     ///
     /// - Parameter position: The position to serialize.
     /// - Returns: A FEN string describing `position`.

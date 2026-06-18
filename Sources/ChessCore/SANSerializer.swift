@@ -40,6 +40,16 @@ public enum SANParsingError: Error, Equatable, CustomStringConvertible, Localize
 }
 
 /// Converts moves to and from Standard Algebraic Notation.
+///
+/// SAN is context-sensitive: the same coordinate move can require different
+/// disambiguation, capture, check, or mate markers depending on the pre-move
+/// position. Always pass the `Game` state before the move is applied.
+///
+/// ```swift
+/// let game = Game()
+/// let move = try Move(string: "g1f3")
+/// let san = SANSerializer().san(for: move, in: game)
+/// ```
 public class SANSerializer {
 
     private let kingSideCastleSAN = "O-O"
@@ -51,6 +61,9 @@ public class SANSerializer {
     // MARK: - Serialization
 
     /// Formats a legal move as SAN in the context of a game.
+    ///
+    /// The move should be legal in `game`. If the source square is empty, this
+    /// method returns an empty string.
     ///
     /// - Parameters:
     ///   - move: Move to serialize.
@@ -140,6 +153,10 @@ public class SANSerializer {
     // MARK: - Deserialization
 
     /// Parses SAN into the matching move for the current game state.
+    ///
+    /// Parsing works by comparing the normalized input against legal moves
+    /// generated for `game`. Decorative check and mate suffixes are tolerated,
+    /// and `0-0` style castling zeros are normalized to `O-O`.
     ///
     /// - Parameters:
     ///   - san: SAN text such as `"Nf3"`, `"exd5"`, or `"O-O"`.

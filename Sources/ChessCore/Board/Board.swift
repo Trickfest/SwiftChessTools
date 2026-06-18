@@ -9,6 +9,16 @@
 //
 
 /// Stores the pieces on a chess board.
+///
+/// `Board` is only piece placement. It does not know which side is to move,
+/// whether castling is still legal, or whether an en-passant target exists.
+/// Those fields live in `Position.State`.
+///
+/// ```swift
+/// var board = Board()
+/// board["e4"] = Piece(kind: .pawn, color: .white)
+/// print(board[Square(coordinate: "e4")]?.kind == .pawn)
+/// ```
 public struct Board: Hashable, Sendable {
 
     internal var bitboards: Bitboards
@@ -25,6 +35,10 @@ public struct Board: Hashable, Sendable {
     }
 
     /// Reads or writes a piece by its zero-based square index.
+    ///
+    /// Indexes follow the package's file-major layout. Prefer the `Square` or
+    /// coordinate subscripts at app boundaries because they make call sites
+    /// clearer.
     public subscript(index: Int) -> Piece? {
         get {
             let squareMask = Bitboard(1) << index
@@ -119,6 +133,10 @@ public struct Board: Hashable, Sendable {
     }
 
     /// Returns every occupied square and its piece.
+    ///
+    /// The returned order is stable for a given board and follows the internal
+    /// square-index order. Use this for display, inspection, and rule helpers
+    /// that need to scan all pieces.
     public func enumeratedPieces() -> [(Square, Piece)] {
         var pieces = [(Square, Piece)]()
 

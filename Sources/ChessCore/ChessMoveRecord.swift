@@ -11,6 +11,10 @@
 import Foundation
 
 /// A display-ready move entry captured while replaying a legal move sequence.
+///
+/// `ChessMoveRecord` is the lightweight move-list model shared by ChessCore and
+/// ChessUI. It stores the coordinate move plus SAN and numbering captured from
+/// the pre-move position.
 public struct ChessMoveRecord: Identifiable, Equatable, Sendable {
     /// One-based ply index within the move sequence.
     public let ply: Int
@@ -66,6 +70,16 @@ public enum ChessMoveRecordBuilderError: Error, Equatable, CustomStringConvertib
 }
 
 /// Replays legal moves and captures the SAN and numbering needed by move-list UI.
+///
+/// Use this builder when you have a list of `Move` values and want to display
+/// them with `ChessMoveListView` or another SAN-based move list.
+///
+/// ```swift
+/// let records = try ChessMoveRecordBuilder().records(
+///     initialPosition: .standard,
+///     moves: [try Move(string: "e2e4")]
+/// )
+/// ```
 public struct ChessMoveRecordBuilder {
     private let sanSerializer: SANSerializer
 

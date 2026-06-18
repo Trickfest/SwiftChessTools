@@ -70,6 +70,9 @@ public enum PositionValidationError: Error, Equatable, CustomStringConvertible, 
 }
 
 /// Result of semantically validating a parsed chess position.
+///
+/// This result preserves the parsed position even when issues are present, so
+/// editors can display or repair an invalid position without reparsing input.
 public struct PositionValidationResult: Equatable, Sendable {
 
     /// The position that was checked.
@@ -100,12 +103,27 @@ public struct PositionValidationResult: Equatable, Sendable {
 }
 
 /// Performs semantic validation for parsed chess positions.
+///
+/// `PositionValidator` assumes FEN syntax has already been parsed into a
+/// `Position`. It checks standard-position constraints that are not expressible
+/// in the FEN grammar itself.
+///
+/// ```swift
+/// let position = try FENSerializer().position(from: fen)
+/// let result = PositionValidator().validationResult(for: position)
+/// if !result.isValid {
+///     print(result.issues)
+/// }
+/// ```
 public struct PositionValidator: Sendable {
 
     /// Creates a position validator.
     public init() {}
 
     /// Returns semantic issues found in `position`.
+    ///
+    /// The returned array is empty when the position passes all semantic
+    /// validation checks.
     public func issues(in position: Position) -> [PositionValidationIssue] {
         var issues: [PositionValidationIssue] = []
         let pieces = position.board.enumeratedPieces()
@@ -150,6 +168,9 @@ public struct PositionValidator: Sendable {
     }
 
     /// Throws when `position` has semantic validation issues.
+    ///
+    /// Use this strict API when invalid positions should fail fast. Use
+    /// `validationResult(for:)` when you need structured diagnostics.
     public func validate(_ position: Position) throws {
         _ = try self.validationResult(for: position).validatedPosition()
     }

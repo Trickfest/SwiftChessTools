@@ -45,6 +45,20 @@ public enum MoveParsingError: Error, Equatable, CustomStringConvertible, Localiz
 }
 
 /// A move from one square to another, with an optional promotion piece.
+///
+/// `Move` uses long coordinate notation for text conversion. The source and
+/// destination squares are always present; promotion is included only for pawn
+/// moves that reach the final rank.
+///
+/// ```swift
+/// let knightMove = try Move(string: "g1f3")
+/// let promotion = try Move(string: "e7e8q")
+/// print(knightMove.description) // "g1f3"
+/// ```
+///
+/// A `Move` value does not know whether it is legal in a position. Use
+/// `Game.legalMoves`, `Game.applyLegal(move:)`, or `StandardRules` when you
+/// need rule validation.
 public struct Move: CustomStringConvertible, Hashable, Sendable {
 
     /// Source square.
@@ -59,6 +73,9 @@ public struct Move: CustomStringConvertible, Hashable, Sendable {
     // MARK: Initialization
 
     /// Creates a move from source and destination squares.
+    ///
+    /// This initializer does not validate that the move is legal in any
+    /// position. It only packages coordinates and an optional promotion kind.
     public init(from: Square, to: Square, promotion: PieceKind? = nil) {
         self.from = from
         self.to = to
@@ -66,6 +83,9 @@ public struct Move: CustomStringConvertible, Hashable, Sendable {
     }
 
     /// Creates a move from coordinate notation such as `"g1f3"` or `"e7e8Q"`.
+    ///
+    /// Promotion suffixes may use uppercase or lowercase piece letters, but
+    /// only queen, rook, bishop, and knight are valid promotion pieces.
     ///
     /// - Throws: `MoveParsingError` when `string` is not valid coordinate move
     ///   notation.

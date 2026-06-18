@@ -16,6 +16,8 @@
 /// pawn-barrier positions, and positions that can be proved by exhaustive
 /// legal-state traversal within a bounded search. Positions outside those
 /// proven classes return `false`.
+///
+/// `Game.status` uses this analyzer for automatic dead-position draws.
 public struct DeadPositionAnalyzer: Sendable {
 
     /// Maximum number of unique legal-state keys explored for a blocked
@@ -32,6 +34,9 @@ public struct DeadPositionAnalyzer: Sendable {
     }
 
     /// `true` when the position is proven dead.
+    ///
+    /// A `false` result can mean either that checkmate is possible or that the
+    /// analyzer did not prove deadness within its supported proof classes.
     public func isDeadPosition(_ position: Position) -> Bool {
         if self.hasInsufficientMatingMaterial(in: position) {
             return true
@@ -45,6 +50,8 @@ public struct DeadPositionAnalyzer: Sendable {
     }
 
     /// `true` when neither side has enough material to produce any checkmate.
+    ///
+    /// This is a fast material-only subset of full dead-position analysis.
     public func hasInsufficientMatingMaterial(in position: Position) -> Bool {
         let pieces = position.board.enumeratedPieces()
         return self.hasInsufficientMatingMaterial(for: .white, pieces: pieces)

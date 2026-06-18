@@ -12,6 +12,9 @@ import ChessCore
 import SwiftUI
 
 /// Normalized display data used by `ChessGameStatusView`.
+///
+/// Use this type directly when you need ChessUI's compact status text outside a
+/// SwiftUI view.
 public struct ChessGameStatusDisplayState: Equatable, Sendable {
     /// Compact text describing the supplied game status.
     public let text: String
@@ -117,6 +120,12 @@ public struct ChessGameStatusDisplayState: Equatable, Sendable {
 /// The view only renders caller-supplied status data. It does not own `Game`,
 /// apply moves, compute legal rules, parse notation, or decide app-specific
 /// endings such as resignation, timeout, or adjudication.
+///
+/// ```swift
+/// ChessGameStatusView(status: game.status, turn: game.position.state.turn) {
+///     try? game.claimDraw($0)
+/// }
+/// ```
 public struct ChessGameStatusView: View {
     private let status: GameStatus
     private let turn: PieceColor?

@@ -251,6 +251,9 @@ public enum PGNMoveRecordValidationFailure: Equatable, Sendable, CustomStringCon
 }
 
 /// A PGN tag pair such as `[Event "Casual Game"]`.
+///
+/// Tag names are stored exactly as supplied. PGN's seven-tag roster is added
+/// when exporting through `PGNSerializer` if callers omit those tags.
 public struct PGNTagPair: Equatable, Sendable {
 
     /// Tag name.
@@ -268,6 +271,9 @@ public struct PGNTagPair: Equatable, Sendable {
 }
 
 /// A PGN game result.
+///
+/// PGN results include externally ended or unfinished games. `PGNResult` can
+/// represent a result marker even when `GameStatus` is still ongoing.
 public enum PGNResult: String, CaseIterable, Equatable, Sendable, CustomStringConvertible {
     /// White won the game.
     case whiteWins = "1-0"
@@ -308,6 +314,9 @@ public enum PGNResult: String, CaseIterable, Equatable, Sendable, CustomStringCo
 }
 
 /// A PGN numeric annotation glyph.
+///
+/// NAGs are preserved during parsing and export but are not interpreted by
+/// ChessCore.
 public struct PGNNumericAnnotationGlyph: RawRepresentable, Hashable, Sendable, CustomStringConvertible {
 
     /// Numeric annotation value.
@@ -329,6 +338,9 @@ public struct PGNNumericAnnotationGlyph: RawRepresentable, Hashable, Sendable, C
 }
 
 /// A semantically validated move from a PGN mainline.
+///
+/// Each record is produced by replaying SAN through `Game` and `SANSerializer`.
+/// Comments and NAGs remain attached to the move they followed in source PGN.
 public struct PGNMoveRecord: Equatable, Sendable {
 
     /// One-based ply in the PGN mainline.
@@ -381,6 +393,10 @@ public struct PGNMoveRecord: Equatable, Sendable {
 }
 
 /// A parsed and semantically validated PGN game.
+///
+/// `PGNGame` stores source tags, validated mainline records, the initial and
+/// final positions, and the final ChessCore status reached by replay. It does
+/// not model recursive annotation variations or a full PGN game tree.
 public struct PGNGame: Equatable, Sendable {
 
     /// Tag pairs in source order.
@@ -430,6 +446,9 @@ public struct PGNGame: Equatable, Sendable {
     }
 
     /// Required PGN result for the final status, when ChessCore can prove one.
+    ///
+    /// Returns `nil` for ongoing positions because those PGNs may represent
+    /// resignation, timeout, adjudication, agreement, or unfinished games.
     public var requiredResultForFinalStatus: PGNResult? {
         PGNResult(terminalStatus: finalStatus)
     }
@@ -451,6 +470,17 @@ public struct PGNGame: Equatable, Sendable {
 }
 
 /// Parses, validates, and exports Portable Game Notation.
+///
+/// The serializer is syntax-aware and rules-aware. It tokenizes PGN, parses tag
+/// pairs and movetext, then semantically replays SAN moves through `Game`.
+/// Export validates manually constructed `PGNGame` values before producing
+/// deterministic reduced PGN text.
+///
+/// ```swift
+/// let serializer = PGNSerializer()
+/// let game = try serializer.game(from: "[Result \"*\"]\n\n1. e4 *")
+/// let exported = try serializer.pgn(from: game)
+/// ```
 public final class PGNSerializer {
 
     /// Full FEN for the standard starting position.
@@ -501,6 +531,9 @@ public final class PGNSerializer {
     }
 
     /// Builds a PGN game model from standard-position moves.
+    ///
+    /// Moves are replayed from the standard starting position and converted to
+    /// canonical SAN records.
     public func game(
         moves: [Move],
         tags: [PGNTagPair] = [],
@@ -515,6 +548,9 @@ public final class PGNSerializer {
     }
 
     /// Builds a PGN game model from an initial position and concrete moves.
+    ///
+    /// Use this overload for FEN-backed games or position studies. Export will
+    /// include setup tags when the initial position is not standard.
     public func game(
         initialPosition: Position,
         moves: [Move],
@@ -562,6 +598,9 @@ public final class PGNSerializer {
 
     /// Exports a PGN game in deterministic reduced export style, preserving
     /// move comments and NAGs when present.
+    ///
+    /// Before exporting, the serializer replays the move records and checks the
+    /// stored final position, final status, and result for consistency.
     public func pgn(from game: PGNGame, lineWidth: Int = 80) throws -> String {
         try self.validateSerializedGame(game)
         let tagLines = self.exportTagPairs(for: game)
@@ -571,6 +610,9 @@ public final class PGNSerializer {
     }
 
     /// Builds and exports standard-position moves as PGN.
+    ///
+    /// This convenience combines `game(moves:tags:result:)` and
+    /// `pgn(from:lineWidth:)`.
     public func pgn(
         moves: [Move],
         tags: [PGNTagPair] = [],
@@ -584,6 +626,9 @@ public final class PGNSerializer {
     }
 
     /// Builds and exports moves from an explicit initial position as PGN.
+    ///
+    /// This convenience combines `game(initialPosition:moves:tags:result:)`
+    /// and `pgn(from:lineWidth:)`.
     public func pgn(
         initialPosition: Position,
         moves: [Move],

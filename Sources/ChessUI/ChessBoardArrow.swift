@@ -14,6 +14,12 @@ import SwiftUI
 ///
 /// Styles are display-only. They do not carry engine semantics; apps decide
 /// what an arrow means before passing it to ChessUI.
+///
+/// ```swift
+/// model.arrows = [
+///     ChessBoardArrow(from: "e2", to: "e4", style: .primarySuggestion)
+/// ].compactMap { $0 }
+/// ```
 public struct ChessBoardArrowStyle: Equatable, Sendable {
     /// Red component from `0` through `1`.
     public var red: Double
@@ -36,6 +42,9 @@ public struct ChessBoardArrowStyle: Equatable, Sendable {
     }
 
     /// Creates an arrow style.
+    ///
+    /// Component and opacity values are clamped into display ranges. Line
+    /// widths smaller than one point are raised to one point.
     public init(red: Double, green: Double, blue: Double, lineWidth: CGFloat = 7, opacity: Double = 0.76) {
         self.red = Self.clamped(red)
         self.green = Self.clamped(green)
@@ -89,6 +98,9 @@ public struct ChessBoardArrowStyle: Equatable, Sendable {
 ///
 /// ChessUI renders arrows supplied by the app. It does not compute, rank, or
 /// validate suggested moves.
+///
+/// Use the built-in suggestion styles for ranked app-supplied moves, or pass a
+/// custom `ChessBoardArrowStyle` for study annotations.
 public struct ChessBoardArrow: Sendable {
     /// Source square for the arrow.
     public var from: BoardSquare
@@ -116,6 +128,8 @@ public struct ChessBoardArrow: Sendable {
     }
 
     /// Creates a board arrow from algebraic coordinate strings such as `e2`.
+    ///
+    /// Returns `nil` when either coordinate is not on the board.
     public init?(
         from sourceSquare: String,
         to targetSquare: String,

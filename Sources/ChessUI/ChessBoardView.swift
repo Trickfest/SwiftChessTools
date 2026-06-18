@@ -22,6 +22,10 @@ public let emptyFEN = "8/8/8/8/8/8/8/8 w - - 0 1"
 public let initialFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 /// Move attempt emitted by `ChessBoardView`.
+///
+/// The attempt describes user intent. ChessUI does not apply the move for you;
+/// the app decides whether to update its game state, request promotion, show an
+/// error, or ignore the attempt.
 public struct ChessBoardMoveAttempt: Equatable, Sendable {
     /// Coordinate move represented by the gesture or promotion choice.
     public var move: Move
@@ -60,9 +64,16 @@ public struct ChessBoardMoveAttempt: Equatable, Sendable {
 }
 
 /// Callback invoked when a user attempts a move on `ChessBoardView`.
+///
+/// The callback is invoked according to the model's
+/// `ChessBoardInteractionMode`.
 public typealias ChessBoardMoveHandler = (ChessBoardMoveAttempt) -> Void
 
 /// User-interaction policy for `ChessBoardView`.
+///
+/// Interaction modes control what user gestures ChessUI reports. They do not
+/// change chess rules or apply moves; the app remains responsible for acting on
+/// any reported `ChessBoardMoveAttempt`.
 public enum ChessBoardInteractionMode: String, CaseIterable, Identifiable, Sendable {
     /// Disables tap and drag move gestures while still rendering board state.
     case readOnly
@@ -107,6 +118,9 @@ public enum ChessBoardInteractionMode: String, CaseIterable, Identifiable, Senda
 }
 
 /// A zero-based board square used by ChessUI state and highlighting APIs.
+///
+/// `BoardSquare` mirrors `Square`'s file/rank indexing but uses row/column
+/// names that are convenient for board rendering.
 public struct BoardSquare: Identifiable, Hashable, Sendable {
     /// Zero-based rank index, where `0` is rank 1.
     public var row: Int
@@ -147,6 +161,18 @@ public struct BoardSquare: Identifiable, Hashable, Sendable {
 /// Use this model to load positions, control board perspective and highlights,
 /// apply move-feedback animations, and inspect the underlying `Game`. Invalid
 /// FEN input is reported through `fenError` instead of crashing.
+///
+/// ```swift
+/// @State private var model = ChessBoardModel(fen: initialFEN)
+///
+/// ChessBoardView(model: model)
+///     .onMove { attempt in
+///         guard attempt.isLegal else { return }
+///         model.game.apply(move: attempt.move)
+///         let fen = FENSerializer().fen(from: model.game.position)
+///         model.setFEN(fen, animatedMove: attempt.move)
+///     }
+/// ```
 @Observable
 public class ChessBoardModel {
     private static func emptyPosition() -> Position {
@@ -156,7 +182,8 @@ public class ChessBoardModel {
     /// Current board position as FEN.
     ///
     /// Assigning invalid FEN leaves the current position unchanged and stores
-    /// the parser error in `fenError`.
+    /// the parser error in `fenError`. Prefer `setFEN(_:animatedMove:)` when a
+    /// position change corresponds to a known move and should animate.
     public var fen: String {
         get { FENSerializer().fen(from: game.position) }
         set {
@@ -233,6 +260,10 @@ public class ChessBoardModel {
     public var isPromotionPickerPresented = false
 
     /// Underlying chess game backing the board.
+    ///
+    /// Apps may inspect or mutate this game directly, but the board only
+    /// redraws from the model's current position. After applying a move, call
+    /// `setFEN(_:animatedMove:)` when you want ChessUI's move feedback.
     public var game: Game
 
     /// The most recent FEN parsing error produced by `fen` assignment or
@@ -261,6 +292,9 @@ public class ChessBoardModel {
     public var movingPiece: (piece: Piece, from: BoardSquare, to: BoardSquare)?
     
     /// Creates a chess board model.
+    ///
+    /// Invalid initial FEN falls back to `emptyFEN` and stores the parse error
+    /// in `fenError`, which lets app UI present diagnostics without crashing.
     ///
     /// - Parameters:
     ///   - fen: Initial board position.
@@ -322,6 +356,9 @@ public class ChessBoardModel {
     /// assigning `fen` is still supported for arbitrary position loading, but
     /// direct assignment clears move-specific animation and highlight state
     /// because a FEN string alone does not identify the source square.
+    ///
+    /// - Returns: `true` when the FEN was parsed and applied, or `false` when
+    ///   parsing failed and the previous board was left unchanged.
     @discardableResult
     public func setFEN(_ fen: String, animatedMove: Move? = nil) -> Bool {
         let newGame: Game
@@ -367,6 +404,9 @@ public class ChessBoardModel {
     }
 
     /// Refreshes legal destination markers for a selected or dragged square.
+    ///
+    /// Markers are derived from the model's current `game.legalMoves`; callers
+    /// do not need to compute legal destinations themselves.
     public func updateLegalMoveHighlights(for square: BoardSquare) {
         guard showsLegalMoveHighlights else {
             legalMoveSquares.removeAll()
@@ -397,6 +437,8 @@ public class ChessBoardModel {
     }
 
     /// Adds a hint highlight for an algebraic coordinate such as `e4`.
+    ///
+    /// Invalid coordinates are ignored.
     public func hint(_ square: String) {
         if square.count != 2 {
             return
@@ -512,6 +554,9 @@ public class ChessBoardModel {
     }
 
     /// Presents the built-in promotion picker for a pending promotion move.
+    ///
+    /// The picker reports a promoted `ChessBoardMoveAttempt`; the app still
+    /// decides whether and how to apply it.
     public func presentPromotionPicker(piece: Piece, sourceSquare: String, targetSquare: String, baseMove: Move) {
         promotionPiece = piece
         promotionSourceSquare = sourceSquare
@@ -918,6 +963,10 @@ private struct ChessBoardSportsCourtTexture: View {
 /// The view renders the board, pieces, markers, move gestures, promotion UI,
 /// and move callbacks. It does not apply moves by itself; callers update the
 /// model after deciding whether a reported move should change the game state.
+///
+/// Keep `ChessBoardModel` owned by your app, usually with `@State`, and pass it
+/// into the board view. Use `.onMove(_:)` to bridge user gestures back into
+/// your app's game logic.
 public struct ChessBoardView: View {
     /// State model rendered and mutated by the board.
     public var model: ChessBoardModel

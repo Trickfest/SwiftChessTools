@@ -11,6 +11,9 @@
 import Foundation
 
 /// Claimable draw rules available to the player to move.
+///
+/// These claims do not automatically end the game. Call `Game.claimDraw(_:)`
+/// when the player or app elects to claim one.
 public enum GameDrawClaim: Hashable, Sendable {
     /// The halfmove clock has reached 100 halfmoves.
     case fiftyMoveRule
@@ -20,6 +23,11 @@ public enum GameDrawClaim: Hashable, Sendable {
 }
 
 /// Draw reasons that end a game.
+///
+/// Some reasons are automatic under standard rules, such as stalemate,
+/// insufficient material, dead position, seventy-five-move rule, and fivefold
+/// repetition. Fifty-move and threefold repetition appear here after a claim is
+/// made.
 public enum GameDrawReason: Equatable, Sendable {
     /// The player to move has no legal moves and is not in check.
     case stalemate
@@ -45,6 +53,11 @@ public enum GameDrawReason: Equatable, Sendable {
 }
 
 /// High-level status for the current game position.
+///
+/// `GameStatus` describes endings ChessCore can derive from standard rules, or
+/// an ongoing game with currently available draw claims. App-specific results
+/// such as resignation, timeout, adjudication, or agreed draws should be
+/// represented by the app around this value.
 public enum GameStatus: Equatable, Sendable {
     /// The game is still playable, with any currently available draw claims.
     case ongoing(drawClaims: Set<GameDrawClaim>)
@@ -69,6 +82,9 @@ public enum GameStatus: Equatable, Sendable {
 }
 
 /// Final result for a completed game.
+///
+/// `GameOutcome` is intentionally smaller than PGN results. Ongoing or
+/// externally ended games may not have a ChessCore-derived outcome.
 public enum GameOutcome: Equatable, Sendable {
     /// One side won.
     case win(PieceColor)

@@ -11,6 +11,9 @@
 import ChessCore
 
 /// Built-in chess piece artwork bundled with ChessUI.
+///
+/// Use `availableSets` to build app pickers without hard-coding the package's
+/// current asset list.
 public enum ChessPieceSet: String, CaseIterable, Identifiable, Sendable {
     /// Public-domain Merida-style pieces from Sashite.
     case sashiteMerida
@@ -37,6 +40,9 @@ public enum ChessPieceSet: String, CaseIterable, Identifiable, Sendable {
     public var id: String { rawValue }
 
     /// Built-in sets currently bundled with ChessUI.
+    ///
+    /// The order is intended for picker display and may expand as new bundled
+    /// piece sets are added.
     public static var availableSets: [ChessPieceSet] {
         Array(allCases)
     }

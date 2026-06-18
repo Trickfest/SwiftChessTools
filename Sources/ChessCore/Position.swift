@@ -9,6 +9,17 @@
 //
 
 /// Complete board state for a single point in a game.
+///
+/// `Position` is a value-semantic snapshot: board contents, side to move,
+/// castling rights, en-passant target, and move counters. It does not contain a
+/// move history or repetition counts. Use `Game` when you need to apply moves,
+/// track history, or compute status.
+///
+/// ```swift
+/// let position = try FENSerializer().position(from: Position.standardStartingFEN)
+/// let game = Game(position: position)
+/// print(game.legalMoves.count)
+/// ```
 public struct Position: Hashable, Sendable {
 
     /// Full FEN for the standard chess starting position.
@@ -16,9 +27,17 @@ public struct Position: Hashable, Sendable {
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
     /// Standard chess starting position.
+    ///
+    /// This value is parsed once from `standardStartingFEN` and can be reused
+    /// when constructing games or PGN records from the normal initial board.
     public static let standard = try! FENSerializer().position(from: Self.standardStartingFEN)
 
     /// State that belongs to a position but is not stored directly on the board.
+    ///
+    /// FEN stores these fields separately from piece placement. They are
+    /// required for correct legal move generation because castling,
+    /// en-passant, and side-to-move legality cannot be inferred from occupied
+    /// squares alone.
     public struct State: Hashable, Sendable {
         /// Side to move.
         public var turn: PieceColor
@@ -32,6 +51,10 @@ public struct Position: Hashable, Sendable {
     }
 
     /// Move counters stored in FEN.
+    ///
+    /// These counters drive draw-rule behavior and PGN/FEN round trips. The
+    /// halfmove clock resets after captures and pawn advances; the fullmove
+    /// number increments after Black moves.
     public struct Counter: Hashable, Sendable {
         /// Half-moves since the last capture or pawn advance.
         public var halfMoves: Int

@@ -9,6 +9,14 @@
 //
 
 /// A chess piece with a kind and color.
+///
+/// `Piece` is intentionally small and value-semantic. It is used by `Board`,
+/// castling-right state, FEN parsing, and UI rendering.
+///
+/// ```swift
+/// let whiteQueen = Piece(kind: .queen, color: .white)
+/// print(whiteQueen.description) // "Q"
+/// ```
 public struct Piece: Hashable, CustomStringConvertible, Sendable {
 
     /// The kind of piece, such as king, rook, or pawn.

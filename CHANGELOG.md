@@ -145,6 +145,10 @@ release. Replace `TBD` with the release date when a release is tagged.
 
 - Expanded DocC coverage comments across the public `ChessCore` and `ChessUI`
   symbols in preparation for generated public package documentation.
+- Expanded DocC discussion and examples for the main `ChessCore` and `ChessUI`
+  entry points, including model ownership, validation, notation, PGN replay,
+  board callbacks, display-only arrows, evaluation bars, move lists, status
+  display, themes, and piece sets.
 - Changed `ChessBoardMoveHandler` and `ChessBoardView.onMove(_:)` to pass one
   `ChessBoardMoveAttempt` value instead of six positional closure arguments.
 - Replaced `ChessBoardModel.validatesMoves` and `allowsOpponentMoves` with

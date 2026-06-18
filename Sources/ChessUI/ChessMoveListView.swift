@@ -22,6 +22,16 @@ public enum ChessMoveListLayout: String, CaseIterable, Hashable, Sendable {
 }
 
 /// Displays a compact, selectable list of game moves.
+///
+/// The view renders caller-supplied `ChessMoveRecord` values. It does not own a
+/// `Game`, parse PGN, or derive move history. Use `ChessMoveRecordBuilder` when
+/// you need display-ready records from concrete moves.
+///
+/// ```swift
+/// ChessMoveListView(records: records, selectedPly: currentPly) { record in
+///     currentPly = record.ply
+/// }
+/// ```
 public struct ChessMoveListView: View {
     private static let moveRowMinimumHeight: CGFloat = 26
     private static let moveRowSpacing: CGFloat = 3

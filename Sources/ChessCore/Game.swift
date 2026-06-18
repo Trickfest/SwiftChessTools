@@ -9,14 +9,34 @@
 //
 
 /// Tracks a playable game, including the current position and move history.
+///
+/// `Game` is the main rules-facing type in ChessCore. It owns a mutable
+/// `Position`, legal move generation, move history, repetition counts, draw
+/// claims, and computed game status.
+///
+/// ```swift
+/// let game = Game()
+/// try game.applyLegal(move: "e2e4")
+/// print(game.position.state.turn) // Black
+/// ```
+///
+/// Use `applyLegal(move:)` for app-boundary data such as user input, engine
+/// output, or imported coordinate notation. Use `apply(move:)` only after a
+/// move has already been checked against `legalMoves`.
 public class Game {
 
     private let rules: Rules
 
     /// Number of times each board position has appeared in this game.
+    ///
+    /// This board-only count is retained for diagnostics and older callers.
+    /// Repetition draw logic uses `repetitionCounts`, which includes side to
+    /// move, castling rights, and legal en-passant availability.
     public private(set) var positionCounts: [Board: Int]
 
     /// Number of times each rules-relevant repetition key has appeared.
+    ///
+    /// These counts drive threefold-claim and fivefold-automatic draw status.
     public private(set) var repetitionCounts: [GameRepetitionKey: Int]
 
     /// Moves that produced the current position.
@@ -44,6 +64,11 @@ public class Game {
     }
 
     /// Current status of the game.
+    ///
+    /// Status covers checkmate, automatic draws, claimed draws, and ongoing
+    /// positions with currently available draw claims. App-specific endings
+    /// such as resignation, timeout, adjudication, or agreement should be
+    /// modeled by the app.
     public var status: GameStatus {
         if let terminalStatus {
             return terminalStatus
@@ -100,6 +125,9 @@ public class Game {
     }
 
     /// Draw claims currently available to the player to move.
+    ///
+    /// Terminal positions and games with an already claimed draw report no
+    /// further claims.
     public var drawClaims: Set<GameDrawClaim> {
         guard self.claimedDraw == nil else {
             return []
@@ -175,6 +203,8 @@ public class Game {
     }
 
     /// Creates a game from the standard chess starting position.
+    ///
+    /// This is equivalent to `Game(position: .standard)`.
     public convenience init() {
         self.init(position: .standard)
     }
@@ -201,6 +231,9 @@ public class Game {
 
     /// Replays legal moves from an initial position and returns the resulting
     /// game with rebuilt counters, history, and repetition state.
+    ///
+    /// Use this when a concrete move list is authoritative and derived game
+    /// state should be recomputed from scratch.
     public static func replay(initialPosition: Position, moves: [Move]) throws -> Game {
         let game = Game(position: initialPosition)
 
@@ -217,6 +250,10 @@ public class Game {
     // MARK: Applying moves
 
     /// Legal moves available to the side to move.
+    ///
+    /// The returned moves are fully legal under standard chess rules, including
+    /// king safety, castling restrictions, en-passant restrictions, and
+    /// promotion choices.
     public var legalMoves: [Move] {
         return self.rules.legalMoves(in: self.position)
     }
@@ -290,6 +327,9 @@ public class Game {
     }
 
     /// Claims an available draw rule and marks the game as drawn.
+    ///
+    /// Pass only values currently present in `drawClaims`; unavailable claims
+    /// throw `GameDrawClaimError.unavailable`.
     public func claimDraw(_ claim: GameDrawClaim) throws {
         guard self.drawClaims.contains(claim) else {
             throw GameDrawClaimError.unavailable(claim)

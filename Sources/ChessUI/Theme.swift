@@ -11,6 +11,9 @@
 import SwiftUI
 
 /// Built-in visual themes for ChessUI boards.
+///
+/// Use `availableThemes` to build app pickers without hard-coding the package's
+/// current theme list.
 public enum ChessBoardTheme: String, CaseIterable, Identifiable, Sendable {
     /// Ivory and tournament green squares.
     case classicGreen
@@ -40,6 +43,9 @@ public enum ChessBoardTheme: String, CaseIterable, Identifiable, Sendable {
     public var id: String { rawValue }
 
     /// Built-in themes currently bundled with ChessUI.
+    ///
+    /// The order is intended for picker display and may expand as new bundled
+    /// board themes are added.
     public static var availableThemes: [ChessBoardTheme] {
         Array(allCases)
     }

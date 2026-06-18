@@ -9,6 +9,16 @@
 //
 
 /// A square on the board.
+///
+/// `Square` stores zero-based file and rank indexes and formats itself as an
+/// algebraic coordinate. Invalid inputs create an invalid square internally;
+/// public APIs that parse user input usually validate before applying moves.
+///
+/// ```swift
+/// let e4 = Square(coordinate: "e4")
+/// print(e4.file) // 4
+/// print(e4.rank) // 3
+/// ```
 public struct Square: Hashable, Sendable {
 
     private(set) var index: Int
@@ -49,6 +59,9 @@ public struct Square: Hashable, Sendable {
     }
 
     /// Creates a square from its zero-based board index.
+    ///
+    /// Use this initializer when you are already working with board storage
+    /// indexes. For app-facing code, `init(coordinate:)` is usually clearer.
     public init(index: Int) {
         self.index = index
         self.bitboardMask = 1 << index
@@ -56,12 +69,18 @@ public struct Square: Hashable, Sendable {
     }
 
     /// Creates a square from zero-based file and rank indexes.
+    ///
+    /// Files and ranks are both `0...7`; file `0` is `a`, and rank `0` is
+    /// rank `1`.
     public init(file: Int, rank: Int) {
         self.init(index: file * Board.rankCoordinates.count + rank)
         self.isValid = (Int.zero...7).contains(file) && (Int.zero...7).contains(rank)
     }
 
     /// Creates a square from an algebraic coordinate such as `"e4"`.
+    ///
+    /// Coordinate parsing is case-sensitive and expects a file in `a...h` and
+    /// a rank in `1...8`.
     public init(coordinate: String) {
         let fileCharacter = coordinate.first ?? "-"
         let rankCharacter = coordinate.last ?? "-"

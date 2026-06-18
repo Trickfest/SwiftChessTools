@@ -9,6 +9,9 @@
 //
 
 /// The side a piece belongs to.
+///
+/// `PieceColor` is also used for side-to-move state, game outcomes, and UI
+/// perspective. Use `opposite` when toggling turns or interpreting captures.
 public enum PieceColor: Equatable, Sendable {
 
     /// The white side.
