@@ -229,6 +229,10 @@ lines, or talk to an engine.
 Use `ChessBoardModel.interactionMode` to choose whether the board is read-only,
 reports only legal moves, reports illegal attempts, or acts as a free setup
 surface where either side's pieces can be dragged.
+Board squares include VoiceOver-oriented labels, hints, and accessibility
+actions for selecting a source square, hearing legal destinations, and
+activating a destination. Those actions still report `ChessBoardMoveAttempt`
+values; the app remains responsible for applying or rejecting moves.
 
 ### Evaluation Bar
 

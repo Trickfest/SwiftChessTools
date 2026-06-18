@@ -16,6 +16,10 @@ release. Replace `TBD` with the release date when a release is tagged.
 - Added `ChessBoardMoveAttempt` and `ChessBoardInteractionMode` to make
   ChessUI move callbacks and board interaction policy explicit before the
   public release.
+- Added VoiceOver-oriented `ChessBoardView` square activation so assistive
+  interactions can select a source square, hear legal destinations, activate a
+  destination, and report the same `ChessBoardMoveAttempt` values as tap and
+  drag gestures.
 - Added `ChessGameStatusView` and `ChessGameStatusDisplayState` so apps can
   render caller-supplied `GameStatus` values and optional draw-claim actions
   without moving game-state ownership into ChessUI.
@@ -43,6 +47,9 @@ release. Replace `TBD` with the release date when a release is tagged.
 - Added ChessUI evaluation-bar mapping tests and ChessWorkbench UI coverage for
   evaluation samples, placement, orientation, White-side selection, label
   visibility, and centipawn scale controls.
+- Added pure ChessUI accessibility helper tests for board-square labels, hints,
+  legal destination speech, captures, promotion choices, read-only boards,
+  interaction modes, and move-animation blocking.
 - Added `ChessMoveRecord`, `ChessMoveRecordBuilder`, and `ChessMoveListView`
   so apps can render scrollable caller-supplied SAN move records without adding
   PGN parsing or game-history ownership to ChessUI.
@@ -149,6 +156,9 @@ release. Replace `TBD` with the release date when a release is tagged.
   entry points, including model ownership, validation, notation, PGN replay,
   board callbacks, display-only arrows, evaluation bars, move lists, status
   display, themes, and piece sets.
+- Changed `ChessBoardView` square accessibility labels and hints to describe
+  selected pieces, legal destinations, captures, wrong-side pieces, read-only
+  boards, and move-animation wait states.
 - Changed `ChessBoardMoveHandler` and `ChessBoardView.onMove(_:)` to pass one
   `ChessBoardMoveAttempt` value instead of six positional closure arguments.
 - Replaced `ChessBoardModel.validatesMoves` and `allowsOpponentMoves` with

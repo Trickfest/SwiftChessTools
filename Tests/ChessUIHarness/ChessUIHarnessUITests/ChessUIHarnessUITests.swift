@@ -42,7 +42,7 @@ final class ChessUIHarnessUITests: XCTestCase {
         XCTAssertTrue(e4LastMove.waitForExistence(timeout: 2))
         XCTAssertTrue(e2LastMove.label.contains("Last move e2"))
         XCTAssertTrue(e4LastMove.label.contains("Last move e4"))
-        XCTAssertTrue(square("e4").label.contains("White pawn e4"))
+        XCTAssertTrue(square("e4").label.contains("White pawn, e4"))
     }
 
     func testInvalidMoveIsRejectedBeforeCallback() {
@@ -50,8 +50,8 @@ final class ChessUIHarnessUITests: XCTestCase {
         tapSquare("e5")
 
         XCTAssertEqual(lastMoveLabel(), "No moves yet")
-        XCTAssertTrue(square("e2").label.contains("White pawn e2"))
-        XCTAssertTrue(square("e5").label.contains("Empty e5"))
+        XCTAssertTrue(square("e2").label.contains("White pawn, e2"))
+        XCTAssertTrue(square("e5").label.contains("Empty, e5"))
     }
 
     func testDragMoveUpdatesBoardAndFeedback() {
@@ -60,7 +60,7 @@ final class ChessUIHarnessUITests: XCTestCase {
         XCTAssertEqual(lastMoveLabel(), "g1f3")
         XCTAssertTrue(element("ChessUI.lastMove.g1").waitForExistence(timeout: 2))
         XCTAssertTrue(element("ChessUI.lastMove.f3").waitForExistence(timeout: 2))
-        XCTAssertTrue(square("f3").label.contains("White knight f3"))
+        XCTAssertTrue(square("f3").label.contains("White knight, f3"))
     }
 
     func testPromotionPickerAppliesSelectedPiece() {
@@ -78,7 +78,7 @@ final class ChessUIHarnessUITests: XCTestCase {
         queenButton.tap()
 
         XCTAssertEqual(lastMoveLabel(), "e7e8q")
-        XCTAssertTrue(square("e8").label.contains("White queen e8"))
+        XCTAssertTrue(square("e8").label.contains("White queen, e8"))
         XCTAssertTrue(element("ChessUI.lastMove.e7").waitForExistence(timeout: 2))
         XCTAssertTrue(element("ChessUI.lastMove.e8").waitForExistence(timeout: 2))
     }
@@ -89,7 +89,7 @@ final class ChessUIHarnessUITests: XCTestCase {
         dragSquare("e2", to: "e4")
 
         XCTAssertEqual(lastMoveLabel(), "e2e4")
-        XCTAssertTrue(square("e4").label.contains("White pawn e4"))
+        XCTAssertTrue(square("e4").label.contains("White pawn, e4"))
         XCTAssertTrue(element("ChessUI.lastMove.e2").waitForExistence(timeout: 2))
         XCTAssertTrue(element("ChessUI.lastMove.e4").waitForExistence(timeout: 2))
     }
@@ -106,8 +106,8 @@ final class ChessUIHarnessUITests: XCTestCase {
         tapSquare("e4")
 
         XCTAssertEqual(lastMoveLabel(), "No moves yet")
-        XCTAssertTrue(square("e2").label.contains("White pawn e2"))
-        XCTAssertTrue(square("e4").label.contains("Empty e4"))
+        XCTAssertTrue(square("e2").label.contains("White pawn, e2"))
+        XCTAssertTrue(square("e4").label.contains("Empty, e4"))
     }
 
     func testReportsIllegalAttemptsModeReportsIllegalMove() {
@@ -118,8 +118,8 @@ final class ChessUIHarnessUITests: XCTestCase {
         tapSquare("e5")
 
         waitForLabel("Rejected e2e5", in: element("Harness.lastMove"))
-        XCTAssertTrue(square("e2").label.contains("White pawn e2"))
-        XCTAssertTrue(square("e5").label.contains("Empty e5"))
+        XCTAssertTrue(square("e2").label.contains("White pawn, e2"))
+        XCTAssertTrue(square("e5").label.contains("Empty, e5"))
     }
 
     func testFreeSetupModeReportsOpponentPieceAttempts() {
@@ -130,8 +130,8 @@ final class ChessUIHarnessUITests: XCTestCase {
         tapSquare("e5")
 
         waitForLabel("Rejected e7e5", in: element("Harness.lastMove"))
-        XCTAssertTrue(square("e7").label.contains("Black pawn e7"))
-        XCTAssertTrue(square("e5").label.contains("Empty e5"))
+        XCTAssertTrue(square("e7").label.contains("Black pawn, e7"))
+        XCTAssertTrue(square("e5").label.contains("Empty, e5"))
     }
 
     func testStatusEvaluationAndMoveListExposeAccessibility() {

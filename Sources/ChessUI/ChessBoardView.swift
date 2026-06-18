@@ -12,6 +12,9 @@ import CoreGraphics
 import Foundation
 import ImageIO
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 import ChessCore
 
@@ -966,7 +969,8 @@ private struct ChessBoardSportsCourtTexture: View {
 ///
 /// Keep `ChessBoardModel` owned by your app, usually with `@State`, and pass it
 /// into the board view. Use `.onMove(_:)` to bridge user gestures back into
-/// your app's game logic.
+/// your app's game logic. Board squares also expose accessibility actions that
+/// follow the same select-source, activate-destination flow as taps.
 public struct ChessBoardView: View {
     /// State model rendered and mutated by the board.
     public var model: ChessBoardModel
@@ -1110,6 +1114,8 @@ public struct ChessBoardView: View {
             .cornerRadius(20)
             .shadow(radius: 5)
             .padding(.horizontal, 20)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Choose promotion piece")
         }
     }
 
@@ -1489,6 +1495,8 @@ private struct ChessPieceView: View {
     }
     
     var body: some View {
+        let accessibilityState = boardModel.accessibilityState(for: square)
+
         ZStack {
             if let piece {
                 let imageName = boardModel.pieceSet.assetName(for: piece)
@@ -1506,110 +1514,25 @@ private struct ChessPieceView: View {
         .frame(width: boardModel.size / 8, height: boardModel.size / 8)
         .contentShape(Rectangle())
         .offset(offset)
-        .onTapGesture(perform: onTapGesture)
+        .onTapGesture {
+            boardModel.activate(square: square)
+        }
         .gesture(dragGesture)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityLabel)
+        .accessibilityLabel(accessibilityState.label)
+        .accessibilityHint(accessibilityState.hint)
         .accessibilityIdentifier("ChessUI.square.\(coordinate)")
+        .accessibilityHidden(isMovingPiece)
+        .chessBoardAccessibilityTraits(accessibilityState)
+        .chessBoardAccessibilityAction(accessibilityState.isActivatable) {
+            announceForAccessibility(boardModel.activate(square: square))
+        }
     }
 
     private var coordinate: String {
-        let file = Character(UnicodeScalar(square.column + 97)!)
-        return "\(file)\(square.row + 1)"
+        square.coordinate
     }
 
-    private var accessibilityLabel: String {
-        guard let piece else {
-            return "Empty \(coordinate)"
-        }
-
-        let color = piece.color == .white ? "White" : "Black"
-        let kind: String
-        switch piece.kind {
-        case .king:
-            kind = "king"
-        case .queen:
-            kind = "queen"
-        case .rook:
-            kind = "rook"
-        case .bishop:
-            kind = "bishop"
-        case .knight:
-            kind = "knight"
-        case .pawn:
-            kind = "pawn"
-        }
-        return "\(color) \(kind) \(coordinate)"
-    }
-    
-    func onTapGesture() {
-        if boardModel.movingPiece != nil || boardModel.interactionMode == .readOnly {
-            return
-        }
-        
-        if let piece,
-           !boardModel.interactionMode.canInteract(with: piece, turn: boardModel.turn),
-           boardModel.selectedSquare == nil {
-            return
-        }
-        
-        if isSelected {
-            boardModel.selectedSquare = nil
-            boardModel.clearLegalMoveHighlights()
-        } else if piece != nil && boardModel.selectedSquare == nil {
-            boardModel.selectedSquare = isSelected ? nil: BoardSquare(row: square.row, column: square.column)
-            if boardModel.selectedSquare != nil {
-                boardModel.updateLegalMoveHighlights(for: BoardSquare(row: square.row, column: square.column))
-            }
-        } else if let selectedSquare = boardModel.selectedSquare {
-            let sourceRow = selectedSquare.row
-            let sourceColumn = selectedSquare.column
-            
-            let sourceSquare = "\(Character(UnicodeScalar(sourceColumn + 97)!))\(sourceRow + 1)"
-            let targetSquare = "\(Character(UnicodeScalar(square.column + 97)!))\(square.row + 1)"
-            
-            let coordinateMove = "\(sourceSquare)\(targetSquare)"
-            boardModel.deselect()
-            boardModel.clearLegalMoveHighlights()
-
-            guard let move = try? Move(string: coordinateMove) else {
-                return
-            }
-
-            let isLegal = boardModel.game.legalMoves.contains(move)
-            
-            guard let selectedPiece = boardModel.game.position.board[selectedSquare.row + selectedSquare.column * 8]
-            else { return }
-            
-            let requiresPromotionChoice = boardModel.requiresPromotionChoice(piece: selectedPiece, move: move)
-            
-            if !requiresPromotionChoice {
-                boardModel.reportMove(
-                    move,
-                    isLegal: isLegal,
-                    sourceSquare: sourceSquare,
-                    targetSquare: targetSquare,
-                    coordinateMove: coordinateMove
-                )
-            } else if ([PieceKind.queen, .rook, .bishop, .knight].contains { promotion in
-                boardModel.game.legalMoves.contains(Move(from: move.from, to: move.to, promotion: promotion))
-            }) {
-                boardModel.presentPromotionPicker(piece: selectedPiece,
-                                                  sourceSquare: sourceSquare,
-                                                  targetSquare: targetSquare,
-                                                  baseMove: move)
-            } else {
-                boardModel.reportMove(
-                    move,
-                    isLegal: isLegal,
-                    sourceSquare: sourceSquare,
-                    targetSquare: targetSquare,
-                    coordinateMove: coordinateMove
-                )
-            }
-        }
-    }
-    
     var dragGesture: some Gesture {
         DragGesture()
             .onChanged { value in
@@ -1724,6 +1647,35 @@ private struct ChessPieceView: View {
                 }
             }
     }
+}
+
+private extension View {
+    func chessBoardAccessibilityTraits(_ state: ChessBoardSquareAccessibilityState) -> some View {
+        self
+            .accessibilityAddTraits(state.isActivatable ? AccessibilityTraits.isButton : AccessibilityTraits())
+            .accessibilityAddTraits(state.isSelected ? AccessibilityTraits.isSelected : AccessibilityTraits())
+    }
+
+    @ViewBuilder
+    func chessBoardAccessibilityAction(_ isEnabled: Bool, action: @escaping () -> Void) -> some View {
+        if isEnabled {
+            accessibilityAction {
+                action()
+            }
+        } else {
+            self
+        }
+    }
+}
+
+private func announceForAccessibility(_ message: String?) {
+    guard let message, message.isEmpty == false else {
+        return
+    }
+
+    #if canImport(UIKit)
+    UIAccessibility.post(notification: .announcement, argument: message)
+    #endif
 }
 
 private struct PieceImageView: View {

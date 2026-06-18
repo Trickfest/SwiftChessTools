@@ -43,12 +43,12 @@ final class ChessWorkbenchUITests: XCTestCase {
     }
 
     func testBoardRendersExpectedStartingPosition() {
-        XCTAssertTrue(square("b7").label.contains("White pawn b7"))
-        XCTAssertTrue(square("d3").label.contains("White queen d3"))
-        XCTAssertTrue(square("d2").label.contains("White king d2"))
-        XCTAssertTrue(square("e7").label.contains("Black bishop e7"))
-        XCTAssertTrue(square("f7").label.contains("Black knight f7"))
-        XCTAssertTrue(square("f8").label.contains("Black king f8"))
+        XCTAssertTrue(square("b7").label.contains("White pawn, b7"))
+        XCTAssertTrue(square("d3").label.contains("White queen, d3"))
+        XCTAssertTrue(square("d2").label.contains("White king, d2"))
+        XCTAssertTrue(square("e7").label.contains("Black bishop, e7"))
+        XCTAssertTrue(square("f7").label.contains("Black knight, f7"))
+        XCTAssertTrue(square("f8").label.contains("Black king, f8"))
     }
 
     func testPieceSetPickerSelectsEveryBuiltInSet() {
@@ -188,7 +188,7 @@ final class ChessWorkbenchUITests: XCTestCase {
         for offset in offsets {
             moveQueenToD7(targetOffset: offset)
             waitForFEN(Self.queenD7FEN)
-            XCTAssertTrue(square("d7").label.contains("White queen d7"))
+            XCTAssertTrue(square("d7").label.contains("White queen, d7"))
             resetPosition()
         }
     }
@@ -197,7 +197,7 @@ final class ChessWorkbenchUITests: XCTestCase {
         moveQueenToD7()
 
         waitForFEN(Self.queenD7FEN)
-        XCTAssertTrue(square("d7").label.contains("White queen d7"))
+        XCTAssertTrue(square("d7").label.contains("White queen, d7"))
         assertExists(element("ChessUI.lastMove.d3"))
         assertExists(element("ChessUI.lastMove.d7"))
     }
@@ -294,8 +294,8 @@ final class ChessWorkbenchUITests: XCTestCase {
         tapSquare("e5")
 
         waitForFEN(Self.startingFEN)
-        XCTAssertTrue(square("d3").label.contains("White queen d3"))
-        XCTAssertTrue(square("e5").label.contains("Empty e5"))
+        XCTAssertTrue(square("d3").label.contains("White queen, d3"))
+        XCTAssertTrue(square("e5").label.contains("Empty, e5"))
     }
 
     func testShowD3MarkerDisplaysMarker() {
@@ -349,8 +349,8 @@ final class ChessWorkbenchUITests: XCTestCase {
 
         resetPosition()
 
-        XCTAssertTrue(square("d3").label.contains("White queen d3"))
-        XCTAssertTrue(square("d7").label.contains("Empty d7"))
+        XCTAssertTrue(square("d3").label.contains("White queen, d3"))
+        XCTAssertTrue(square("d7").label.contains("Empty, d7"))
     }
 
     private func moveQueenToD7(targetOffset: CGVector = CGVector(dx: 0.5, dy: 0.5)) {

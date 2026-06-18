@@ -477,18 +477,40 @@ external result markers. Those are app policy.
 ChessUI sets stable labels and identifiers for its reusable surfaces. These are
 useful for VoiceOver, UI tests, and app-level integration checks.
 
+`ChessBoardView` supports the same source-and-destination move flow through
+accessibility actions that it supports through taps:
+
+1. Activate a movable piece square to select it.
+2. Listen for the selected piece and legal destination announcement.
+3. Activate a destination square to report the move attempt through
+   `onMove(_:)`.
+4. If the move promotes a pawn, choose the promotion piece from the picker.
+
+ChessUI still does not apply the move for you. Accessibility activation reports
+the same `ChessBoardMoveAttempt` value as tap and drag gestures, so the app
+keeps ownership of validation policy, state mutation, engine replies, and
+surrounding UI.
+
 Board squares expose coordinate-based identifiers:
 
 ```text
 ChessUI.square.e4
 ```
 
-Square labels describe the visible contents, such as:
+Square labels describe the visible contents and interaction state, such as:
 
 ```text
-White pawn e4
-Empty e5
+White pawn, e2
+White pawn, e2, selected
+Empty, e4, legal destination
+Black pawn, d5, legal capture
+Black pawn, e7, not side to move
 ```
+
+Square hints describe the expected action, such as selecting a piece, moving to
+a legal destination, capturing, reporting an illegal attempt when configured, or
+clearing the current selection. Read-only boards remain accessible for
+inspection, but their squares do not expose move actions.
 
 Other useful identifiers include:
 
@@ -533,6 +555,7 @@ ChessUI provides:
 - Piece-set and board-theme selection.
 - Coordinate-label visibility.
 - Legal-move, hint, last-move, and app-supplied arrow annotations.
+- Board accessibility labels, hints, and square activation actions.
 - Promotion picker UI.
 - Evaluation bar rendering for caller-supplied values.
 - Move-list rendering for caller-supplied records.
