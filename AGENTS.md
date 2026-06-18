@@ -8,6 +8,8 @@ The package products are:
 
 - `ChessCore`: board state, pieces, moves, legal move generation, FEN, and SAN.
 - `ChessUI`: SwiftUI board and display components built on `ChessCore`.
+- `ChessUCI`: typed UCI command-formatting and engine-output parsing helpers
+  built on `ChessCore`.
 
 ## Scope Boundaries
 
@@ -17,6 +19,11 @@ choose moves, own game playback policy, or parse engine search streams.
 
 For evaluation UI specifically, apps should normalize engine output into
 White-positive `ChessEvaluation` values before passing them to ChessUI.
+
+`ChessUCI` may format UCI text sent to an engine and parse UCI text emitted by
+an engine, but it should not start or manage an engine process, decide engine
+option policy, sequence readiness, schedule searches, or own analysis lifecycle
+policy.
 
 `Examples/ChessWorkbench` is the package-local macOS manual workbench. Keep it
 thin and useful for exercising package APIs; do not move reusable behavior from

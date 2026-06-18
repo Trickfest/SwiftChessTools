@@ -5,6 +5,8 @@ notation, and SwiftUI board UI that can support multiple future apps.
 
 - `ChessCore`: core chess model, rules, and notation code.
 - `ChessUI`: reusable SwiftUI chessboard UI built on `ChessCore`.
+- `ChessUCI`: typed formatting and parsing helpers for UCI engine text, built
+  on `ChessCore`.
 
 ## Requirements
 
@@ -37,6 +39,7 @@ targets: [
         dependencies: [
             .product(name: "ChessCore", package: "SwiftChessTools"),
             .product(name: "ChessUI", package: "SwiftChessTools"),
+            .product(name: "ChessUCI", package: "SwiftChessTools"),
         ]
     ),
 ]
@@ -53,6 +56,7 @@ For local development in a sibling checkout, use a path dependency instead:
 ```swift
 .product(name: "ChessCore", package: "SwiftChessTools")
 .product(name: "ChessUI", package: "SwiftChessTools")
+.product(name: "ChessUCI", package: "SwiftChessTools")
 ```
 
 ## ChessCore Quick Start
@@ -144,6 +148,67 @@ For a ChessCore-only walkthrough, see
 [Docs/ChessCoreGlossary.md](Docs/ChessCoreGlossary.md). For a runnable
 ChessCore-only command-line example, see
 [Examples/ChessCoreRecipes](Examples/ChessCoreRecipes).
+
+## ChessUCI Quick Start
+
+Use `ChessUCI` when you need to format text sent to a UCI-compatible engine or
+parse text emitted by one, without putting engine-process management, Stockfish
+dependencies, or UI code inside your reusable chess layer:
+
+```swift
+import ChessCore
+import ChessUCI
+
+let commands: [UCICommand] = [
+    .uci,
+    .isReady,
+    .newGame,
+    .position(.fen(Position.standardStartingFEN)),
+    .go(.depth(12)),
+]
+
+let textToSend = commands.map(\.string)
+
+let parser = UCIParser()
+
+switch parser.parse("info depth 14 multipv 1 score cp 85 pv e2e4 e7e5") {
+case .id(let id):
+    print(id.kind, id.value)
+
+case .option(let option):
+    print(option.name, option.type)
+
+case .uciOK, .readyOK:
+    print("engine state marker")
+
+case .copyProtection(let status):
+    print(status)
+
+case .registration(let status):
+    print(status)
+
+case .info(let info):
+    let whiteScore = info.whiteRelativeScore(sideToMove: .white)
+    let line = info.principalVariation.map(\.description)
+    print(whiteScore as Any, line)
+
+case .bestMove(let bestMove):
+    print(bestMove.move as Any)
+
+case .unknown:
+    break
+}
+```
+
+UCI centipawn and mate scores are reported from the side-to-move perspective
+for the searched position. Use `whiteRelativeScore(sideToMove:)` before handing
+the value to `ChessUI`, whose evaluation bar expects White-positive scores.
+
+For a fuller walkthrough of command formatting, engine identification, option
+declarations, readiness/status markers, best moves, ponder moves, `info` lines,
+MultiPV metadata, principal variations, score bounds, mate scores, malformed
+output, and scope boundaries, see
+[Docs/ChessUCITutorial.md](Docs/ChessUCITutorial.md).
 
 ## ChessUI Quick Start
 
@@ -259,9 +324,10 @@ ChessEvaluationBar(evaluation: .mate(moves: 3, side: .white))
 ```
 
 Apps that consume UCI engines such as Stockfish should parse and normalize
-engine output before passing values into ChessUI. ChessUI only renders the
-current value; it does not start an engine, run analysis, choose moves, or
-interpret search output.
+engine output before passing values into ChessUI. `ChessUCI` can format UCI
+input, parse UCI output, and normalize scores to White-positive values; ChessUI
+only renders the current value and does not start an engine, run analysis,
+choose moves, or interpret search output.
 
 ### Game Status
 
@@ -376,6 +442,10 @@ automatically stop presenting the removed theme.
 SwiftChessTools provides:
 
 - Board state, pieces, moves, legal move generation, FEN, SAN, and PGN helpers.
+- UCI command-formatting helpers for engine input, plus typed line-parsing
+  helpers for engine identification, option declarations, readiness/status
+  markers, best moves, search info, score bounds, MultiPV indexes, principal
+  variations, refutations, and current lines.
 - A reusable SwiftUI chessboard with selectable piece assets, selectable board
   themes, coordinate-label visibility, move interaction, highlighting, hints,
   app-supplied arrows, promotion UI, and board perspective support.
@@ -389,6 +459,8 @@ SwiftChessTools provides:
 SwiftChessTools does not provide:
 
 - A chess engine, AI opponent, Stockfish integration, or analysis pipeline.
+- UCI process management, engine lifecycle, engine option policy, readiness
+  sequencing, or asynchronous search orchestration.
 - Opening books, clocks, online play, accounts, or sync.
 
 ## Manual Workbench

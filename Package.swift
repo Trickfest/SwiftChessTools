@@ -27,6 +27,10 @@ let package = Package(
             name: "ChessUI",
             targets: ["ChessUI"]
         ),
+        .library(
+            name: "ChessUCI",
+            targets: ["ChessUCI"]
+        ),
     ],
     targets: [
         .target(
@@ -38,6 +42,10 @@ let package = Package(
             resources: [
                 .process("Assets/Pieces.xcassets"),
             ]
+        ),
+        .target(
+            name: "ChessUCI",
+            dependencies: ["ChessCore"]
         ),
         .testTarget(
             name: "ChessCoreTests",
@@ -52,6 +60,10 @@ let package = Package(
             resources: [
                 .process("SnapshotReferences"),
             ]
+        ),
+        .testTarget(
+            name: "ChessUCITests",
+            dependencies: ["ChessCore", "ChessUCI"]
         ),
     ],
     swiftLanguageModes: [.v5, .v6]

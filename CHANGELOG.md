@@ -9,6 +9,18 @@ release. Replace `TBD` with the release date when a release is tagged.
 
 ### Added
 
+- Added the `ChessUCI` product with typed command formatting for UCI engine
+  input and typed parsing for UCI handshake, option, readiness, status,
+  `bestmove`, and `info` output, including ponder moves, search metadata,
+  score bounds, MultiPV indexes, principal variations, refutations, current
+  lines, tablebase and Shredderbase hits, CPU load, and White-positive score
+  normalization helpers.
+- Added `Docs/ChessUCITutorial.md` and parser/formatter-heavy `ChessUCITests`
+  coverage for engine commands, registration commands, position commands,
+  search limits, engine identification, option declarations, readiness/status
+  markers, best moves, promotions, `(none)`, `0000`, official `info` fields,
+  centipawn and mate scores, malformed output, unknown lines, score
+  normalization, and public construction APIs.
 - Added `Docs/ChessUITutorial.md` as the public ChessUI walkthrough, covering
   board model ownership, move callbacks, promotion handling, perspective,
   highlights, read-only boards, piece and theme pickers, evaluation bars, move
