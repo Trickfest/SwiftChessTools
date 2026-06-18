@@ -94,6 +94,21 @@ import ChessUI
     }
 }
 
+@Test func coordinateLabelsCanBeConfigured() {
+    let model = ChessBoardModel(fen: initialFEN)
+
+    #expect(model.showsCoordinateLabels)
+
+    model.showsCoordinateLabels = false
+    #expect(model.showsCoordinateLabels == false)
+
+    let hiddenLabelsModel = ChessBoardModel(
+        fen: initialFEN,
+        showsCoordinateLabels: false
+    )
+    #expect(hiddenLabelsModel.showsCoordinateLabels == false)
+}
+
 @Test func setFENWithAnimatedMoveRecordsFeedback() {
     let model = ChessBoardModel(fen: initialFEN)
     let move = try! Move(string: "e2e4")
@@ -224,6 +239,7 @@ import ChessUI
         fen: initialFEN,
         perspective: .black,
         boardTheme: .blueStudy,
+        showsCoordinateLabels: false,
         interactionMode: .freeSetup,
         showsLegalMoveHighlights: false,
         moveAnimationDuration: -2,
@@ -233,6 +249,7 @@ import ChessUI
     #expect(model.perspective == .black)
     #expect(model.shouldFlipBoard)
     #expect(model.boardTheme == .blueStudy)
+    #expect(model.showsCoordinateLabels == false)
     #expect(model.interactionMode == .freeSetup)
     #expect(model.showsLegalMoveHighlights == false)
     #expect(model.moveAnimationDuration == 0)

@@ -182,6 +182,13 @@ The board keeps coordinates logical after flipping. A tap or drag from `e2` to
 Use `shouldFlipBoard` only when you are building adjacent UI that needs to align
 with the board's orientation.
 
+Rank and file coordinate labels are shown by default. Hide them for cleaner
+diagrams, training modes, or app surfaces that provide their own coordinates:
+
+```swift
+boardModel.showsCoordinateLabels = false
+```
+
 ## 7. Highlights And Hints
 
 Legal-move highlights are enabled by default:
@@ -465,8 +472,8 @@ open Examples/ChessWorkbench/ChessWorkbench.xcodeproj
 ```
 
 Run the `ChessWorkbench` scheme on My Mac. The app exercises board rendering,
-FEN editing, move application, promotion UI, hints, piece sets, board themes,
-move lists, evaluation bars, and game status display.
+FEN editing, move application, promotion UI, hints, coordinate-label visibility,
+piece sets, board themes, move lists, evaluation bars, and game status display.
 
 The workbench is intentionally thin. Reusable behavior belongs in
 `Sources/ChessUI` or `Sources/ChessCore`, not in the example app.
@@ -478,6 +485,7 @@ ChessUI provides:
 - A reusable SwiftUI board.
 - Board interaction callbacks.
 - Piece-set and board-theme selection.
+- Coordinate-label visibility.
 - Legal-move, hint, and last-move highlights.
 - Promotion picker UI.
 - Evaluation bar rendering for caller-supplied values.

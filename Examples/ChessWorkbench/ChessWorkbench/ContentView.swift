@@ -32,6 +32,7 @@ private struct WorkbenchView: View {
     @State private var didCopyFEN = false
     @State private var pieceSet = ChessPieceSet.artDecoMonochrome
     @State private var boardTheme = ChessBoardTheme.artDecoMonochrome
+    @State private var showsCoordinateLabels = true
     @State private var evaluationSample = WorkbenchEvaluationSample.whiteEdge
     @State private var evaluationPlacement = WorkbenchEvaluationPlacement.leading
     @State private var evaluationWhiteSide = ChessEvaluationBarWhiteSide.bottom
@@ -120,6 +121,14 @@ private struct WorkbenchView: View {
         ChessBoardView(model: boardModel)
             .onMove { attempt in
                 handleBoardMove(move: attempt.move, isLegal: attempt.isLegal)
+            }
+            .overlay(alignment: .topLeading) {
+                Text("Coordinate labels \(showsCoordinateLabels ? "Shown" : "Hidden")")
+                    .foregroundStyle(.clear)
+                    .font(.caption2)
+                    .frame(width: 1, height: 1)
+                    .accessibilityIdentifier("Workbench.coordinateLabelsState")
+                    .allowsHitTesting(false)
             }
     }
 
@@ -417,6 +426,14 @@ private struct WorkbenchView: View {
                     .toggleStyle(.checkbox)
                     .accessibilityIdentifier("Workbench.moveListScrollBarsToggle")
                     .accessibilityValue(showsMoveListScrollIndicators ? "On" : "Off")
+
+                Toggle("Coordinates", isOn: $showsCoordinateLabels)
+                    .toggleStyle(.checkbox)
+                    .onChange(of: showsCoordinateLabels) { _, newValue in
+                        boardModel.showsCoordinateLabels = newValue
+                    }
+                    .accessibilityIdentifier("Workbench.coordinateLabelsToggle")
+                    .accessibilityValue(showsCoordinateLabels ? "On" : "Off")
 
                 HStack {
                     Text("Board size")

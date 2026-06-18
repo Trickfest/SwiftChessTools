@@ -19,6 +19,8 @@ release. Replace `TBD` with the release date when a release is tagged.
 - Added `ChessGameStatusView` and `ChessGameStatusDisplayState` so apps can
   render caller-supplied `GameStatus` values and optional draw-claim actions
   without moving game-state ownership into ChessUI.
+- Added `ChessBoardModel.showsCoordinateLabels` so apps can show or hide board
+  rank and file coordinate labels.
 - Added selectable built-in ChessUI piece sets: Sashite Merida,
   Art Deco Monochrome, Brutalist Monochrome, Origami Monochrome,
   Circuit Board Monochrome, Blueprint Monochrome, and Sports Monochrome.
@@ -167,6 +169,8 @@ release. Replace `TBD` with the release date when a release is tagged.
 
 ### Fixed
 
+- Adjusted ChessUI board coordinate-label placement so rank numbers sit
+  slightly lower and file letters sit slightly farther from the square edge.
 - Fixed SAN serialization for en-passant captures so PGN import/export can
   round trip en-passant SAN such as `exd6`.
 - Fixed SAN parsing normalization so pawn-file SAN such as `bxc5` remains

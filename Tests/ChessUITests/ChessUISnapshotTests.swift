@@ -33,6 +33,13 @@ import ChessUI
 }
 
 @MainActor
+@Test func hiddenCoordinateLabelsSnapshot() throws {
+    try assertBoardSnapshot(named: "coordinate-labels-hidden") {
+        ChessBoardView(model: ChessBoardModel(fen: initialFEN, showsCoordinateLabels: false))
+    }
+}
+
+@MainActor
 @Test func selectedPieceSnapshot() throws {
     let model = ChessBoardModel(fen: initialFEN)
     model.selectedSquare = BoardSquare(row: 1, column: 4)

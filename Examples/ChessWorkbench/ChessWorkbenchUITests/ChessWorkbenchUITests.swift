@@ -90,17 +90,33 @@ final class ChessWorkbenchUITests: XCTestCase {
         let boardPicker = element("Workbench.boardThemePicker")
         let moveListPicker = element("Workbench.moveListLayoutPicker")
         let scrollBarsToggle = element("Workbench.moveListScrollBarsToggle")
+        let coordinateLabelsToggle = element("Workbench.coordinateLabelsToggle")
 
         assertExists(piecePicker)
         assertExists(boardPicker)
         assertExists(moveListPicker)
         assertExists(scrollBarsToggle)
+        assertExists(coordinateLabelsToggle)
         XCTAssertEqual(piecePicker.frame.minX, boardPicker.frame.minX, accuracy: 1)
         XCTAssertEqual(piecePicker.frame.width, boardPicker.frame.width, accuracy: 1)
         XCTAssertEqual(piecePicker.frame.height, boardPicker.frame.height, accuracy: 1)
         XCTAssertEqual(piecePicker.frame.minX, moveListPicker.frame.minX, accuracy: 1)
         XCTAssertEqual(piecePicker.frame.width, moveListPicker.frame.width, accuracy: 1)
         XCTAssertEqual(piecePicker.frame.height, moveListPicker.frame.height, accuracy: 1)
+    }
+
+    func testCoordinateLabelsTogglePreservesBoardInteraction() {
+        let toggle = element("Workbench.coordinateLabelsToggle")
+        let state = element("Workbench.coordinateLabelsState")
+        assertExists(toggle)
+        assertExists(state)
+
+        waitForText("Coordinate labels Shown", in: state)
+        toggle.click()
+        waitForText("Coordinate labels Hidden", in: state)
+
+        moveQueenToD7()
+        waitForFEN(Self.queenD7FEN)
     }
 
     func testEvaluationBarControlsDemoSamplesAndPlacement() {

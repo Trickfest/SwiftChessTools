@@ -172,6 +172,9 @@ public class ChessBoardModel {
     /// Piece artwork used by the board and promotion picker.
     public var pieceSet: ChessPieceSet = .sashiteMerida
 
+    /// Controls whether rank and file coordinate labels render on the board.
+    public var showsCoordinateLabels: Bool = true
+
     /// Side displayed at the bottom of the board.
     public var perspective: PieceColor
 
@@ -256,6 +259,8 @@ public class ChessBoardModel {
     ///   - perspective: Side displayed at the bottom of the board.
     ///   - boardTheme: Board styling used for squares, labels, and markers.
     ///   - pieceSet: Built-in piece artwork used by the board.
+    ///   - showsCoordinateLabels: Shows rank and file coordinate labels on
+    ///     the board.
     ///   - interactionMode: User-interaction policy for tap and drag move
     ///     gestures.
     ///   - showsLegalMoveHighlights: Shows legal destination markers while a piece
@@ -268,6 +273,7 @@ public class ChessBoardModel {
                 perspective: PieceColor = .white,
                 boardTheme: ChessBoardTheme = .artDecoMonochrome,
                 pieceSet: ChessPieceSet = .sashiteMerida,
+                showsCoordinateLabels: Bool = true,
                 interactionMode: ChessBoardInteractionMode = .reportsIllegalAttempts,
                 showsLegalMoveHighlights: Bool = true,
                 moveAnimationDuration: Double = 0.45,
@@ -283,6 +289,7 @@ public class ChessBoardModel {
         self.perspective = perspective
         self.boardTheme = boardTheme
         self.pieceSet = pieceSet
+        self.showsCoordinateLabels = showsCoordinateLabels
         self.interactionMode = interactionMode
         self.showsLegalMoveHighlights = showsLegalMoveHighlights
         self.moveAnimationDuration = max(0, moveAnimationDuration)
@@ -893,8 +900,10 @@ public struct ChessBoardView: View {
                 backgroundView
                 lastMoveHighlightsView
                     .allowsHitTesting(false)
-                labelsView
-                    .allowsHitTesting(false)
+                if model.showsCoordinateLabels {
+                    labelsView
+                        .allowsHitTesting(false)
+                }
                 squaresView
                 piecesView
                 legalMoveHighlightsView
@@ -1077,6 +1086,7 @@ public struct ChessBoardView: View {
         let displayRow = boardModel.shouldFlipBoard ? (7 - row) : row
         let labelSize = boardModel.size / 32
         let squareSize = boardModel.size / 8
+        let rankLabelDownshift = max(1, labelSize * 0.08)
         
         return Text("\(displayRow + 1)")
             .font(.system(size: labelSize))
@@ -1084,7 +1094,9 @@ public struct ChessBoardView: View {
             .frame(width: labelSize, height: squareSize, alignment: .center)
             .position(
                 x: labelSize / 2 + 2,
-                y: boardModel.size - (CGFloat(row) * squareSize + squareSize - 10)
+                y: boardModel.size
+                    - (CGFloat(row) * squareSize + squareSize - 10)
+                    + rankLabelDownshift
             )
     }
     
@@ -1092,13 +1104,16 @@ public struct ChessBoardView: View {
         let displayColumn = boardModel.shouldFlipBoard ? 7 - column : column
         let labelSize = boardModel.size / 32
         let squareSize = boardModel.size / 8
+        let fileLabelLeftShift = max(0.5, labelSize * 0.04)
         
         return Text(["a", "b", "c", "d", "e", "f", "g", "h"][displayColumn])
             .font(.system(size: labelSize))
             .foregroundColor(boardModel.boardTheme.label)
             .frame(width: squareSize, height: labelSize, alignment: .center)
             .position(
-                x: (CGFloat(column) * squareSize + squareSize) - 8,
+                x: (CGFloat(column) * squareSize + squareSize)
+                    - 8
+                    - fileLabelLeftShift,
                 y: (boardModel.size - labelSize / 2) - 4
             )
     }

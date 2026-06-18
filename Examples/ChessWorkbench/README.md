@@ -20,8 +20,8 @@ For the public ChessUI walkthrough, see
 - Updating the FEN field after board moves.
 - Exercising the default ChessUI board interaction mode, where the board
   reports move attempts and the workbench decides whether to apply them.
-- Piece-set selection, board-theme selection, board sizing, hints, reset
-  behavior, and the promotion picker UI.
+- Piece-set selection, board-theme selection, coordinate-label visibility,
+  board sizing, hints, reset behavior, and the promotion picker UI.
 - Fixed-size, scrolling `ChessMoveListView` display for legal moves made on the
   board, including vertical and horizontal layouts and scroll-bar visibility.
 - `ChessGameStatusView` display for side-to-move, terminal statuses, and
@@ -98,15 +98,16 @@ Scripts/test-all.sh
    re-renders.
 9. Select each built-in board theme from the `Board` menu and confirm the board
    re-renders.
-10. Confirm the `Status` section shows the side to move.
-11. Paste a claimable draw FEN such as
+10. Toggle `Coordinates` and confirm the board remains playable.
+11. Confirm the `Status` section shows the side to move.
+12. Paste a claimable draw FEN such as
    `4k3/8/8/8/8/8/Q7/4K3 w - - 100 1`, claim the draw, and confirm the
    status changes to a draw.
-12. Change the evaluation sample and confirm the evaluation bar and status text
+13. Change the evaluation sample and confirm the evaluation bar and status text
    update.
-13. Change the evaluation placement and White-side controls and confirm the bar
+14. Change the evaluation placement and White-side controls and confirm the bar
    moves between the board edges.
-14. Try `Reset`, `Hint`, and `Show Promotion Picker`.
+15. Try `Reset`, `Hint`, and `Show Promotion Picker`.
 
 Use this example app when you need a small, disposable workbench for future
 `SwiftChessTools` UI or rules changes.

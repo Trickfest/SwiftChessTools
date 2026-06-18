@@ -210,6 +210,9 @@ struct BoardDemoView: View {
 ChessUI includes runtime registries for bundled piece sets and board themes.
 Use `ChessPieceSet.availableSets` and `ChessBoardTheme.availableThemes` to build
 pickers for the options bundled by the current package version.
+Rank and file coordinate labels are shown by default; set
+`ChessBoardModel.showsCoordinateLabels` to `false` for diagrams, training modes,
+or app surfaces that provide their own coordinates.
 Use `ChessBoardModel.interactionMode` to choose whether the board is read-only,
 reports only legal moves, reports illegal attempts, or acts as a free setup
 surface where either side's pieces can be dragged.
@@ -357,8 +360,8 @@ SwiftChessTools provides:
 
 - Board state, pieces, moves, legal move generation, FEN, SAN, and PGN helpers.
 - A reusable SwiftUI chessboard with selectable piece assets, selectable board
-  themes, move interaction, highlighting, hints, promotion UI, and board
-  perspective support.
+  themes, coordinate-label visibility, move interaction, highlighting, hints,
+  promotion UI, and board perspective support.
 - A standalone SwiftUI evaluation bar for caller-supplied centipawn, mate, or
   unavailable evaluation states.
 - A compact SwiftUI move list for caller-supplied SAN move records.
@@ -377,8 +380,8 @@ SwiftChessTools does not provide:
 `ChessCore` and `ChessUI` from inside this package. It renders a real
 `ChessBoardView`, lets you edit the current FEN, applies legal board moves, and
 exposes quick controls for reset, hints, board sizing, piece-set selection,
-board-theme selection, move-list display, game-status display, evaluation-bar
-samples, and promotion UI.
+board-theme selection, coordinate-label visibility, move-list display,
+game-status display, evaluation-bar samples, and promotion UI.
 
 Open the app in Xcode:
 
