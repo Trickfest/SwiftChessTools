@@ -152,8 +152,9 @@ your app decides whether to apply them, update state, ask an engine for a
 reply, or reject the move.
 
 For a fuller walkthrough of model ownership, move handling, promotion,
-perspective, highlighting, read-only boards, pickers, evaluation bars, move
-lists, status display, accessibility, and scope boundaries, see
+perspective, highlighting, app-supplied arrows, read-only boards, pickers,
+evaluation bars, move lists, status display, accessibility, and scope
+boundaries, see
 [Docs/ChessUITutorial.md](Docs/ChessUITutorial.md).
 
 ![ChessBoardView rendering a starting chess position](Docs/Images/chessboard-starting-position.png)
@@ -213,6 +214,18 @@ pickers for the options bundled by the current package version.
 Rank and file coordinate labels are shown by default; set
 `ChessBoardModel.showsCoordinateLabels` to `false` for diagrams, training modes,
 or app surfaces that provide their own coordinates.
+Use `ChessBoardModel.arrows` for display-only board annotations such as
+engine suggestions or study arrows:
+
+```swift
+model.arrows = [
+    ChessBoardArrow(from: "e2", to: "e4", style: .primarySuggestion),
+    ChessBoardArrow(from: "d2", to: "d4", style: .secondarySuggestion),
+].compactMap { $0 }
+```
+
+ChessUI renders those arrows, but it does not analyze the position, rank move
+lines, or talk to an engine.
 Use `ChessBoardModel.interactionMode` to choose whether the board is read-only,
 reports only legal moves, reports illegal attempts, or acts as a free setup
 surface where either side's pieces can be dragged.
@@ -361,7 +374,7 @@ SwiftChessTools provides:
 - Board state, pieces, moves, legal move generation, FEN, SAN, and PGN helpers.
 - A reusable SwiftUI chessboard with selectable piece assets, selectable board
   themes, coordinate-label visibility, move interaction, highlighting, hints,
-  promotion UI, and board perspective support.
+  app-supplied arrows, promotion UI, and board perspective support.
 - A standalone SwiftUI evaluation bar for caller-supplied centipawn, mate, or
   unavailable evaluation states.
 - A compact SwiftUI move list for caller-supplied SAN move records.
@@ -380,8 +393,9 @@ SwiftChessTools does not provide:
 `ChessCore` and `ChessUI` from inside this package. It renders a real
 `ChessBoardView`, lets you edit the current FEN, applies legal board moves, and
 exposes quick controls for reset, hints, board sizing, piece-set selection,
-board-theme selection, coordinate-label visibility, move-list display,
-game-status display, evaluation-bar samples, and promotion UI.
+board-theme selection, coordinate-label visibility, app-supplied arrows,
+move-list display, game-status display, evaluation-bar samples, and promotion
+UI.
 
 Open the app in Xcode:
 
@@ -411,7 +425,8 @@ Manual smoke test:
 5. Confirm the move list records the move in SAN.
 6. Confirm the status display updates the side to move.
 7. Change the evaluation value, placement, and White side controls.
-8. Try `Reset`, `Hint`, and `Show Promotion Picker`.
+8. Try `Show Best Arrow`, `Show Top Three`, and `Clear Arrows`.
+9. Try `Reset`, `Hint`, and `Show Promotion Picker`.
 
 ## Testing
 

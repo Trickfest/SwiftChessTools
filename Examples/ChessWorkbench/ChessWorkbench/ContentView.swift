@@ -23,6 +23,17 @@ struct ContentView: View {
 
 private struct WorkbenchView: View {
     private static let startingPosition = "5k2/1P2bn2/8/8/8/3Q4/3K4/8 w - - 0 1"
+    private static let bestArrow = ChessBoardArrow(
+        from: "d3",
+        to: "d7",
+        style: .primarySuggestion,
+        label: "Primary suggestion"
+    )!
+    private static let topThreeArrows = [
+        ChessBoardArrow(from: "d3", to: "d7", style: .primarySuggestion, label: "Primary suggestion"),
+        ChessBoardArrow(from: "d3", to: "h7", style: .secondarySuggestion, label: "Secondary suggestion"),
+        ChessBoardArrow(from: "b7", to: "b8", style: .tertiarySuggestion, label: "Tertiary suggestion"),
+    ].compactMap { $0 }
     private let moveRecordBuilder = ChessMoveRecordBuilder()
 
     @State private var showError = false
@@ -307,8 +318,40 @@ private struct WorkbenchView: View {
 
                 Button {
                     withAnimation {
+                        boardModel.arrows = [Self.bestArrow]
+                    }
+                } label: {
+                    Label("Show Best Arrow", systemImage: "arrow.up.right")
+                }
+                .buttonStyle(WorkbenchButtonStyle(isProminent: boardModel.arrows.count == 1))
+                .accessibilityIdentifier("Workbench.showBestArrow")
+
+                Button {
+                    withAnimation {
+                        boardModel.arrows = Self.topThreeArrows
+                    }
+                } label: {
+                    Label("Show Top Three", systemImage: "list.number")
+                }
+                .buttonStyle(WorkbenchButtonStyle(isProminent: boardModel.arrows.count > 1))
+                .accessibilityIdentifier("Workbench.showTopThreeArrows")
+
+                Button {
+                    withAnimation {
+                        boardModel.clearArrows()
+                    }
+                } label: {
+                    Label("Clear Arrows", systemImage: "xmark.circle")
+                }
+                .disabled(boardModel.arrows.isEmpty)
+                .buttonStyle(WorkbenchButtonStyle())
+                .accessibilityIdentifier("Workbench.clearArrows")
+
+                Button {
+                    withAnimation {
                         fen = Self.startingPosition
                         boardModel.setFEN(Self.startingPosition)
+                        boardModel.clearArrows()
                         clearMoveRecords()
                     }
                 } label: {
@@ -568,6 +611,7 @@ private struct WorkbenchView: View {
         showError = false
         errorMessage = ""
         boardModel.setFEN(newValue)
+        boardModel.clearArrows()
         clearMoveRecords()
     }
 
@@ -589,6 +633,7 @@ private struct WorkbenchView: View {
             FENSerializer().fen(from: boardModel.game.position),
             animatedMove: move
         )
+        boardModel.clearArrows()
     }
 
     private func claimDraw(_ claim: GameDrawClaim) {

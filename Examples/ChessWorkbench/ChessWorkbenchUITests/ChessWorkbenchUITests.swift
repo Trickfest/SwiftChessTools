@@ -304,6 +304,21 @@ final class ChessWorkbenchUITests: XCTestCase {
         assertExists(element("ChessUI.hint.d3"))
     }
 
+    func testArrowControlsRenderAndClearBoardArrows() {
+        app.buttons["Workbench.showBestArrow"].tap()
+        assertExists(element("ChessUI.arrow.d3.d7"))
+
+        app.buttons["Workbench.showTopThreeArrows"].tap()
+        assertExists(element("ChessUI.arrow.d3.d7"))
+        assertExists(element("ChessUI.arrow.d3.h7"))
+        assertExists(element("ChessUI.arrow.b7.b8"))
+
+        app.buttons["Workbench.clearArrows"].tap()
+        waitForNonExistence(element("ChessUI.arrow.d3.d7"))
+        waitForNonExistence(element("ChessUI.arrow.d3.h7"))
+        waitForNonExistence(element("ChessUI.arrow.b7.b8"))
+    }
+
     func testShowPromotionDisplaysPromotionChoices() {
         app.buttons["Workbench.showPromotion"].tap()
 
@@ -476,6 +491,26 @@ final class ChessWorkbenchUITests: XCTestCase {
             }
 
             return element.exists && element.isHittable
+        }
+
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
+        XCTAssertEqual(result, .completed, message, file: file, line: line)
+    }
+
+    private func waitForNonExistence(
+        _ element: XCUIElement,
+        timeout: TimeInterval = 2,
+        message: String = "Expected element not to exist",
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let predicate = NSPredicate { element, _ in
+            guard let element = element as? XCUIElement else {
+                return false
+            }
+
+            return !element.exists
         }
 
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)

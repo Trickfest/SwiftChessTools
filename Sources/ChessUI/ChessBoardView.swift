@@ -106,7 +106,7 @@ public enum ChessBoardInteractionMode: String, CaseIterable, Identifiable, Senda
 }
 
 /// A zero-based board square used by ChessUI state and highlighting APIs.
-public struct BoardSquare: Identifiable, Hashable {
+public struct BoardSquare: Identifiable, Hashable, Sendable {
     /// Zero-based rank index, where `0` is rank 1.
     public var row: Int
 
@@ -193,6 +193,9 @@ public class ChessBoardModel {
     /// Squares currently highlighted as hints.
     public var hintedSquares: Set<BoardSquare> = []
 
+    /// Arrows currently rendered over the board.
+    public var arrows: [ChessBoardArrow] = []
+
     /// Controls whether selecting or dragging a piece highlights legal
     /// destinations.
     public var showsLegalMoveHighlights: Bool = true
@@ -261,6 +264,7 @@ public class ChessBoardModel {
     ///   - pieceSet: Built-in piece artwork used by the board.
     ///   - showsCoordinateLabels: Shows rank and file coordinate labels on
     ///     the board.
+    ///   - arrows: App-supplied display arrows rendered over the board.
     ///   - interactionMode: User-interaction policy for tap and drag move
     ///     gestures.
     ///   - showsLegalMoveHighlights: Shows legal destination markers while a piece
@@ -274,6 +278,7 @@ public class ChessBoardModel {
                 boardTheme: ChessBoardTheme = .artDecoMonochrome,
                 pieceSet: ChessPieceSet = .sashiteMerida,
                 showsCoordinateLabels: Bool = true,
+                arrows: [ChessBoardArrow] = [],
                 interactionMode: ChessBoardInteractionMode = .reportsIllegalAttempts,
                 showsLegalMoveHighlights: Bool = true,
                 moveAnimationDuration: Double = 0.45,
@@ -290,6 +295,7 @@ public class ChessBoardModel {
         self.boardTheme = boardTheme
         self.pieceSet = pieceSet
         self.showsCoordinateLabels = showsCoordinateLabels
+        self.arrows = arrows
         self.interactionMode = interactionMode
         self.showsLegalMoveHighlights = showsLegalMoveHighlights
         self.moveAnimationDuration = max(0, moveAnimationDuration)
@@ -418,6 +424,11 @@ public class ChessBoardModel {
     
     public func clearHint() {
         hintedSquares.removeAll()
+    }
+
+    /// Clears all app-supplied board arrows.
+    public func clearArrows() {
+        arrows.removeAll()
     }
     
     @MainActor
@@ -905,6 +916,8 @@ public struct ChessBoardView: View {
                         .allowsHitTesting(false)
                 }
                 squaresView
+                arrowsView
+                    .allowsHitTesting(false)
                 piecesView
                 legalMoveHighlightsView
                     .allowsHitTesting(false)
@@ -1169,6 +1182,27 @@ public struct ChessBoardView: View {
         }
     }
 
+    var arrowsView: some View {
+        ZStack {
+            ForEach(Array(boardModel.arrows.enumerated()), id: \.offset) { _, arrow in
+                if isOnBoard(arrow.from),
+                   isOnBoard(arrow.to),
+                   arrow.from != arrow.to
+                {
+                    ChessBoardArrowView(
+                        arrow: arrow,
+                        start: position(for: arrow.from),
+                        end: position(for: arrow.to),
+                        squareSize: boardModel.size / 8
+                    )
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(accessibilityLabel(for: arrow))
+                    .accessibilityIdentifier("ChessUI.arrow.\(coordinate(for: arrow.from)).\(coordinate(for: arrow.to))")
+                }
+            }
+        }
+    }
+
     private func position(for square: BoardSquare) -> CGPoint {
         CGPoint(
             x: boardModel.size / 16 + boardModel.size / 8 * CGFloat(boardModel.shouldFlipBoard ? 7 - square.column : square.column),
@@ -1180,11 +1214,101 @@ public struct ChessBoardView: View {
         let file = Character(UnicodeScalar(square.column + 97)!)
         return "\(file)\(square.row + 1)"
     }
+
+    private func isOnBoard(_ square: BoardSquare) -> Bool {
+        (0...7).contains(square.row) && (0...7).contains(square.column)
+    }
+
+    private func accessibilityLabel(for arrow: ChessBoardArrow) -> String {
+        arrow.label ?? "Arrow \(coordinate(for: arrow.from)) to \(coordinate(for: arrow.to))"
+    }
     
     /// Registers a callback for attempted board moves.
     public func onMove(_ callback: @escaping ChessBoardMoveHandler) -> ChessBoardView {
         boardModel.onMove = callback
         return self
+    }
+}
+
+private struct ChessBoardArrowView: View {
+    var arrow: ChessBoardArrow
+    var start: CGPoint
+    var end: CGPoint
+    var squareSize: CGFloat
+
+    var body: some View {
+        if let geometry {
+            ZStack {
+                Path { path in
+                    path.move(to: geometry.lineStart)
+                    path.addLine(to: geometry.lineEnd)
+                }
+                .stroke(
+                    arrow.style.color.opacity(arrow.style.opacity),
+                    style: StrokeStyle(
+                        lineWidth: geometry.lineWidth,
+                        lineCap: .round,
+                        lineJoin: .round
+                    )
+                )
+
+                Path { path in
+                    path.move(to: end)
+                    path.addLine(to: geometry.headBaseA)
+                    path.addLine(to: geometry.headBaseB)
+                    path.closeSubpath()
+                }
+                .fill(arrow.style.color.opacity(arrow.style.opacity))
+            }
+        }
+    }
+
+    private var geometry: ArrowGeometry? {
+        let dx = end.x - start.x
+        let dy = end.y - start.y
+        let length = hypot(dx, dy)
+        guard length > 1 else { return nil }
+
+        let unitX = dx / length
+        let unitY = dy / length
+        let lineWidth = max(1, min(arrow.style.lineWidth, squareSize * 0.28))
+        let requestedHeadLength = max(squareSize * 0.22, lineWidth * 2.4)
+        let headLength = min(requestedHeadLength, length * 0.45)
+        let halfHeadWidth = headLength * 0.42
+        let baseCenter = CGPoint(
+            x: end.x - unitX * headLength,
+            y: end.y - unitY * headLength
+        )
+        let perpendicularX = -unitY
+        let perpendicularY = unitX
+
+        return ArrowGeometry(
+            lineStart: CGPoint(
+                x: start.x + unitX * lineWidth * 0.5,
+                y: start.y + unitY * lineWidth * 0.5
+            ),
+            lineEnd: CGPoint(
+                x: end.x - unitX * headLength * 0.46,
+                y: end.y - unitY * headLength * 0.46
+            ),
+            headBaseA: CGPoint(
+                x: baseCenter.x + perpendicularX * halfHeadWidth,
+                y: baseCenter.y + perpendicularY * halfHeadWidth
+            ),
+            headBaseB: CGPoint(
+                x: baseCenter.x - perpendicularX * halfHeadWidth,
+                y: baseCenter.y - perpendicularY * halfHeadWidth
+            ),
+            lineWidth: lineWidth
+        )
+    }
+
+    private struct ArrowGeometry {
+        var lineStart: CGPoint
+        var lineEnd: CGPoint
+        var headBaseA: CGPoint
+        var headBaseB: CGPoint
+        var lineWidth: CGFloat
     }
 }
 

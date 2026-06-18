@@ -21,6 +21,9 @@ release. Replace `TBD` with the release date when a release is tagged.
   without moving game-state ownership into ChessUI.
 - Added `ChessBoardModel.showsCoordinateLabels` so apps can show or hide board
   rank and file coordinate labels.
+- Added `ChessBoardArrow`, `ChessBoardArrowStyle`, and
+  `ChessBoardModel.arrows` so apps can render engine-independent board
+  annotations such as primary, secondary, tertiary, or custom move arrows.
 - Added selectable built-in ChessUI piece sets: Sashite Merida,
   Art Deco Monochrome, Brutalist Monochrome, Origami Monochrome,
   Circuit Board Monochrome, Blueprint Monochrome, and Sports Monochrome.

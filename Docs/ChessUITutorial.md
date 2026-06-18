@@ -224,7 +224,51 @@ boardModel.clearHint()
 
 Hints are display markers only. They do not affect legal move generation.
 
-## 8. Board Interaction Modes
+## 8. Board Arrows
+
+Use board arrows for app-supplied visual annotations, such as engine
+suggestions, training hints, or study marks:
+
+```swift
+boardModel.arrows = [
+    ChessBoardArrow(from: "e2", to: "e4", style: .primarySuggestion),
+    ChessBoardArrow(from: "d2", to: "d4", style: .secondarySuggestion),
+    ChessBoardArrow(from: "g1", to: "f3", style: .tertiarySuggestion),
+].compactMap { $0 }
+```
+
+Clear arrows when the position changes or when the annotation no longer
+applies:
+
+```swift
+boardModel.clearArrows()
+```
+
+The built-in arrow styles are display conventions only:
+
+- `.primarySuggestion`: strongest suggested move.
+- `.secondarySuggestion`: second suggested move.
+- `.tertiarySuggestion`: third suggested move.
+- `.annotation`: general-purpose non-ranked arrow.
+
+If your app shows more than three ranked lines, choose custom styles or use
+`.annotation` for non-ranked extras:
+
+```swift
+let studyArrow = ChessBoardArrow(
+    from: BoardSquare(row: 1, column: 4),
+    to: BoardSquare(row: 3, column: 4),
+    style: ChessBoardArrowStyle(red: 0.45, green: 0.20, blue: 0.78),
+    label: "Study annotation"
+)
+```
+
+Arrows follow board perspective automatically. They do not affect legal move
+generation, selection, drag behavior, move application, or game status.
+ChessUI does not analyze a position or decide whether a `.primarySuggestion`
+arrow is actually best; the app supplies already-ranked display data.
+
+## 9. Board Interaction Modes
 
 `ChessBoardInteractionMode` describes what the board reports:
 
@@ -251,7 +295,7 @@ Use `.freeSetup` for editors or setup surfaces. ChessUI still reports whether
 the coordinate move is legal in the current `Game`, but the app decides what a
 drag means.
 
-## 9. Piece Sets And Board Themes
+## 10. Piece Sets And Board Themes
 
 `ChessUI` ships with selectable piece sets and board themes. Use the runtime
 registries to build pickers:
@@ -292,7 +336,7 @@ let boardThemes = ChessBoardTheme.availableThemes
 Apps can choose fixed defaults, expose pickers, or store the selected raw values
 in their own preferences.
 
-## 10. Evaluation Bars
+## 11. Evaluation Bars
 
 `ChessEvaluationBar` renders caller-supplied evaluation values. It does not
 start an engine, parse UCI output, choose moves, or run analysis.
@@ -340,7 +384,7 @@ print(state.accessibilityValue)
 Apps that consume engines such as Stockfish should normalize engine output into
 these values before passing them to ChessUI.
 
-## 11. Move Lists
+## 12. Move Lists
 
 `ChessMoveListView` renders display-ready move records. It does not parse PGN,
 own a game history, or render a full PGN score sheet.
@@ -388,7 +432,7 @@ The selected ply is visual state only. The app decides what selection means:
 jumping to a position, showing annotation, updating a side panel, or doing
 nothing.
 
-## 12. Game Status
+## 13. Game Status
 
 `ChessGameStatusView` renders caller-supplied `GameStatus` values:
 
@@ -428,7 +472,7 @@ print(display.text)
 `ChessGameStatusView` does not decide resignations, timeouts, adjudications, or
 external result markers. Those are app policy.
 
-## 13. Accessibility
+## 14. Accessibility
 
 ChessUI sets stable labels and identifiers for its reusable surfaces. These are
 useful for VoiceOver, UI tests, and app-level integration checks.
@@ -451,6 +495,7 @@ Other useful identifiers include:
 - `ChessUI.legalMove.e4`
 - `ChessUI.lastMove.e2`
 - `ChessUI.hint.d3`
+- `ChessUI.arrow.e2.e4`
 - `ChessUI.promotion.queen`
 - `ChessUI.evaluationBar`
 - `ChessUI.moveList`
@@ -462,7 +507,7 @@ When wrapping ChessUI views in app-specific containers, avoid hiding the child
 accessibility tree unless you intentionally replace it with equivalent labels
 and actions.
 
-## 14. Workbench
+## 15. Workbench
 
 `Examples/ChessWorkbench` is the package-local macOS app for manually checking
 ChessCore and ChessUI behavior:
@@ -473,12 +518,13 @@ open Examples/ChessWorkbench/ChessWorkbench.xcodeproj
 
 Run the `ChessWorkbench` scheme on My Mac. The app exercises board rendering,
 FEN editing, move application, promotion UI, hints, coordinate-label visibility,
-piece sets, board themes, move lists, evaluation bars, and game status display.
+app-supplied arrows, piece sets, board themes, move lists, evaluation bars, and
+game status display.
 
 The workbench is intentionally thin. Reusable behavior belongs in
 `Sources/ChessUI` or `Sources/ChessCore`, not in the example app.
 
-## 15. Scope Boundaries
+## 16. Scope Boundaries
 
 ChessUI provides:
 
@@ -486,7 +532,7 @@ ChessUI provides:
 - Board interaction callbacks.
 - Piece-set and board-theme selection.
 - Coordinate-label visibility.
-- Legal-move, hint, and last-move highlights.
+- Legal-move, hint, last-move, and app-supplied arrow annotations.
 - Promotion picker UI.
 - Evaluation bar rendering for caller-supplied values.
 - Move-list rendering for caller-supplied records.
@@ -498,6 +544,7 @@ ChessUI does not provide:
 - Stockfish integration.
 - Engine search parsing.
 - Automatic move selection.
+- Principal-variation ranking or best-move generation.
 - PGN parsing or full PGN browsing UI.
 - Clocks, resignation, timeout, accounts, sync, online play, or persistence.
 

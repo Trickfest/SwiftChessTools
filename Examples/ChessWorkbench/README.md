@@ -21,7 +21,8 @@ For the public ChessUI walkthrough, see
 - Exercising the default ChessUI board interaction mode, where the board
   reports move attempts and the workbench decides whether to apply them.
 - Piece-set selection, board-theme selection, coordinate-label visibility,
-  board sizing, hints, reset behavior, and the promotion picker UI.
+  board sizing, hints, app-supplied arrow annotations, reset behavior, and the
+  promotion picker UI.
 - Fixed-size, scrolling `ChessMoveListView` display for legal moves made on the
   board, including vertical and horizontal layouts and scroll-bar visibility.
 - `ChessGameStatusView` display for side-to-move, terminal statuses, and
@@ -107,7 +108,8 @@ Scripts/test-all.sh
    update.
 14. Change the evaluation placement and White-side controls and confirm the bar
    moves between the board edges.
-15. Try `Reset`, `Hint`, and `Show Promotion Picker`.
+15. Try `Show Best Arrow`, `Show Top Three`, and `Clear Arrows`.
+16. Try `Reset`, `Hint`, and `Show Promotion Picker`.
 
 Use this example app when you need a small, disposable workbench for future
 `SwiftChessTools` UI or rules changes.

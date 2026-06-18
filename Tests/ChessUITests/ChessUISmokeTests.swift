@@ -195,6 +195,41 @@ import ChessUI
     #expect(model.hintedSquares.isEmpty)
 }
 
+@Test func boardArrowsCanBeConfiguredAndCleared() {
+    let primaryArrow = ChessBoardArrow(
+        from: BoardSquare(row: 1, column: 4),
+        to: BoardSquare(row: 3, column: 4),
+        style: .primarySuggestion,
+        label: "Best move"
+    )
+    let coordinateArrow = ChessBoardArrow(
+        from: "d2",
+        to: "d4",
+        style: .secondarySuggestion
+    )
+    let invalidArrow = ChessBoardArrow(from: "z9", to: "d4")
+    let model = ChessBoardModel(
+        fen: initialFEN,
+        arrows: [primaryArrow]
+    )
+
+    #expect(model.arrows.count == 1)
+    #expect(model.arrows[0].from == BoardSquare(row: 1, column: 4))
+    #expect(model.arrows[0].to == BoardSquare(row: 3, column: 4))
+    #expect(model.arrows[0].label == "Best move")
+    #expect(coordinateArrow?.from == BoardSquare(row: 1, column: 3))
+    #expect(coordinateArrow?.to == BoardSquare(row: 3, column: 3))
+    #expect(invalidArrow == nil)
+
+    if let coordinateArrow {
+        model.arrows.append(coordinateArrow)
+    }
+    #expect(model.arrows.count == 2)
+
+    model.clearArrows()
+    #expect(model.arrows.isEmpty)
+}
+
 @Test func promotionPickerStateCanBePresentedAndDismissed() {
     let model = ChessBoardModel(fen: "7k/4P3/8/8/8/8/8/4K3 w - - 0 1")
     let pawn = Piece(kind: .pawn, color: .white)

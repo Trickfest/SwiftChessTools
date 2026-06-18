@@ -64,6 +64,45 @@ import ChessUI
 }
 
 @MainActor
+@Test func primaryArrowSnapshot() throws {
+    let model = ChessBoardModel(fen: initialFEN)
+    model.arrows = [
+        ChessBoardArrow(from: "e2", to: "e4", style: .primarySuggestion)!
+    ]
+
+    try assertBoardSnapshot(named: "primary-arrow") {
+        ChessBoardView(model: model)
+    }
+}
+
+@MainActor
+@Test func topThreeArrowsSnapshot() throws {
+    let model = ChessBoardModel(fen: initialFEN)
+    model.arrows = [
+        ChessBoardArrow(from: "e2", to: "e4", style: .primarySuggestion),
+        ChessBoardArrow(from: "d2", to: "d4", style: .secondarySuggestion),
+        ChessBoardArrow(from: "g1", to: "f3", style: .tertiarySuggestion),
+    ].compactMap { $0 }
+
+    try assertBoardSnapshot(named: "top-three-arrows") {
+        ChessBoardView(model: model)
+    }
+}
+
+@MainActor
+@Test func blackPerspectiveArrowsSnapshot() throws {
+    let model = ChessBoardModel(fen: initialFEN, perspective: .black)
+    model.arrows = [
+        ChessBoardArrow(from: "e7", to: "e5", style: .primarySuggestion),
+        ChessBoardArrow(from: "d7", to: "d5", style: .secondarySuggestion),
+    ].compactMap { $0 }
+
+    try assertBoardSnapshot(named: "arrows-black-perspective") {
+        ChessBoardView(model: model)
+    }
+}
+
+@MainActor
 @Test func promotionPickerSnapshot() throws {
     let model = ChessBoardModel(fen: "7k/4P3/8/8/8/8/8/4K3 w - - 0 1")
     model.presentPromotionPicker(
