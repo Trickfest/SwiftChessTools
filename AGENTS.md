@@ -1,8 +1,8 @@
 # SwiftChessTools Guidance
 
-This repository is the reusable Swift package in the chess workspace. Keep
-shared rules, notation, and SwiftUI chess components here; keep app-specific
-engine flows and product behavior in sibling apps such as `SwiftChessDemo`.
+This repository is the reusable Swift package for shared chess rules, notation,
+UCI helpers, and SwiftUI chess components. Keep app-specific engine flows and
+product behavior in separate apps such as `SwiftChessDemo`.
 
 The package products are:
 

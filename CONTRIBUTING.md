@@ -9,8 +9,8 @@ SwiftUI board UI. Keep contributions focused on `ChessCore`, `ChessUI`, tests,
 examples, or package documentation.
 
 This package does not include a chess engine. Stockfish integration lives in the
-separate GPL-licensed `StockfishEmbedded` sibling project and should not be
-copied into this MIT-licensed package.
+separate GPL-licensed `StockfishEmbedded` project and should not be copied into
+this MIT-licensed package.
 
 ## Local Setup
 

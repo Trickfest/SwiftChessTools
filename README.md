@@ -567,8 +567,8 @@ xcodebuild -project Examples/ChessWorkbench/ChessWorkbench.xcodeproj \
 
 ## Acknowledgements
 
-SwiftChessTools is MIT licensed and independent from the GPL-licensed
-`StockfishEmbedded` sibling project.
+SwiftChessTools is MIT licensed and independent from the separate GPL-licensed
+`StockfishEmbedded` engine wrapper project.
 
 This project draws significant inspiration from
 [ChessKit](https://github.com/aperechnev/ChessKit) by Alexander Perechnev and

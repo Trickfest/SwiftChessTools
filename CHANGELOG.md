@@ -197,6 +197,8 @@ release. Replace `TBD` with the release date when a release is tagged.
   longer expose claimable draw rules.
 - Reworked the ChessCore tutorial and glossary around the current public APIs,
   including PGN, semantic validation, game status, and dead-position behavior.
+- Clarified public-facing package docs so Stockfish integration is described as
+  a separate project, not a required sibling checkout for SwiftChessTools.
 
 ### Fixed
 
