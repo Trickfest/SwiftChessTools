@@ -4,9 +4,9 @@ Thanks for considering a contribution to SwiftChessTools.
 
 ## Project Scope
 
-SwiftChessTools is a Swift package for reusable chess rules, notation, and
-SwiftUI board UI. Keep contributions focused on `ChessCore`, `ChessUI`, tests,
-examples, or package documentation.
+SwiftChessTools is a Swift package for reusable chess rules, notation, UCI
+command/parsing helpers, and SwiftUI board UI. Keep contributions focused on
+`ChessCore`, `ChessUI`, `ChessUCI`, tests, examples, or package documentation.
 
 This package does not include a chess engine. Stockfish integration lives in the
 separate GPL-licensed `StockfishEmbedded` project and should not be copied into

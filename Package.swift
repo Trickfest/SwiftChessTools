@@ -1,7 +1,7 @@
 // swift-tools-version: 6.1
 
 //
-// SwiftChessTools provides reusable chess rules, notation, and SwiftUI board UI.
+// SwiftChessTools provides reusable chess rules, notation, UCI helpers, and SwiftUI board UI.
 //
 // See NOTICE.md for upstream attribution and license details.
 //

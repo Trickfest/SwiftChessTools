@@ -31,6 +31,7 @@ body:
       options:
         - ChessCore rules/models
         - FEN/SAN parsing or serialization
+        - ChessUCI command formatting or parsing
         - ChessUI board rendering
         - ChessUI interaction
         - Examples or tests
