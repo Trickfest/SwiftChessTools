@@ -1,7 +1,23 @@
 version: 1
 builder:
   configs:
-    - documentation_targets:
+    - platform: ios
+      swift_version: "6.3"
+      documentation_targets:
         - ChessCore
         - ChessUI
         - ChessUCI
+    - platform: ios
+      swift_version: "6.2"
+    - platform: macos-spm
+      swift_version: "6.3"
+      documentation_targets:
+        - ChessCore
+        - ChessUI
+        - ChessUCI
+    - platform: macos-spm
+      swift_version: "6.2"
+    - platform: macos-xcodebuild
+      swift_version: "6.3"
+    - platform: macos-xcodebuild
+      swift_version: "6.2"

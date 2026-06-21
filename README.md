@@ -24,11 +24,14 @@ requirements.
 
 ## Requirements
 
-SwiftChessTools uses Swift tools 6.1 and supports Swift 5 and Swift 6 language
-modes. The package currently declares these platform minimums:
+SwiftChessTools requires Swift tools 6.2 or newer. The package currently
+supports these deployment targets:
 
-- iOS 17+
-- macOS 14+
+- iOS/iPadOS 26+
+- macOS 26+
+
+`ChessUI` is SwiftUI-based and intended for Apple-platform apps. tvOS, watchOS,
+Linux, Android, and WebAssembly are not currently supported targets.
 
 ## Installation
 
@@ -39,7 +42,7 @@ or declare it directly in `Package.swift`:
 dependencies: [
     .package(
         url: "https://github.com/Trickfest/SwiftChessTools.git",
-        from: "1.0.2"
+        from: "1.0.3"
     ),
 ]
 ```

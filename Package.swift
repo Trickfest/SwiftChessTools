@@ -1,4 +1,4 @@
-// swift-tools-version: 6.1
+// swift-tools-version: 6.2
 
 //
 // SwiftChessTools provides reusable chess rules, notation, UCI helpers, and SwiftUI board UI.
@@ -15,8 +15,8 @@ import PackageDescription
 let package = Package(
     name: "SwiftChessTools",
     platforms: [
-        .iOS(.v17),
-        .macOS(.v14),
+        .iOS(.v26),
+        .macOS(.v26),
     ],
     products: [
         .library(

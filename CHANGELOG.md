@@ -9,6 +9,15 @@ release. Tagged releases use dated version headings.
 
 No unreleased changes.
 
+## 1.0.3 - 2026-06-21
+
+### Changed
+
+- Raised the Swift tools requirement to 6.2.
+- Raised declared deployment targets to iOS/iPadOS 26+ and macOS 26+.
+- Updated README and Swift Package Index metadata to match the package's
+  current supported toolchain and platform policy.
+
 ## 1.0.2 - 2026-06-21
 
 ### Added
