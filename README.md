@@ -8,6 +8,20 @@ notation, and SwiftUI board UI that can support multiple future apps.
 - `ChessUCI`: typed formatting and parsing helpers for UCI engine text, built
   on `ChessCore`.
 
+## Reference App
+
+For a complete example of these products in a realistic iOS chess app, see
+[SwiftChessDemo](https://github.com/Trickfest/SwiftChessDemo). The demo combines
+`ChessCore`, `ChessUI`, and `ChessUCI` with the separate
+[StockfishEmbedded](https://github.com/Trickfest/StockfishEmbedded) engine
+wrapper to show app-owned game state, legal move handling, Stockfish replies,
+evaluation display, move suggestions, move history, status feedback, and
+runtime board preferences.
+
+`SwiftChessTools` remains engine-independent and MIT licensed. Apps that choose
+to link `StockfishEmbedded` must also account for Stockfish's GPL-3.0 licensing
+requirements.
+
 ## Requirements
 
 SwiftChessTools uses Swift tools 6.1 and supports Swift 5 and Swift 6 language
