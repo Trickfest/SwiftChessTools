@@ -9,6 +9,13 @@ release. Tagged releases use dated version headings.
 
 No unreleased changes.
 
+## 1.0.1 - 2026-06-21
+
+### Added
+
+- Added a README reference to `SwiftChessDemo` showing how `SwiftChessTools`
+  combines with `StockfishEmbedded` in a realistic iOS chess app.
+
 ## 1.0.0 - 2026-06-20
 
 Initial public release.
