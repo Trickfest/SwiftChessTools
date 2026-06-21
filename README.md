@@ -32,14 +32,14 @@ modes. The package currently declares these platform minimums:
 
 ## Installation
 
-After the initial public release is tagged, add SwiftChessTools to your package
-dependencies:
+Add SwiftChessTools to your app or package with Xcode's package dependency UI,
+or declare it directly in `Package.swift`:
 
 ```swift
 dependencies: [
     .package(
         url: "https://github.com/Trickfest/SwiftChessTools.git",
-        from: "1.0.0"
+        from: "1.0.2"
     ),
 ]
 ```

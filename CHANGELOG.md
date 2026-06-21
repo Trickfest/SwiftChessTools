@@ -9,6 +9,18 @@ release. Tagged releases use dated version headings.
 
 No unreleased changes.
 
+## 1.0.2 - 2026-06-21
+
+### Added
+
+- Added a Swift Package Index manifest so SPI can generate hosted DocC
+  documentation for `ChessCore`, `ChessUI`, and `ChessUCI`.
+
+### Changed
+
+- Updated README installation guidance for direct public SwiftPM consumption at
+  version `1.0.2`.
+
 ## 1.0.1 - 2026-06-21
 
 ### Added
