@@ -14,7 +14,7 @@ this MIT-licensed package.
 
 ## Local Setup
 
-Use Xcode with Swift tools 6.1 or newer. From the repository root:
+Use Xcode with Swift tools 6.2 or newer. From the repository root:
 
 ```sh
 swift test

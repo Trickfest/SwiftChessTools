@@ -203,7 +203,7 @@ When oracle data is useful, check in the generated expectations as Swift test
 fixtures instead of making the test suite shell out to Python. The normal test
 suite must stay self-contained and network-free.
 
-This release-readiness matrix is based on an inspection of upstream
+This coverage matrix is based on an inspection of upstream
 `python-chess` test categories from commit
 `8330cfd5dbb9401f0e85be92cf408d6482505642`. The categories are classified as:
 
@@ -269,9 +269,9 @@ Current high-priority release coverage includes:
   plus explicit external-result acceptance for ongoing and claimable-draw
   positions
 
-No current-release high-priority rows remain open in the coverage matrix. Rows
-marked `Future Release` or `Out of scope` should remain outside the first public
-release unless the package direction changes.
+No high-priority rows are currently open in the coverage matrix. Rows marked
+`Future Release` or `Out of scope` should remain outside routine maintenance
+unless the package direction changes.
 
 ## Regression Policy
 
