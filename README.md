@@ -42,7 +42,7 @@ or declare it directly in `Package.swift`:
 dependencies: [
     .package(
         url: "https://github.com/Trickfest/SwiftChessTools.git",
-        from: "1.0.3"
+        from: "1.0.4"
     ),
 ]
 ```

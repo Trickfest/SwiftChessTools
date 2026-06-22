@@ -9,6 +9,16 @@ release. Tagged releases use dated version headings.
 
 No unreleased changes.
 
+## 1.0.4 - 2026-06-22
+
+### Changed
+
+- Updated GitHub Actions checkout usage to `actions/checkout@v7`.
+- Refreshed contributing, testing strategy, and recipe documentation to match
+  the current Swift 6.2 and iOS/iPadOS/macOS 26 release requirements.
+- Updated README installation guidance for direct public SwiftPM consumption at
+  version `1.0.4`.
+
 ## 1.0.3 - 2026-06-21
 
 ### Changed
