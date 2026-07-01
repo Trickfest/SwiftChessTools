@@ -7,7 +7,13 @@ release. Tagged releases use dated version headings.
 
 ## Unreleased
 
-No unreleased changes.
+### Fixed
+
+- Added a fallback cleanup path for ChessUI move animations so the temporary
+  moving-piece layer does not remain visible if SwiftUI delays the animation
+  completion callback under heavy CPU load.
+- Skipped the temporary moving-piece layer for zero-duration ChessUI move
+  feedback while still preserving last-move highlights.
 
 ## 1.0.4 - 2026-06-22
 

@@ -292,7 +292,13 @@ public class ChessBoardModel {
     public var shouldFlipBoard: Bool { perspective == .black }
 
     /// Piece currently rendered by the move-feedback overlay.
-    public var movingPiece: (piece: Piece, from: BoardSquare, to: BoardSquare)?
+    public var movingPiece: (piece: Piece, from: BoardSquare, to: BoardSquare)? {
+        didSet {
+            scheduleMovingPieceCleanup()
+        }
+    }
+
+    @ObservationIgnored private var movingPieceCleanupWorkItem: DispatchWorkItem?
     
     /// Creates a chess board model.
     ///
@@ -386,13 +392,41 @@ public class ChessBoardModel {
 
             lastMoveSquares = (from: from, to: to)
 
-            if let piece = squareAndPiece?.1 ?? newGame.position.board[animatedMove.to] {
+            if moveAnimationDuration > 0,
+               let piece = squareAndPiece?.1 ?? newGame.position.board[animatedMove.to]
+            {
                 movingPiece = (piece: piece, from: from, to: to)
             }
         }
         
         game = newGame
         return true
+    }
+
+    func clearMovingPieceIfCurrent(_ movingPiece: (piece: Piece, from: BoardSquare, to: BoardSquare)) {
+        guard self.movingPiece?.piece == movingPiece.piece,
+              self.movingPiece?.from == movingPiece.from,
+              self.movingPiece?.to == movingPiece.to
+        else { return }
+
+        self.movingPiece = nil
+    }
+
+    private func scheduleMovingPieceCleanup() {
+        movingPieceCleanupWorkItem?.cancel()
+        guard let movingPiece else { return }
+
+        let delay = ChessBoardMoveAnimationTiming.fallbackCleanupDelayMilliseconds(
+            for: moveAnimationDuration
+        )
+        let workItem = DispatchWorkItem { [weak self, movingPiece] in
+            self?.clearMovingPieceIfCurrent(movingPiece)
+        }
+        movingPieceCleanupWorkItem = workItem
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + .milliseconds(Int(delay)),
+            execute: workItem
+        )
     }
 
     /// Clears the persisted last-move source and destination square highlight.
@@ -690,7 +724,7 @@ private struct MovingPieceView: View {
         // Give SwiftUI one display pass at the source square before starting
         // the animated travel. Without this, source and destination updates can
         // be coalesced into a single snap on fast board updates.
-        try? await Task.sleep(for: .milliseconds(20))
+        try? await Task.sleep(for: .milliseconds(ChessBoardMoveAnimationTiming.sourceSettleDelayMilliseconds))
         guard isCurrent(movingPiece) else { return }
 
         withAnimation(.easeInOut(duration: duration)) {
@@ -698,6 +732,17 @@ private struct MovingPieceView: View {
         } completion: {
             clearMovingPieceIfCurrent(movingPiece)
         }
+
+        // SwiftUI animation completions can be delayed under heavy CPU load.
+        // Keep an independent cleanup path so the temporary moving-piece layer
+        // cannot linger while the board is already on the new position.
+        try? await Task.sleep(
+            for: .milliseconds(
+                ChessBoardMoveAnimationTiming.fallbackCleanupDelayMilliseconds(for: duration)
+            )
+        )
+        guard !Task.isCancelled else { return }
+        clearMovingPieceIfCurrent(movingPiece)
     }
 
     private func isCurrent(_ movingPiece: (piece: Piece, from: BoardSquare, to: BoardSquare)) -> Bool {
@@ -707,9 +752,28 @@ private struct MovingPieceView: View {
     }
 
     private func clearMovingPieceIfCurrent(_ movingPiece: (piece: Piece, from: BoardSquare, to: BoardSquare)) {
-        guard isCurrent(movingPiece) else { return }
-        boardModel.movingPiece = nil
+        boardModel.clearMovingPieceIfCurrent(movingPiece)
         position = nil
+    }
+}
+
+enum ChessBoardMoveAnimationTiming {
+    static let sourceSettleDelayMilliseconds: Int64 = 20
+    static let cleanupGracePeriodMilliseconds: Int64 = 100
+
+    static func fallbackCleanupDelayMilliseconds(for duration: Double) -> Int64 {
+        guard duration.isFinite else {
+            return cleanupGracePeriodMilliseconds
+        }
+
+        let rawMilliseconds = duration * 1_000
+        guard rawMilliseconds.isFinite else {
+            return Int64.max
+        }
+
+        let animationMilliseconds = max(0, rawMilliseconds.rounded(.up))
+        let maximumAnimationMilliseconds = Double(Int64.max - cleanupGracePeriodMilliseconds)
+        return Int64(min(animationMilliseconds, maximumAnimationMilliseconds)) + cleanupGracePeriodMilliseconds
     }
 }
 

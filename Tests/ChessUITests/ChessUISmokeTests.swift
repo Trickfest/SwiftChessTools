@@ -11,7 +11,7 @@
 import Testing
 
 import ChessCore
-import ChessUI
+@testable import ChessUI
 
 @Test func chessUITargetImportsCoreAndBuildsModel() {
     let model = ChessBoardModel(fen: initialFEN)
@@ -289,6 +289,32 @@ import ChessUI
     #expect(model.showsLegalMoveHighlights == false)
     #expect(model.moveAnimationDuration == 0)
     #expect(model.showsLastMoveHighlight == false)
+}
+
+@Test func moveAnimationCleanupFallbackAddsGracePeriodAfterAnimationDuration() {
+    #expect(ChessBoardMoveAnimationTiming.sourceSettleDelayMilliseconds == 20)
+    #expect(ChessBoardMoveAnimationTiming.cleanupGracePeriodMilliseconds == 100)
+    #expect(ChessBoardMoveAnimationTiming.fallbackCleanupDelayMilliseconds(for: 0) == 100)
+    #expect(ChessBoardMoveAnimationTiming.fallbackCleanupDelayMilliseconds(for: 0.45) == 550)
+    #expect(ChessBoardMoveAnimationTiming.fallbackCleanupDelayMilliseconds(for: 0.451) == 551)
+    #expect(ChessBoardMoveAnimationTiming.fallbackCleanupDelayMilliseconds(for: 1) == 1_100)
+}
+
+@Test func moveAnimationCleanupFallbackTreatsInvalidDurationsAsGracePeriodOnly() {
+    #expect(ChessBoardMoveAnimationTiming.fallbackCleanupDelayMilliseconds(for: -1) == 100)
+    #expect(ChessBoardMoveAnimationTiming.fallbackCleanupDelayMilliseconds(for: .nan) == 100)
+    #expect(ChessBoardMoveAnimationTiming.fallbackCleanupDelayMilliseconds(for: .infinity) == 100)
+}
+
+@Test func zeroDurationMoveAnimationSkipsTemporaryMovingPiece() throws {
+    let model = ChessBoardModel(fen: initialFEN, moveAnimationDuration: 0)
+    let move = try Move(string: "e2e4")
+
+    model.game.apply(move: move)
+    model.setFEN(FENSerializer().fen(from: model.game.position), animatedMove: move)
+
+    #expect(model.movingPiece == nil)
+    #expect(model.lastMoveSquares != nil)
 }
 
 @Test func interactionModesDescribeMoveReportingPolicy() {
