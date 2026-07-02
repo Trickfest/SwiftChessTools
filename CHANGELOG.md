@@ -14,6 +14,11 @@ release. Tagged releases use dated version headings.
   completion callback under heavy CPU load.
 - Skipped the temporary moving-piece layer for zero-duration ChessUI move
   feedback while still preserving last-move highlights.
+- Kept ChessCore dead-position status checks responsive in unsealed major-piece
+  endgames by avoiding the expensive reachability fallback for positions that
+  are not structural dead-position candidates.
+- Updated the ChessUI harness deployment target to iOS 26 so it matches the
+  package's supported platform policy.
 
 ## 1.0.4 - 2026-06-22
 

@@ -173,8 +173,9 @@ Semantic FEN validation coverage currently includes:
 
 Dead-position analysis is intentionally conservative. ChessCore reports dead
 positions when they are proven by insufficient mating material, a sealed
-immobile pawn barrier, or bounded legal-state reachability. Positions outside
-those proven classes remain ongoing rather than risking a false-positive draw.
+immobile pawn barrier, or bounded legal-state reachability for narrow structural
+candidates. Positions outside those proven classes remain ongoing rather than
+risking a false-positive draw or expensive broad endgame search.
 
 ## FEN And SAN Round-Trip Coverage
 
@@ -263,7 +264,8 @@ Current high-priority release coverage includes:
 - ergonomic standard-game and safe move-application APIs
 - dead-position analyzer coverage for material-only draws, sealed immobile pawn
   barriers with trapped sliding pieces, symmetry invariants, false-positive
-  near-misses, and a status/analyzer performance smoke pass
+  near-misses, unsealed major-piece endgame responsiveness, and a
+  status/analyzer performance smoke pass
 - PGN result/status conflicts for checkmate, stalemate, insufficient material,
   dead position, seventy-five-move, and fivefold-repetition terminal statuses,
   plus explicit external-result acceptance for ongoing and claimable-draw

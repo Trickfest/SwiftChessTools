@@ -265,6 +265,28 @@ private func blockedNearMissesAreNotFalsePositiveDeadPositions(testCase: DeadPos
     )
 }
 
+@Test func majorPieceEndgameStatusDoesNotRunExpensiveDeadPositionProof() throws {
+    let position = try position(
+        from: "1Q6/2R1k3/8/p4K2/P7/8/8/8 b - - 2 61"
+    )
+    let analyzer = DeadPositionAnalyzer()
+    let clock = ContinuousClock()
+    var status: GameStatus?
+    var isDeadPosition = true
+
+    let elapsed = clock.measure {
+        status = Game(position: position).status
+        isDeadPosition = analyzer.isDeadPosition(position)
+    }
+
+    #expect(!isDeadPosition)
+    #expect(status == .ongoing(drawClaims: Set<GameDrawClaim>()))
+    #expect(
+        elapsed < .seconds(1),
+        "Major-piece endgame status analysis took \(elapsed)."
+    )
+}
+
 private func position(from fen: String) throws -> Position {
     return try FENSerializer().position(from: fen)
 }

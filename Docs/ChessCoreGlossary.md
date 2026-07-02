@@ -258,6 +258,7 @@ engine-analysis, and product-specific concepts belong in app-level docs.
   `Game.repetitionCounts` and `GameRepetitionKey` instead.
 - **Dead Position Detection**: ChessCore proves material-only dead positions,
   sealed immobile pawn-barrier dead positions, and bounded legal-state
-  reachability cases. The analyzer is conservative: positions outside those
-  proven classes remain ongoing rather than risking a false-positive draw. A
-  broader exhaustive FIDE dead-position solver is deferred future work.
+  reachability cases for narrow structural candidates. The analyzer is
+  conservative: positions outside those proven classes remain ongoing rather
+  than risking a false-positive draw or expensive broad endgame search. A broader
+  exhaustive FIDE dead-position solver is deferred future work.

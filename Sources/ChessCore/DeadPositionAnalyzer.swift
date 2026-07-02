@@ -98,7 +98,8 @@ public struct DeadPositionAnalyzer: Sendable {
 
     private func canProveDeadByReachability(from position: Position) -> Bool {
         let rules = StandardRules()
-        guard self.isReachabilityProofCandidate(position, rules: rules) else {
+        let pieces = position.board.enumeratedPieces()
+        guard self.isReachabilityProofCandidate(position, pieces: pieces, rules: rules) else {
             return false
         }
 
@@ -115,11 +116,19 @@ public struct DeadPositionAnalyzer: Sendable {
                 return false
             }
 
-            if rules.isCheckmate(in: current) {
+            let legalMoves = rules.legalMoves(in: current)
+            if legalMoves.isEmpty {
+                if rules.isCheck(in: current) {
+                    return false
+                }
+                continue
+            }
+
+            if self.hasPawnMoveOrCapture(legalMoves, in: current) {
                 return false
             }
 
-            for move in rules.legalMoves(in: current) {
+            for move in legalMoves {
                 stack.append(self.position(after: move, in: current))
             }
         }
@@ -198,13 +207,23 @@ public struct DeadPositionAnalyzer: Sendable {
         return true
     }
 
-    private func isReachabilityProofCandidate(_ position: Position, rules: StandardRules) -> Bool {
-        let pieces = position.board.enumeratedPieces()
+    private func isReachabilityProofCandidate(
+        _ position: Position,
+        pieces: [(Square, Piece)],
+        rules: StandardRules
+    ) -> Bool {
         guard pieces.count <= 24 else {
             return false
         }
 
         guard pieces.contains(where: { $0.1.kind == .pawn }) else {
+            return false
+        }
+
+        // Sealed pawn barriers prove trapped major-piece cases before this
+        // fallback. Unsealed major-piece endgames can create very large
+        // reversible move graphs, so keep this proof path conservative.
+        guard !pieces.contains(where: { $0.1.kind == .queen || $0.1.kind == .rook }) else {
             return false
         }
 
@@ -263,9 +282,110 @@ public struct DeadPositionAnalyzer: Sendable {
     }
 
     private func position(after move: Move, in position: Position) -> Position {
-        let game = Game(position: position)
-        game.apply(move: move)
-        return game.position
+        var next = position
+
+        let enPassant = self.enPassantTarget(after: move, in: position)
+        self.updateCastlingRights(after: move, in: position, next: &next)
+        self.applyBoardMove(move, in: position, next: &next)
+        next.state.enPassant = enPassant
+        next.state.turn = position.state.turn.opposite
+
+        return next
+    }
+
+    private func applyBoardMove(_ move: Move, in position: Position, next: inout Position) {
+        let isCastling =
+            position.board.bitboards.king & move.from.bitboardMask != Bitboard.zero
+            && abs(move.from.file - move.to.file) > 1
+
+        let isEnPassant =
+            position.board.bitboards.pawn & move.from.bitboardMask != Bitboard.zero
+            && move.to == position.state.enPassant
+
+        if isCastling {
+            self.movePiece(move, in: &next)
+            let rank = position.state.turn == .white ? "1" : "8"
+            if move.to.file == 2 {
+                self.movePiece(try! Move(string: "a" + rank + "d" + rank), in: &next)
+            } else if move.to.file == 6 {
+                self.movePiece(try! Move(string: "h" + rank + "f" + rank), in: &next)
+            }
+        } else if isEnPassant {
+            self.movePiece(move, in: &next)
+            guard let enPassant = position.state.enPassant else {
+                return
+            }
+            let capturedRank = position.state.turn == .white ? 4 : 3
+            next.board[Square(file: enPassant.file, rank: capturedRank)] = nil
+        } else if let promotion = move.promotion {
+            self.movePiece(move, in: &next)
+            next.board[move.to] = Piece(kind: promotion, color: position.state.turn)
+        } else {
+            self.movePiece(move, in: &next)
+        }
+    }
+
+    private func movePiece(_ move: Move, in position: inout Position) {
+        position.board[move.to] = position.board[move.from]
+        position.board[move.from] = nil
+    }
+
+    private func enPassantTarget(after move: Move, in position: Position) -> Square? {
+        if position.board.bitboards.pawn & move.from.bitboardMask == Bitboard.zero {
+            return nil
+        }
+        guard abs(move.from.rank - move.to.rank) == 2 else {
+            return nil
+        }
+
+        let rank = position.state.turn == .white ? 2 : 5
+        return Square(file: move.from.file, rank: rank)
+    }
+
+    private func updateCastlingRights(after move: Move, in position: Position, next: inout Position) {
+        guard let piece = position.board[move.from] else {
+            return
+        }
+
+        if piece.kind == .king {
+            next.state.castlingRights = next.state.castlingRights
+                .filter { $0.color != position.state.turn }
+        }
+
+        next.state.castlingRights = next.state.castlingRights.filter {
+            var excludeBecauseOfFrom = false
+            var excludeBecauseOfTo = false
+
+            if let affected = self.castlingRightAffected(by: move.from) {
+                excludeBecauseOfFrom = $0.color == affected.color && $0.kind == affected.kind
+            }
+
+            if let affected = self.castlingRightAffected(by: move.to) {
+                excludeBecauseOfTo = $0.color == affected.color && $0.kind == affected.kind
+            }
+
+            return !(excludeBecauseOfFrom || excludeBecauseOfTo)
+        }
+    }
+
+    private func castlingRightAffected(by square: Square) -> Piece? {
+        if square.file == 0 && square.rank == 0 {
+            return Piece(kind: .queen, color: .white)
+        }
+
+        if square.file == 7 && square.rank == 0 {
+            return Piece(kind: .king, color: .white)
+        }
+
+        if square.file == 0 && square.rank == 7 {
+            return Piece(kind: .queen, color: .black)
+        }
+
+        if square.file == 7 && square.rank == 7 {
+            return Piece(kind: .king, color: .black)
+        }
+
+        return nil
     }
 }
 

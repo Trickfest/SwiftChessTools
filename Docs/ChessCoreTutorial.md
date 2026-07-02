@@ -372,8 +372,9 @@ has proved a FIDE-recognized dead position. If it returns `false`, that means
 "not proven dead by this analyzer," not "definitely live."
 
 The current analyzer proves material-only cases, sealed immobile pawn-barrier
-cases, and bounded legal-state reachability cases. It avoids false positives
-by leaving uncertain positions ongoing.
+cases, and bounded legal-state reachability cases for narrow structural
+candidates. It avoids false positives and expensive broad endgame searches by
+leaving uncertain positions ongoing.
 
 ## 13. PGN Import
 
