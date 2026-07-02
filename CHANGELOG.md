@@ -7,6 +7,10 @@ release. Tagged releases use dated version headings.
 
 ## Unreleased
 
+No unreleased changes.
+
+## 1.0.5 - 2026-07-02
+
 ### Fixed
 
 - Added a fallback cleanup path for ChessUI move animations so the temporary
