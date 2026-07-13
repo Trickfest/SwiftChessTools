@@ -16,7 +16,8 @@ class KingMoveGenerator: StepMoveGenerator {
 
     override func reachableSquares(from square: Square, in position: Position) -> [Square] {
         let destinations =
-            super.reachableSquares(from: square, in: position) + self.castlingSquares(in: position)
+            super.reachableSquares(from: square, in: position)
+                + self.castlingSquares(from: square, in: position)
         return self.filterOppositeKingSquares(destinations: destinations, in: position)
     }
 
@@ -38,12 +39,18 @@ class KingMoveGenerator: StepMoveGenerator {
             .filter { abs($0.file - square.file) > 1 || abs($0.rank - square.rank) > 1 }
     }
 
-    private func castlingSquares(in position: Position) -> [Square] {
+    private func castlingSquares(from kingSquare: Square, in position: Position) -> [Square] {
         let castlingRights = position.state.castlingRights.filter { $0.color == position.state.turn }
 
         var squares = [Square]()
 
         let rank = position.state.turn == .white ? 0 : 7
+        let expectedKingSquare = Square(file: 4, rank: rank)
+        guard kingSquare == expectedKingSquare,
+              position.board[kingSquare] == Piece(kind: .king, color: position.state.turn)
+        else {
+            return []
+        }
 
         let shouldBeEmpty: [PieceKind: [Int]] = [
             .king: [5, 6],

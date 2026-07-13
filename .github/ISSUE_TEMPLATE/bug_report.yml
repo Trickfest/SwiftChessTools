@@ -13,7 +13,7 @@ body:
     attributes:
       label: SwiftChessTools Version
       description: Tag, branch, or commit SHA.
-      placeholder: "1.0.0 or main@..."
+      placeholder: "1.1.0 or main@..."
     validations:
       required: true
   - type: input
@@ -67,4 +67,3 @@ body:
     attributes:
       label: Logs or Screenshots
       description: Paste relevant test output, crash logs, or screenshots.
-      render: shell

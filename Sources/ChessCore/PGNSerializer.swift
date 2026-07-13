@@ -1015,7 +1015,9 @@ private struct PGNLexer {
             let character = self.currentCharacter
 
             if character == "\u{FEFF}", self.line == 1, self.column == 1 {
-                self.advance()
+                // A UTF-8 BOM is transport metadata, not source text. Consume
+                // it without shifting the first PGN token away from column 1.
+                self.index = self.input.index(after: self.index)
             } else if character == "%", self.column == 1 {
                 self.skipLine()
             } else if character.isWhitespace {
@@ -1085,7 +1087,7 @@ private struct PGNLexer {
     private mutating func advance() {
         let character = input[index]
         index = input.index(after: index)
-        if character == "\n" || character == "\r" {
+        if character.isNewline {
             line += 1
             column = 1
         } else {
@@ -1094,7 +1096,7 @@ private struct PGNLexer {
     }
 
     private mutating func skipLine() {
-        while !isAtEnd, currentCharacter != "\n", currentCharacter != "\r" {
+        while !isAtEnd, !currentCharacter.isNewline {
             self.advance()
         }
     }
@@ -1146,7 +1148,7 @@ private struct PGNLexer {
         self.advance()
         var value = ""
 
-        while !isAtEnd, currentCharacter != "\n", currentCharacter != "\r" {
+        while !isAtEnd, !currentCharacter.isNewline {
             value.append(currentCharacter)
             self.advance()
         }

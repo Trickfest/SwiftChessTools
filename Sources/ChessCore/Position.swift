@@ -45,7 +45,11 @@ public struct Position: Hashable, Sendable {
         /// Castling rights that are still available.
         public var castlingRights: [Piece]
 
-        /// Target square for a legal en passant capture.
+        /// En-passant target recorded after the preceding two-square pawn move.
+        ///
+        /// FEN records this target even when the side to move has no pawn that
+        /// can legally capture there. Move generation and repetition logic
+        /// separately determine whether an en-passant capture is available.
         public var enPassant: Square?
 
     }

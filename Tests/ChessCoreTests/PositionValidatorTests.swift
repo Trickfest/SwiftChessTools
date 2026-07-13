@@ -23,6 +23,9 @@ import Testing
         "K1k5/8/8/8/8/8/8/qn6 w - - 0 2",
         "n1bqkbnr/P1P1P1P1/8/8/8/8/p1p1p1p1/N1BQKBNR w - - 0 1",
         "4k3/8/8/8/3Pp3/8/8/4K3 b - d3 0 1",
+        "4k3/8/8/3p4/8/8/4P3/4K3 w - d6 0 1",
+        "4k3/8/8/r4pPK/8/8/8/8 w - f6 0 1",
+        "8/8/8/8/R4Ppk/8/8/4K3 b - f3 0 1",
     ])
 func positionValidatorAcceptsPlayablePositions(fen: String) throws {
     let position = try FENSerializer().position(from: fen)
@@ -95,30 +98,9 @@ func positionValidatorAcceptsPlayablePositions(fen: String) throws {
 
 @Test func positionValidatorReportsInvalidEnPassantTargets() throws {
     expectValidationIssues(
-        for: "4k3/8/8/3p4/8/8/4P3/4K3 w - d6 0 1",
-        [
-            .invalidEnPassantTarget(Square(coordinate: "d6")),
-        ]
-    )
-
-    expectValidationIssues(
         for: "4k3/8/3n4/3pP3/8/8/8/4K3 w - d6 0 1",
         [
             .invalidEnPassantTarget(Square(coordinate: "d6")),
-        ]
-    )
-
-    expectValidationIssues(
-        for: "4k3/8/8/r4pPK/8/8/8/8 w - f6 0 1",
-        [
-            .invalidEnPassantTarget(Square(coordinate: "f6")),
-        ]
-    )
-
-    expectValidationIssues(
-        for: "8/8/8/8/R4Ppk/8/8/4K3 b - f3 0 1",
-        [
-            .invalidEnPassantTarget(Square(coordinate: "f3")),
         ]
     )
 
@@ -135,6 +117,30 @@ func positionValidatorAcceptsPlayablePositions(fen: String) throws {
             .invalidEnPassantTarget(Square(coordinate: "d3")),
         ]
     )
+
+    expectValidationIssues(
+        for: "4k3/3n4/8/3p4/8/8/8/4K3 w - d6 0 1",
+        [
+            .invalidEnPassantTarget(Square(coordinate: "d6")),
+        ]
+    )
+
+    expectValidationIssues(
+        for: "4k3/8/8/8/3P4/8/3N4/4K3 b - d3 0 1",
+        [
+            .invalidEnPassantTarget(Square(coordinate: "d3")),
+        ]
+    )
+}
+
+@Test func gameGeneratedEnPassantFENPassesStrictValidationWithoutAvailableCapture() throws {
+    let serializer = FENSerializer()
+    let game = Game()
+    try game.applyLegal(move: "e2e4")
+
+    let fen = serializer.fen(from: game.position)
+    #expect(fen.contains(" e3 "))
+    #expect(try serializer.validatedPosition(from: fen) == game.position)
 }
 
 @Test func positionValidatorReportsInactiveSideInCheck() throws {

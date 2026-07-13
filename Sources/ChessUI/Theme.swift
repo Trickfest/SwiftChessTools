@@ -125,6 +125,17 @@ public enum ChessBoardTheme: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    func coordinateLabel(isLightSquare: Bool) -> Color {
+        switch (self, isLightSquare) {
+        case (.blueprint, true), (.circuitBoard, true), (.blueStudy, false):
+            Color.black
+        case (.warmWalnut, false), (.sportsCourt, false):
+            Color.white
+        default:
+            label
+        }
+    }
+
     var selected: Color {
         switch self {
         case .circuitBoard:

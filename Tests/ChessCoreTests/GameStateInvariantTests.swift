@@ -26,6 +26,18 @@ import Testing
     #expect(game.position.state.turn == .white)
 }
 
+@Test func moveCountersSaturateAtTheRepresentableLimit() throws {
+    let maximum = Int.max
+    let whiteToMove = game(from: "4k3/8/8/8/8/8/5N2/4K3 w - - \(maximum) 42")
+    try whiteToMove.applyLegal(move: "f2g4")
+    #expect(whiteToMove.position.counter.halfMoves == maximum)
+    #expect(whiteToMove.position.counter.fullMoves == 42)
+
+    let blackToMove = game(from: "4k3/8/8/8/8/8/5N2/4K3 b - - 0 \(maximum)")
+    try blackToMove.applyLegal(move: "e8e7")
+    #expect(blackToMove.position.counter.fullMoves == maximum)
+}
+
 @Test func pawnMovesCapturesEnPassantAndPromotionResetHalfmoveClock() throws {
     let pawnAdvance = game(from: "4k3/8/8/8/8/8/4P3/4K3 w - - 7 42")
     try pawnAdvance.apply(move: "e2e4")

@@ -38,9 +38,11 @@ public struct Board: Hashable, Sendable {
     ///
     /// Indexes follow the package's file-major layout. Prefer the `Square` or
     /// coordinate subscripts at app boundaries because they make call sites
-    /// clearer.
+    /// clearer. Out-of-range reads return `nil`, and out-of-range writes are
+    /// ignored.
     public subscript(index: Int) -> Piece? {
         get {
+            guard (0..<Board.squaresCount).contains(index) else { return nil }
             let squareMask = Bitboard(1) << index
 
             var color: PieceColor! = nil
@@ -71,6 +73,7 @@ public struct Board: Hashable, Sendable {
             return Piece(kind: kind, color: color)
         }
         set(piece) {
+            guard (0..<Board.squaresCount).contains(index) else { return }
             let squareMask = Bitboard(1) << index
 
             self.bitboards.white &= ~squareMask
@@ -113,22 +116,25 @@ public struct Board: Hashable, Sendable {
     /// Reads or writes the piece on a square.
     public subscript(square: Square) -> Piece? {
         get {
+            guard square.isValid else { return nil }
             return self[square.index]
         }
         set(piece) {
+            guard square.isValid else { return }
             self[square.index] = piece
         }
     }
 
     /// Reads or writes a piece by coordinate, such as `"e4"` or `"d5"`.
+    /// Invalid coordinate reads return `nil`, and invalid writes are ignored.
     public subscript(coordinate: String) -> Piece? {
         get {
             let square = Square(coordinate: coordinate)
-            return self[square.index]
+            return self[square]
         }
         set(piece) {
             let square = Square(coordinate: coordinate)
-            self[square.index] = piece
+            self[square] = piece
         }
     }
 

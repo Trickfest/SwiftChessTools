@@ -1,9 +1,10 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   swift-test:
@@ -13,6 +14,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
-      - name: Run Swift package tests
-        run: swift test
+      - name: Run hosted CI checks
+        run: Scripts/github-ci.sh

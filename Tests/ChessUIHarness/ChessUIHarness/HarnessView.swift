@@ -57,6 +57,7 @@ struct HarnessView: View {
                 .accessibilityIdentifier("Harness.fen")
 
             ChessBoardView(model: model)
+                .onMove(handleMove)
                 .frame(width: 340, height: 340)
                 .padding(.horizontal, 12)
 
@@ -152,7 +153,6 @@ struct HarnessView: View {
         model.showsLegalMoveHighlights = true
         model.showsLastMoveHighlight = true
         model.moveAnimationDuration = 0.08
-        model.onMove = handleMove
         currentFEN = model.fen
     }
 

@@ -404,11 +404,13 @@ public class Game {
 
         if isCapture || isPawnAdvance {
             self.position.counter.halfMoves = 0
-        } else {
+        } else if self.position.counter.halfMoves < Int.max {
             self.position.counter.halfMoves += 1
         }
 
-        if self.position.state.turn == .black {
+        if self.position.state.turn == .black,
+           self.position.counter.fullMoves < Int.max
+        {
             self.position.counter.fullMoves += 1
         }
     }

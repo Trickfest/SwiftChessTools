@@ -164,6 +164,30 @@ import Testing
     )
 }
 
+@Test func specialMovesRequireTheirSupportingBoardState() throws {
+    expectLegalMoves(
+        in: "4k3/8/8/4P3/8/8/8/4K3 w - d6 0 1",
+        exclude: ["e5d6"]
+    )
+
+    expectLegalMoves(
+        in: "4k3/8/3N4/3pP3/8/8/8/4K3 w - d6 0 1",
+        exclude: ["e5d6"]
+    )
+
+    expectLegalMoves(
+        in: "4k3/8/8/8/8/8/8/3K3R w K - 0 1",
+        exclude: ["d1g1"]
+    )
+}
+
+@Test func kingAdjacencyDetectionIncludesH8BitboardSquare() throws {
+    expectLegalMoves(
+        in: "7k/8/6K1/8/8/8/8/8 w - - 0 1",
+        exclude: ["g6g7", "g6h7"]
+    )
+}
+
 @Test func castlingUsesKingPathSafetyNotRookPathAttackSafety() throws {
     expectLegalMoves(
         in: "4k3/8/8/8/8/8/b7/R3K3 w Q - 0 1",

@@ -212,6 +212,21 @@ private func everyLegalMoveRoundTripsThroughSANInStressPositions(
     #expect(try! SANSerializer().move(for: "Qxf7#", in: scholarMate).description == "h5f7")
 }
 
+@Test func deserializationRejectsCheckMarkersInsideSAN() {
+    let game = Game(position: try! FENSerializer().position(from: PGNSerializer.standardStartingFEN))
+
+    for malformedSAN in ["e+4", "e#4", "N+f3", "N#f3"] {
+        do {
+            _ = try SANSerializer().move(for: malformedSAN, in: game)
+            Issue.record("Expected malformed SAN to fail: \(malformedSAN)")
+        } catch let error as SANParsingError {
+            #expect(error == .noMatchingLegalMove(malformedSAN))
+        } catch {
+            Issue.record("Expected SANParsingError, got: \(error)")
+        }
+    }
+}
+
 @Test func deserializationKeepsPawnFilesDistinctFromPieceLetters() {
     let game = Game(position: try! FENSerializer().position(
         from: "8/rP6/np2p2k/1PR2p2/Pb6/5P2/q7/2K5 b - - 0 66"

@@ -159,6 +159,11 @@ import ChessCore
     #expect(model.isPromotionPickerPresented)
     #expect(model.promotionSourceSquare == "e7")
     #expect(model.promotionTargetSquare == "e8")
+
+    let blockedSource = model.accessibilityState(for: square("e7"))
+    #expect(blockedSource.hint == "Choose a promotion piece before moving again.")
+    #expect(!blockedSource.isActivatable)
+    #expect(model.activate(square: square("e7")) == nil)
 }
 
 @Test func boardSquareAccessibilityCanClearSelection() {
@@ -192,6 +197,41 @@ import ChessCore
     #expect(state.hint == "Wait for the current move animation to finish.")
     #expect(state.isActivatable == false)
     #expect(model.activate(square: square("e2")) == nil)
+}
+
+@Test func boardSquareAccessibilityWaitsForAppControlledOverlay() {
+    let model = ChessBoardModel(fen: initialFEN)
+    model.showWaitingOverlay()
+
+    let state = model.accessibilityState(for: square("e2"))
+    #expect(state.hint == "Wait for the board to become interactive.")
+    #expect(!state.isActivatable)
+    #expect(model.activate(square: square("e2")) == nil)
+    #expect(model.selectedSquare == nil)
+}
+
+@Test func boardSquareAccessibilityIgnoresOffBoardValues() {
+    let model = ChessBoardModel(fen: initialFEN)
+    let invalid = BoardSquare(row: Int.max, column: Int.min)
+
+    #expect(model.activate(square: invalid) == nil)
+    #expect(model.selectionAnnouncement(for: invalid) == nil)
+    #expect(model.accessibilityState(for: invalid).label == "Empty, -")
+}
+
+@Test func viewOwnedMoveHandlerOverridesTheModelFallback() throws {
+    let model = ChessBoardModel(fen: initialFEN)
+    var fallbackAttempts: [ChessBoardMoveAttempt] = []
+    var viewAttempts: [ChessBoardMoveAttempt] = []
+    model.onMove = { fallbackAttempts.append($0) }
+
+    #expect(model.activate(square: square("e2")) != nil)
+    #expect(model.activate(square: square("e4"), handler: { viewAttempts.append($0) }) != nil)
+
+    #expect(fallbackAttempts.isEmpty)
+    let attempt = try #require(viewAttempts.first)
+    #expect(attempt.coordinateMove == "e2e4")
+    #expect(attempt.isLegal)
 }
 
 private func square(_ coordinate: String) -> BoardSquare {

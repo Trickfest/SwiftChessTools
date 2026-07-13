@@ -27,13 +27,14 @@ extension ChessBoardModel {
         let legalMove = selectedSquare.map { legalMoves(from: $0, to: square).isEmpty == false } ?? false
         let isCapture = legalMove && squarePiece != nil && squarePiece?.color != selectedPiece?.color
         let isWaitingForAnimation = movingPiece != nil
+        let isInteractionBlocked = isWaitingForAnimation || isWaiting || isPromotionPickerPresented
         let canSelectPiece = squarePiece.map { interactionMode.canInteract(with: $0, turn: turn) } ?? false
         let wrongSidePiece = selectedSquare == nil
             && squarePiece != nil
             && interactionMode != .readOnly
             && canSelectPiece == false
         let hasSelection = selectedSquare != nil
-        let isActivatable = isWaitingForAnimation == false
+        let isActivatable = isInteractionBlocked == false
             && interactionMode != .readOnly
             && (hasSelection || canSelectPiece)
 
@@ -53,6 +54,8 @@ extension ChessBoardModel {
                 isLegalDestination: legalMove,
                 isCaptureDestination: isCapture,
                 isWaitingForAnimation: isWaitingForAnimation,
+                isWaiting: isWaiting,
+                isPromotionPickerPresented: isPromotionPickerPresented,
                 canSelectPiece: canSelectPiece,
                 hasSelection: hasSelection
             ),
@@ -64,8 +67,17 @@ extension ChessBoardModel {
     }
 
     @discardableResult
-    func activate(square: BoardSquare) -> String? {
-        if movingPiece != nil || interactionMode == .readOnly {
+    func activate(
+        square: BoardSquare,
+        handler: ChessBoardMoveHandler? = nil
+    ) -> String? {
+        guard square.isOnBoard else { return nil }
+
+        if movingPiece != nil
+            || isWaiting
+            || isPromotionPickerPresented
+            || interactionMode == .readOnly
+        {
             return nil
         }
 
@@ -84,7 +96,7 @@ extension ChessBoardModel {
             updateLegalMoveHighlights(for: square)
             return selectionAnnouncement(for: square)
         } else if let selectedSquare {
-            return reportMoveAttempt(from: selectedSquare, to: square)
+            return reportMoveAttempt(from: selectedSquare, to: square, handler: handler)
         }
 
         return nil
@@ -108,7 +120,11 @@ extension ChessBoardModel {
         return "\(piece.accessibilityName) selected on \(coordinate). Legal moves: \(destinations.joined(separator: ", "))."
     }
 
-    private func reportMoveAttempt(from selectedSquare: BoardSquare, to targetSquare: BoardSquare) -> String? {
+    private func reportMoveAttempt(
+        from selectedSquare: BoardSquare,
+        to targetSquare: BoardSquare,
+        handler: ChessBoardMoveHandler?
+    ) -> String? {
         let sourceSquare = selectedSquare.coordinate
         let targetSquare = targetSquare.coordinate
         let coordinateMove = "\(sourceSquare)\(targetSquare)"
@@ -134,7 +150,8 @@ extension ChessBoardModel {
                 isLegal: isLegal,
                 sourceSquare: sourceSquare,
                 targetSquare: targetSquare,
-                coordinateMove: coordinateMove
+                coordinateMove: coordinateMove,
+                handler: handler
             )
         } else if promotionKinds.contains(where: { promotion in
             game.legalMoves.contains(Move(from: move.from, to: move.to, promotion: promotion))
@@ -152,7 +169,8 @@ extension ChessBoardModel {
                 isLegal: isLegal,
                 sourceSquare: sourceSquare,
                 targetSquare: targetSquare,
-                coordinateMove: coordinateMove
+                coordinateMove: coordinateMove,
+                handler: handler
             )
         }
     }
@@ -162,7 +180,8 @@ extension ChessBoardModel {
         isLegal: Bool,
         sourceSquare: String,
         targetSquare: String,
-        coordinateMove: String
+        coordinateMove: String,
+        handler: ChessBoardMoveHandler?
     ) -> String {
         let shouldReport = interactionMode.shouldReportMove(isLegal: isLegal)
 
@@ -171,7 +190,8 @@ extension ChessBoardModel {
             isLegal: isLegal,
             sourceSquare: sourceSquare,
             targetSquare: targetSquare,
-            coordinateMove: coordinateMove
+            coordinateMove: coordinateMove,
+            handler: handler
         )
 
         if isLegal {
@@ -215,11 +235,21 @@ extension ChessBoardModel {
         isLegalDestination: Bool,
         isCaptureDestination: Bool,
         isWaitingForAnimation: Bool,
+        isWaiting: Bool,
+        isPromotionPickerPresented: Bool,
         canSelectPiece: Bool,
         hasSelection: Bool
     ) -> String {
         if isWaitingForAnimation {
             return "Wait for the current move animation to finish."
+        }
+
+        if isPromotionPickerPresented {
+            return "Choose a promotion piece before moving again."
+        }
+
+        if isWaiting {
+            return "Wait for the board to become interactive."
         }
 
         if interactionMode == .readOnly {
@@ -258,7 +288,8 @@ extension ChessBoardModel {
     }
 
     private func piece(at square: BoardSquare) -> Piece? {
-        game.position.board[square.index]
+        guard square.isOnBoard else { return nil }
+        return game.position.board[square.index]
     }
 
     private func legalMoves(from source: BoardSquare, to target: BoardSquare? = nil) -> [Move] {
@@ -278,6 +309,7 @@ extension BoardSquare {
     }
 
     var coordinate: String {
+        guard isOnBoard else { return "-" }
         let file = Character(UnicodeScalar(column + 97)!)
         return "\(file)\(row + 1)"
     }

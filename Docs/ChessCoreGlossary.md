@@ -130,7 +130,8 @@ engine-analysis, and product-specific concepts belong in app-level docs.
 - **King-Side Castling**: Castling toward the `h` file, written `O-O` in SAN.
 - **Queen-Side Castling**: Castling toward the `a` file, written `O-O-O` in SAN.
 - **En Passant Target**: The square recorded after a two-square pawn advance
-  that may allow an en passant capture on the next move.
+  that may allow an en passant capture on the next move. FEN records the target
+  even when no legal capture is currently available.
 - **En Passant Capture**: A pawn capture of a pawn that just advanced two
   squares, made as if the pawn had advanced one square.
 - **Promotion**: Replacing a pawn with a queen, rook, bishop, or knight when the
@@ -165,11 +166,12 @@ engine-analysis, and product-specific concepts belong in app-level docs.
 - **Syntax-Only FEN Parsing**: `FENSerializer.position(from:)`, which checks
   FEN field syntax and returns a `Position`.
 - **Semantic FEN Validation**: `FENSerializer.validatedPosition(from:)`, which
-  parses FEN syntax and then rejects impossible or inconsistent positions such
+  parses FEN syntax and then rejects represented structural inconsistencies such
   as missing kings, invalid castling rights, invalid en-passant targets,
   en-passant targets with a nonzero halfmove clock, pawns on invalid ranks, or
-  inactive-side check. Use `FENSerializer.validationResult(for:)` when callers
-  need to inspect syntax and semantic validation failures without throwing.
+  inactive-side check. It is not a complete historical-reachability or material-
+  count proof. Use `FENSerializer.validationResult(for:)` when callers need to
+  inspect syntax and semantic validation failures without throwing.
 - **SAN**: Standard Algebraic Notation, the human-readable move notation used in
   movetext, such as `Nf3`, `exd5`, `O-O`, or `Qxf7#`.
 - **PGN**: Portable Game Notation, a text format for complete game records.

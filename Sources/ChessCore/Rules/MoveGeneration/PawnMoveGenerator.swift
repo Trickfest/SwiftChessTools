@@ -80,6 +80,21 @@ class PawnMoveGenerator: PieceMoveGenerator {
             return []
         }
 
+        guard position.board[enPassantSquare] == nil else {
+            return []
+        }
+
+        let capturedPawnRank = position.state.turn == .white
+            ? enPassantSquare.rank - 1
+            : enPassantSquare.rank + 1
+        let capturedPawnSquare = Square(file: enPassantSquare.file, rank: capturedPawnRank)
+        guard capturedPawnSquare.isValid,
+              position.board[capturedPawnSquare]
+                == Piece(kind: .pawn, color: position.state.turn.opposite)
+        else {
+            return []
+        }
+
         let direction = position.state.turn == .white ? 1 : -1
 
         for captureOffset in MoveOffsets().pawnCaptures {

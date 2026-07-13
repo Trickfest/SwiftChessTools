@@ -26,8 +26,23 @@ For the broader local validation pass:
 Scripts/test-all.sh
 ```
 
-`Scripts/test-all.sh` runs the SwiftPM suite, the simulator-backed
-`ChessUIHarness` UI tests, and the macOS `ChessWorkbench` UI tests.
+`Scripts/test-all.sh` runs the SwiftPM suite, a Release build, the ChessCore
+recipe, public-API compatibility against the latest available tag, the
+simulator-backed `ChessUIHarness` UI tests, and the macOS `ChessWorkbench` UI
+tests. A checkout without Git tags skips only the API comparison.
+
+GitHub Actions CI is manual-only and optional. It does not run on pushes or
+pull requests, and its completion or success is not required for pull-request
+acceptance. Local validation remains expected. Maintainers can explicitly
+dispatch the hosted checks for a branch or tag already on GitHub with:
+
+```sh
+Scripts/run-github-ci.sh [ref]
+```
+
+The dispatcher never commits or pushes local changes. The workflow calls
+`Scripts/github-ci.sh`; it does not replace the full local UI coverage in
+`Scripts/test-all.sh`.
 
 ## Pull Requests
 

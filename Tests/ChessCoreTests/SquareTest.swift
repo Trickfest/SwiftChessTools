@@ -37,6 +37,7 @@ import Testing
 
     #expect(Square(coordinate: "").isValid == false)
     #expect(Square(coordinate: "z9").isValid == false)
+    #expect(Square(coordinate: "eXX4").isValid == false)
 }
 
 @Test func gettingCoordinate() {
@@ -53,4 +54,25 @@ import Testing
 @Test func squareTranslation() {
     let e4Square = Square(coordinate: "e4")
     #expect(e4Square.translate(file: -1, rank: 1).coordinate == "d5")
+    #expect(e4Square.translate(file: Int.max, rank: 0).isValid == false)
+    #expect(Square(index: Int.max).translate(file: 1, rank: 1).isValid == false)
+}
+
+@Test func invalidSquaresArePubliclyInspectableAndNontrapping() {
+    let invalidCoordinates = Square(coordinate: "not-a-square")
+    let invalidIndex = Square(index: Int.max)
+    let invalidFile = Square(file: Int.max, rank: 0)
+
+    #expect(!invalidCoordinates.isValid)
+    #expect(!invalidIndex.isValid)
+    #expect(!invalidFile.isValid)
+    #expect(invalidCoordinates.coordinate == "-")
+    #expect(invalidIndex.description == "-")
+}
+
+@Test func bitboardSquareSupportsTheSignBitSquare() {
+    let h8 = Square(bitboardMask: Bitboard(1) << 63)
+
+    #expect(h8.isValid)
+    #expect(h8 == Square(coordinate: "h8"))
 }

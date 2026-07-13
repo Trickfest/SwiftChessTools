@@ -57,6 +57,18 @@ import ChessUI
     #expect(blackMate.accessibilityValue == "Black mate in 2")
 }
 
+@Test func extremeEvaluationsProduceSafeLabels() {
+    let centipawns = ChessEvaluationBarDisplayState(evaluation: .centipawns(Int.min))
+    let mate = ChessEvaluationBarDisplayState(evaluation: .mate(moves: Int.min, side: .black))
+
+    #expect(centipawns.whiteFraction == 0)
+    #expect(centipawns.label.hasPrefix("-"))
+    #expect(centipawns.accessibilityValue.hasPrefix("Black advantage"))
+    #expect(mate.whiteFraction == 0)
+    #expect(mate.label == "-M\(Int.min.magnitude)")
+    #expect(mate.accessibilityValue == "Black mate in \(Int.min.magnitude)")
+}
+
 @Test func unavailableEvaluationRendersNeutralState() {
     let state = ChessEvaluationBarDisplayState(evaluation: .unavailable)
 

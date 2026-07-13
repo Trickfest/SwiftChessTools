@@ -141,7 +141,7 @@ public struct ChessEvaluationBarDisplayState: Equatable, Sendable {
             accessibilityValue = Self.centipawnAccessibilityValue(for: centipawns)
 
         case .mate(let moves, let side):
-            let moveCount = max(1, abs(moves))
+            let moveCount = max(UInt(1), moves.magnitude)
             switch side {
             case .white:
                 whiteFraction = 1
@@ -161,7 +161,7 @@ public struct ChessEvaluationBarDisplayState: Equatable, Sendable {
     }
 
     private static func centipawnLabel(for centipawns: Int) -> String {
-        let roundedTenths = Int((Double(abs(centipawns)) / 10).rounded())
+        let roundedTenths = UInt((Double(centipawns.magnitude) / 10).rounded())
         let pawns = "\(roundedTenths / 10).\(roundedTenths % 10)"
 
         if centipawns > 0 {
@@ -176,7 +176,7 @@ public struct ChessEvaluationBarDisplayState: Equatable, Sendable {
     }
 
     private static func centipawnAccessibilityValue(for centipawns: Int) -> String {
-        let label = unsignedCentipawnLabel(for: abs(centipawns))
+        let label = unsignedCentipawnLabel(for: centipawns.magnitude)
 
         if centipawns > 0 {
             return "White advantage \(label) pawns"
@@ -189,8 +189,8 @@ public struct ChessEvaluationBarDisplayState: Equatable, Sendable {
         return "Equal evaluation"
     }
 
-    private static func unsignedCentipawnLabel(for centipawns: Int) -> String {
-        let roundedTenths = Int((Double(centipawns) / 10).rounded())
+    private static func unsignedCentipawnLabel(for centipawns: UInt) -> String {
+        let roundedTenths = UInt((Double(centipawns) / 10).rounded())
         return "\(roundedTenths / 10).\(roundedTenths % 10)"
     }
 }

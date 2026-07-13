@@ -176,7 +176,7 @@ public class FENSerializer {
     ///
     /// This method first applies normal FEN syntax parsing, then validates
     /// playable-position constraints such as king counts, castling rights, pawn
-    /// ranks, en-passant availability, and inactive-side check.
+    /// ranks, en-passant last-move consistency, and inactive-side check.
     public func validatedPosition(from fen: String) throws -> Position {
         try self.validationResult(for: fen).validatedPosition()
     }
@@ -280,7 +280,7 @@ public class FENSerializer {
                     board[Square(file: file, rank: rank)] = piece
                     file += 1
                     previousCharacterWasDigit = false
-                } else if let emptySquares = character.wholeNumberValue {
+                } else if let emptySquares = self.emptySquareCount(from: character) {
                     guard !previousCharacterWasDigit else {
                         throw FENParsingError.invalidPiecePlacement(String(sequence))
                     }
@@ -300,6 +300,20 @@ public class FENSerializer {
         }
 
         return board
+    }
+
+    private func emptySquareCount(from character: Character) -> Int? {
+        switch character {
+        case "1": 1
+        case "2": 2
+        case "3": 3
+        case "4": 4
+        case "5": 5
+        case "6": 6
+        case "7": 7
+        case "8": 8
+        default: nil
+        }
     }
 
     private func turn(from sequence: String.SubSequence) throws -> PieceColor {

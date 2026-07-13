@@ -111,6 +111,16 @@ Semantic validation rejects internally inconsistent positions, including:
 - en-passant targets with a nonzero halfmove clock
 - positions where the inactive side's king is already in check
 
+An en-passant target records the preceding two-square pawn move. It remains
+valid when no adjacent pawn can capture or when a nearby pawn is pinned; legal
+capture availability is considered by move generation and repetition identity,
+not by the FEN field itself.
+
+This validator checks the structural issues represented by the current public
+`PositionValidationIssue` cases. It is not a full proof of historical
+reachability, and the 1.x issue model does not reject every impossible material
+count, such as more than eight pawns for one side.
+
 Use syntax-only parsing when you intentionally need to inspect malformed chess
 states, migration data, or legacy fixtures.
 

@@ -20,7 +20,8 @@ display.
 - FEN-backed games with `[SetUp "1"]` and `[FEN "..."]`.
 - Escaped tag strings, brace comments, empty comments, semicolon comments,
   comments around result markers, `%` escape lines, Lichess clock/eval/elapsed
-  move time comments, arrow/square annotation comments, and NAGs.
+  move time comments, arrow/square annotation comments, NAGs, UTF-8 BOM input,
+  and LF, CR, or Windows CRLF line endings.
 - Repeated nonstandard tags are preserved in source order; tag lookup returns
   the first matching tag value.
 - Deterministic PGN export with the seven tag roster first.
@@ -35,6 +36,12 @@ board position itself is terminal.
 ChessCore only rejects result contradictions it can prove. Claimable draws, such
 as fifty-move or threefold-repetition claims, remain ongoing until claimed and
 therefore may still be exported or imported with any PGN result marker.
+
+Setup `FEN` tags use syntax-only FEN parsing before SAN replay. If an application
+requires the stricter structural checks from `PositionValidator`, validate
+`PGNGame.initialPosition` separately. For compatibility with real-world PGN
+dialects, an available `FEN` tag is used as the setup position even when the
+`SetUp` tag is omitted; `SetUp "1"` without `FEN` is rejected.
 
 ## Future Release API
 

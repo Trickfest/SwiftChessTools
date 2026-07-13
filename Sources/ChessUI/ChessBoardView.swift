@@ -72,6 +72,24 @@ public struct ChessBoardMoveAttempt: Equatable, Sendable {
 /// `ChessBoardInteractionMode`.
 public typealias ChessBoardMoveHandler = (ChessBoardMoveAttempt) -> Void
 
+private struct ChessBoardMoveHandlerEnvironmentValue: @unchecked Sendable {
+    var handler: ChessBoardMoveHandler?
+}
+
+private struct ChessBoardMoveHandlerEnvironmentKey: EnvironmentKey {
+    static let defaultValue = ChessBoardMoveHandlerEnvironmentValue(handler: nil)
+}
+
+private extension EnvironmentValues {
+    var chessBoardMoveHandler: ChessBoardMoveHandler? {
+        get { self[ChessBoardMoveHandlerEnvironmentKey.self].handler }
+        set {
+            self[ChessBoardMoveHandlerEnvironmentKey.self] =
+                ChessBoardMoveHandlerEnvironmentValue(handler: newValue)
+        }
+    }
+}
+
 /// User-interaction policy for `ChessBoardView`.
 ///
 /// Interaction modes control what user gestures ChessUI reports. They do not
@@ -157,6 +175,10 @@ public struct BoardSquare: Identifiable, Hashable, Sendable {
     public static func != (lhs: Self, rhs: Self) -> Bool {
         lhs.row != rhs.row || lhs.column != rhs.column
     }
+
+    var isOnBoard: Bool {
+        (0...7).contains(row) && (0...7).contains(column)
+    }
 }
 
 /// Observable state model for `ChessBoardView`.
@@ -233,7 +255,13 @@ public class ChessBoardModel {
 
     /// Controls whether selecting or dragging a piece highlights legal
     /// destinations.
-    public var showsLegalMoveHighlights: Bool = true
+    public var showsLegalMoveHighlights: Bool = true {
+        didSet {
+            if !showsLegalMoveHighlights {
+                legalMoveSquares.removeAll()
+            }
+        }
+    }
 
     /// Legal destination squares for the current selection or drag.
     public var legalMoveSquares: Set<BoardSquare> = []
@@ -242,8 +270,16 @@ public class ChessBoardModel {
     /// source square to the destination square after `setFEN(_:animatedMove:)`.
     ///
     /// Set this to `0` to make move updates effectively immediate. The default
-    /// is tuned to feel similar to common online chess boards.
-    public var moveAnimationDuration: Double = 0.45
+    /// is tuned to feel similar to common online chess boards. Assigned values
+    /// are normalized to the finite range `0...60` seconds.
+    public var moveAnimationDuration: Double = 0.45 {
+        didSet {
+            let normalizedDuration = Self.normalizedMoveAnimationDuration(moveAnimationDuration)
+            if moveAnimationDuration != normalizedDuration {
+                moveAnimationDuration = normalizedDuration
+            }
+        }
+    }
 
     /// Controls whether ChessUI keeps the source and destination squares of
     /// the most recent move highlighted after `setFEN(_:animatedMove:)`.
@@ -299,6 +335,7 @@ public class ChessBoardModel {
     }
 
     @ObservationIgnored private var movingPieceCleanupWorkItem: DispatchWorkItem?
+    @ObservationIgnored private var hintCleanupTask: Task<Void, Never>?
     
     /// Creates a chess board model.
     ///
@@ -346,12 +383,16 @@ public class ChessBoardModel {
         self.arrows = arrows
         self.interactionMode = interactionMode
         self.showsLegalMoveHighlights = showsLegalMoveHighlights
-        self.moveAnimationDuration = max(0, moveAnimationDuration)
+        self.moveAnimationDuration = Self.normalizedMoveAnimationDuration(moveAnimationDuration)
         self.showsLastMoveHighlight = showsLastMoveHighlight
         self.lastMoveHighlightColor = boardTheme.lastMoveHighlight
     }
 
     /// Callback invoked when the user attempts a move on the board.
+    ///
+    /// Prefer `ChessBoardView.onMove(_:)` for view-owned callbacks. If assigning
+    /// this fallback directly, avoid a strong capture of an owner that also
+    /// retains the model.
     public var onMove: ChessBoardMoveHandler = { _ in }
 
     /// Board square currently targeted by an active drag gesture.
@@ -366,22 +407,36 @@ public class ChessBoardModel {
     /// direct assignment clears move-specific animation and highlight state
     /// because a FEN string alone does not identify the source square.
     ///
+    /// When the parsed position equals `game.position`, this method retains the
+    /// existing `Game` instance so its move history, repetition counts, and draw
+    /// claim state remain intact. A different position creates a new game. A
+    /// successful update also clears selection, legal-move, drag, and pending-
+    /// promotion state while preserving caller-owned hints and arrows.
+    ///
     /// - Returns: `true` when the FEN was parsed and applied, or `false` when
     ///   parsing failed and the previous board was left unchanged.
     @discardableResult
     public func setFEN(_ fen: String, animatedMove: Move? = nil) -> Bool {
-        let newGame: Game
+        let newPosition: Position
         do {
-            newGame = Game(position: try FENSerializer().position(from: fen))
+            newPosition = try FENSerializer().position(from: fen)
             fenError = nil
         } catch {
             fenError = error
             return false
         }
 
+        let updatedGame = newPosition == game.position
+            ? game
+            : Game(position: newPosition)
+
         self.animatedMove = animatedMove
         movingPiece = nil
         lastMoveSquares = nil
+        deselect()
+        dropTarget = nil
+        clearPendingPromotionState()
+        isPromotionPickerPresented = false
 
         if let animatedMove = self.animatedMove {
             let pieces = game.position.board.enumeratedPieces()
@@ -393,14 +448,21 @@ public class ChessBoardModel {
             lastMoveSquares = (from: from, to: to)
 
             if moveAnimationDuration > 0,
-               let piece = squareAndPiece?.1 ?? newGame.position.board[animatedMove.to]
+               let piece = squareAndPiece?.1 ?? updatedGame.position.board[animatedMove.to]
             {
                 movingPiece = (piece: piece, from: from, to: to)
             }
         }
         
-        game = newGame
+        // Assign even when the reference is unchanged so Observation publishes
+        // nested Game mutations that produced the incoming FEN.
+        game = updatedGame
         return true
+    }
+
+    private static func normalizedMoveAnimationDuration(_ duration: Double) -> Double {
+        guard duration.isFinite else { return 0 }
+        return min(max(0, duration), 60)
     }
 
     func clearMovingPieceIfCurrent(_ movingPiece: (piece: Piece, from: BoardSquare, to: BoardSquare)) {
@@ -445,7 +507,7 @@ public class ChessBoardModel {
     /// Markers are derived from the model's current `game.legalMoves`; callers
     /// do not need to compute legal destinations themselves.
     public func updateLegalMoveHighlights(for square: BoardSquare) {
-        guard showsLegalMoveHighlights else {
+        guard showsLegalMoveHighlights, square.isOnBoard else {
             legalMoveSquares.removeAll()
             return
         }
@@ -470,6 +532,7 @@ public class ChessBoardModel {
 
     /// Adds a hint highlight for a board square.
     public func hint(_ square: BoardSquare) {
+        guard square.isOnBoard else { return }
         hintedSquares.insert(square)
     }
 
@@ -487,7 +550,7 @@ public class ChessBoardModel {
         let file = "abcdefgh".firstIndex(of: fileChar)?.utf16Offset(in: "abcdefgh")
         let rank = Int(String(rankChar))
         
-        guard let file = file, let rank = rank else {
+        guard let file = file, let rank = rank, (1...8).contains(rank) else {
             return
         }
         
@@ -518,6 +581,8 @@ public class ChessBoardModel {
 
     /// Clears all hint highlights.
     public func clearHint() {
+        hintCleanupTask?.cancel()
+        hintCleanupTask = nil
         hintedSquares.removeAll()
     }
 
@@ -527,19 +592,15 @@ public class ChessBoardModel {
     }
 
     /// Adds a coordinate hint, then clears all hints after `seconds`.
+    ///
+    /// A new timed hint replaces the prior cleanup timer. Durations are clamped
+    /// to one day; non-finite or nonpositive values clear immediately.
     @MainActor
     public func hint(_ square: String, for seconds: Double) {
         withAnimation {
             hint(square)
         }
-        
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(seconds))
-            
-            withAnimation {
-                self.clearHint()
-            }
-        }
+        scheduleHintCleanup(after: seconds)
     }
 
     /// Adds coordinate hints, then clears all hints after `seconds`.
@@ -548,14 +609,7 @@ public class ChessBoardModel {
         withAnimation {
             hint(squares)
         }
-        
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(seconds))
-            
-            withAnimation {
-                self.clearHint()
-            }
-        }
+        scheduleHintCleanup(after: seconds)
     }
 
     /// Adds board-square hints, then clears all hints after `seconds`.
@@ -564,14 +618,7 @@ public class ChessBoardModel {
         withAnimation {
             hint(squares)
         }
-        
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(seconds))
-            
-            withAnimation {
-                self.clearHint()
-            }
-        }
+        scheduleHintCleanup(after: seconds)
     }
 
     /// Adds a board-square hint, then clears all hints after `seconds`.
@@ -580,13 +627,34 @@ public class ChessBoardModel {
         withAnimation {
             hint(square)
         }
-        
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(seconds))
-            
+        scheduleHintCleanup(after: seconds)
+    }
+
+    @MainActor
+    private func scheduleHintCleanup(after seconds: Double) {
+        hintCleanupTask?.cancel()
+
+        let duration = seconds.isFinite ? min(max(0, seconds), 86_400) : 0
+        guard duration > 0 else {
             withAnimation {
-                self.clearHint()
+                hintedSquares.removeAll()
             }
+            hintCleanupTask = nil
+            return
+        }
+
+        hintCleanupTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: .seconds(duration))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+
+            withAnimation {
+                self?.hintedSquares.removeAll()
+            }
+            self?.hintCleanupTask = nil
         }
     }
 
@@ -607,14 +675,22 @@ public class ChessBoardModel {
 
     /// Dismisses the built-in promotion picker and clears pending promotion state.
     public func dismissPromotionPicker() {
-        promotionPiece = nil
-        promotionSourceSquare = nil
-        promotionTargetSquare = nil
-        promotionBaseMove = nil
+        clearPendingPromotionState()
         
         withAnimation(.bouncy) {
             isPromotionPickerPresented = false
         }
+    }
+
+    private func clearPendingPromotionState() {
+        promotionPiece = nil
+        promotionSourceSquare = nil
+        promotionTargetSquare = nil
+        promotionBaseMove = nil
+    }
+
+    var promotionDisplayColor: PieceColor {
+        promotionPiece?.color ?? turn
     }
 
     /// Toggles presentation of the built-in promotion picker.
@@ -650,13 +726,14 @@ public class ChessBoardModel {
         sourceSquare: String,
         targetSquare: String,
         coordinateMove: String,
-        promotion: PieceKind? = nil
+        promotion: PieceKind? = nil,
+        handler: ChessBoardMoveHandler? = nil
     ) {
         guard interactionMode.shouldReportMove(isLegal: isLegal) else {
             return
         }
 
-        onMove(
+        (handler ?? onMove)(
             ChessBoardMoveAttempt(
                 move: move,
                 isLegal: isLegal,
@@ -1038,12 +1115,14 @@ private struct ChessBoardSportsCourtTexture: View {
 public struct ChessBoardView: View {
     /// State model rendered and mutated by the board.
     public var model: ChessBoardModel
+    private var moveHandler: ChessBoardMoveHandler?
     
     @Namespace private var animation
     
     /// Creates a chessboard view for the provided model.
     public init(model: ChessBoardModel) {
         self.model = model
+        self.moveHandler = nil
     }
 
     private var boardModel: ChessBoardModel { model }
@@ -1055,21 +1134,30 @@ public struct ChessBoardView: View {
                 backgroundView
                 lastMoveHighlightsView
                     .allowsHitTesting(false)
+                    .accessibilityHidden(isBoardInteractionBlocked)
                 if model.showsCoordinateLabels {
                     labelsView
                         .allowsHitTesting(false)
+                        .accessibilityHidden(true)
                 }
                 squaresView
+                    .allowsHitTesting(!isBoardInteractionBlocked)
+                    .accessibilityHidden(isBoardInteractionBlocked)
                 arrowsView
                     .allowsHitTesting(false)
+                    .accessibilityHidden(isBoardInteractionBlocked)
                 piecesView
+                    .allowsHitTesting(!isBoardInteractionBlocked)
+                    .accessibilityHidden(isBoardInteractionBlocked)
                 legalMoveHighlightsView
                     .allowsHitTesting(false)
+                    .accessibilityHidden(isBoardInteractionBlocked)
                 
                 MovingPieceView(animation: animation)
+                    .accessibilityHidden(true)
                 
                 if model.isPromotionPickerPresented {
-                    promotionPickerView
+                    promotionPickerView(boardSize: boardSize(from: geometry.size))
                         .frame(width: geometry.size.width, height: geometry.size.height)
                 }
                 
@@ -1078,6 +1166,7 @@ public struct ChessBoardView: View {
                 }
             }
             .environment(model)
+            .environment(\.chessBoardMoveHandler, moveHandler)
             .frame(width: boardSize(from: geometry.size),
                    height: boardSize(from: geometry.size))
             .onAppear {
@@ -1099,6 +1188,10 @@ public struct ChessBoardView: View {
         .aspectRatio(1, contentMode: .fit)
     }
 
+    private var isBoardInteractionBlocked: Bool {
+        model.isWaiting || model.isPromotionPickerPresented
+    }
+
     private func boardSize(from geometrySize: CGSize) -> CGFloat {
         return min(geometrySize.width, geometrySize.height)
     }
@@ -1112,19 +1205,26 @@ public struct ChessBoardView: View {
     }
     
     var waitingOverlayView: some View {
-        ZStack {
+        return ZStack {
             Color.clear.contentShape(Rectangle())
                 .ignoresSafeArea()
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Chess board is waiting")
     }
     
-    var promotionPickerView: some View {
-        ZStack {
+    func promotionPickerView(boardSize: CGFloat) -> some View {
+        let buttonPadding = max(2, min(5, boardSize / 64))
+        let buttonSpacing = max(6, min(16, boardSize / 20))
+        let containerPadding = max(6, min(8, boardSize / 40))
+        let edgePadding = max(6, min(8, boardSize / 40))
+
+        return ZStack {
             Color.white.opacity(0.5)
                 .ignoresSafeArea()
             
-            VStack(spacing: 24) {
-                HStack(spacing: 20) {
+            VStack {
+                HStack(spacing: buttonSpacing) {
                     ForEach(["q", "r", "b", "n"], id: \.self) { (piece: String) in
                         Button {
                             guard let sourceSquare = boardModel.promotionSourceSquare,
@@ -1146,13 +1246,16 @@ public struct ChessBoardView: View {
                                 sourceSquare: sourceSquare,
                                 targetSquare: targetSquare,
                                 coordinateMove: promotedCoordinateMove,
-                                promotion: promotion
+                                promotion: promotion,
+                                handler: moveHandler
                             )
                             
                             boardModel.dismissPromotionPicker()
                         } label: {
-                            let promotionColor: PieceColor = boardModel.perspective == .white ? .white : .black
-                            let promotionPiece = Piece(kind: PieceKind(rawValue: piece)!, color: promotionColor)
+                            let promotionPiece = Piece(
+                                kind: PieceKind(rawValue: piece)!,
+                                color: boardModel.promotionDisplayColor
+                            )
                             let imageName = boardModel.pieceSet.assetName(for: promotionPiece)
                             
                             ZStack {
@@ -1160,10 +1263,10 @@ public struct ChessBoardView: View {
                                                pieceSet: boardModel.pieceSet,
                                                fallback: piece.uppercased(),
                                                fallbackColor: Color.black)
-                                    .frame(width: boardModel.size / 8,
-                                           height: boardModel.size / 8)
+                                    .frame(width: boardSize / 8,
+                                           height: boardSize / 8)
                             }
-                            .padding(5)
+                            .padding(buttonPadding)
                         }
                         .background(.white)
                         .cornerRadius(12)
@@ -1173,13 +1276,14 @@ public struct ChessBoardView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding()
+            .padding(containerPadding)
             .background(.ultraThinMaterial)
             .cornerRadius(20)
             .shadow(radius: 5)
-            .padding(.horizontal, 20)
+            .padding(.horizontal, edgePadding)
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Choose promotion piece")
+            .accessibilityAddTraits(.isModal)
         }
     }
 
@@ -1249,7 +1353,11 @@ public struct ChessBoardView: View {
         
         return Text("\(displayRow + 1)")
             .font(.system(size: labelSize))
-            .foregroundColor(boardModel.boardTheme.label)
+            .foregroundColor(
+                boardModel.boardTheme.coordinateLabel(
+                    isLightSquare: (7 - row).isMultiple(of: 2)
+                )
+            )
             .frame(width: labelSize, height: squareSize, alignment: .center)
             .position(
                 x: labelSize / 2 + 2,
@@ -1267,7 +1375,11 @@ public struct ChessBoardView: View {
         
         return Text(["a", "b", "c", "d", "e", "f", "g", "h"][displayColumn])
             .font(.system(size: labelSize))
-            .foregroundColor(boardModel.boardTheme.label)
+            .foregroundColor(
+                boardModel.boardTheme.coordinateLabel(
+                    isLightSquare: (7 + column).isMultiple(of: 2)
+                )
+            )
             .frame(width: squareSize, height: labelSize, alignment: .center)
             .position(
                 x: (CGFloat(column) * squareSize + squareSize)
@@ -1316,7 +1428,7 @@ public struct ChessBoardView: View {
     
     var legalMoveHighlightsView: some View {
         ZStack {
-            ForEach(Array(boardModel.legalMoveSquares), id: \.id) { square in
+            ForEach(Array(boardModel.legalMoveSquares.filter(\.isOnBoard)), id: \.id) { square in
                 Circle()
                     .fill(boardModel.boardTheme.legalMove)
                     .frame(width: boardModel.size / 24, height: boardModel.size / 24)
@@ -1362,7 +1474,7 @@ public struct ChessBoardView: View {
     }
 
     private func isOnBoard(_ square: BoardSquare) -> Bool {
-        (0...7).contains(square.row) && (0...7).contains(square.column)
+        square.isOnBoard
     }
 
     private func accessibilityLabel(for arrow: ChessBoardArrow) -> String {
@@ -1371,8 +1483,9 @@ public struct ChessBoardView: View {
     
     /// Registers a callback for attempted board moves.
     public func onMove(_ callback: @escaping ChessBoardMoveHandler) -> ChessBoardView {
-        boardModel.onMove = callback
-        return self
+        var view = self
+        view.moveHandler = callback
+        return view
     }
 }
 
@@ -1523,6 +1636,7 @@ private struct ChessSquareView: View {
 
 private struct ChessPieceView: View {
     @Environment(ChessBoardModel.self) var boardModel
+    @Environment(\.chessBoardMoveHandler) private var moveHandler
     
     var animation: Namespace.ID
     
@@ -1557,6 +1671,13 @@ private struct ChessPieceView: View {
     var isMoving: Bool {
         piece == boardModel.movingPiece?.piece && square == boardModel.movingPiece?.from
     }
+
+    var isInteractionBlocked: Bool {
+        boardModel.movingPiece != nil
+            || boardModel.isWaiting
+            || boardModel.isPromotionPickerPresented
+            || boardModel.interactionMode == .readOnly
+    }
     
     var body: some View {
         let accessibilityState = boardModel.accessibilityState(for: square)
@@ -1579,7 +1700,7 @@ private struct ChessPieceView: View {
         .contentShape(Rectangle())
         .offset(offset)
         .onTapGesture {
-            boardModel.activate(square: square)
+            boardModel.activate(square: square, handler: moveHandler)
         }
         .gesture(dragGesture)
         .accessibilityElement(children: .ignore)
@@ -1589,7 +1710,7 @@ private struct ChessPieceView: View {
         .accessibilityHidden(isMovingPiece)
         .chessBoardAccessibilityTraits(accessibilityState)
         .chessBoardAccessibilityAction(accessibilityState.isActivatable) {
-            announceForAccessibility(boardModel.activate(square: square))
+            announceForAccessibility(boardModel.activate(square: square, handler: moveHandler))
         }
     }
 
@@ -1600,7 +1721,7 @@ private struct ChessPieceView: View {
     var dragGesture: some Gesture {
         DragGesture()
             .onChanged { value in
-                if boardModel.movingPiece != nil || boardModel.interactionMode == .readOnly {
+                if isInteractionBlocked {
                     return
                 }
                 
@@ -1641,7 +1762,8 @@ private struct ChessPieceView: View {
                 isDragging = false
                 boardModel.clearLegalMoveHighlights()
                 
-                guard let piece,
+                guard !isInteractionBlocked,
+                      let piece,
                       boardModel.interactionMode.canInteract(with: piece, turn: boardModel.turn)
                 else {
                     withAnimation {
@@ -1691,7 +1813,8 @@ private struct ChessPieceView: View {
                         isLegal: isLegal,
                         sourceSquare: sourceSquare,
                         targetSquare: targetSquare,
-                        coordinateMove: coordinateMove
+                        coordinateMove: coordinateMove,
+                        handler: moveHandler
                     )
                 } else if ([PieceKind.queen, .rook, .bishop, .knight].contains { promotion in
                     boardModel.game.legalMoves.contains(Move(from: move.from, to: move.to, promotion: promotion))
@@ -1706,7 +1829,8 @@ private struct ChessPieceView: View {
                         isLegal: isLegal,
                         sourceSquare: sourceSquare,
                         targetSquare: targetSquare,
-                        coordinateMove: coordinateMove
+                        coordinateMove: coordinateMove,
+                        handler: moveHandler
                     )
                 }
             }
@@ -1732,6 +1856,7 @@ private extension View {
     }
 }
 
+@MainActor
 private func announceForAccessibility(_ message: String?) {
     guard let message, message.isEmpty == false else {
         return

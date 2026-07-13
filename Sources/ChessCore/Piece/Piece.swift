@@ -35,13 +35,33 @@ public struct Piece: Hashable, CustomStringConvertible, Sendable {
 
     /// Creates a piece from a FEN piece character.
     ///
-    /// Uppercase characters create white pieces, and lowercase characters
-    /// create black pieces.
+    /// Uppercase ASCII FEN characters create white pieces, and lowercase ASCII
+    /// FEN characters create black pieces. Unicode case-folding lookalikes are
+    /// rejected.
     public init?(character: Character) {
-        guard let kind = PieceKind(rawValue: character.lowercased()) else {
+        guard character.unicodeScalars.count == 1,
+              let value = character.unicodeScalars.first?.value
+        else {
             return nil
         }
-        let color: PieceColor = character.isUppercase ? .white : .black
+
+        let kind: PieceKind
+        let color: PieceColor
+        switch value {
+        case 0x4B: (kind, color) = (.king, .white)   // K
+        case 0x51: (kind, color) = (.queen, .white)  // Q
+        case 0x52: (kind, color) = (.rook, .white)   // R
+        case 0x42: (kind, color) = (.bishop, .white) // B
+        case 0x4E: (kind, color) = (.knight, .white) // N
+        case 0x50: (kind, color) = (.pawn, .white)   // P
+        case 0x6B: (kind, color) = (.king, .black)   // k
+        case 0x71: (kind, color) = (.queen, .black)  // q
+        case 0x72: (kind, color) = (.rook, .black)   // r
+        case 0x62: (kind, color) = (.bishop, .black) // b
+        case 0x6E: (kind, color) = (.knight, .black) // n
+        case 0x70: (kind, color) = (.pawn, .black)   // p
+        default: return nil
+        }
         self.init(kind: kind, color: color)
     }
 

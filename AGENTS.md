@@ -80,6 +80,26 @@ Combined repo suite:
 Scripts/test-all.sh
 ```
 
+The combined script also performs a Release build, runs the ChessCore recipe,
+and compares the public API with the latest available Git tag before starting
+the iOS and macOS UI suites. A checkout without tags skips only the API
+comparison.
+
+GitHub-hosted CI is intentionally manual-only and optional. It does not run on
+pushes or pull requests, and neither a hosted run nor a successful hosted result
+is an acceptance requirement. Focused local checks and `Scripts/test-all.sh`
+remain the expected validation paths. Do not dispatch GitHub Actions during
+ordinary validation unless the user explicitly asks. When requested, dispatch
+the workflow for a branch or tag that already exists on GitHub with:
+
+```sh
+Scripts/run-github-ci.sh [ref]
+```
+
+The dispatcher never commits or pushes. The hosted workflow runs
+`Scripts/github-ci.sh`, which contains the headless checks suitable for a
+GitHub-hosted macOS runner.
+
 If macOS UI tests report another app window as an interrupting element, move the
 blocking window away and rerun before treating the failure as a product defect.
 

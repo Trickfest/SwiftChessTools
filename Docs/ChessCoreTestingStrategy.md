@@ -161,15 +161,20 @@ Semantic FEN validation coverage currently includes:
 - missing kings and multiple kings are reported
 - pawns on the first or eighth rank are reported
 - castling rights require the matching king and rook on their starting squares
-- en-passant targets require an empty target square, the capturable pawn, and at
-  least one legal en-passant capture
+- en-passant targets require the correct rank, an empty target square, the
+  just-advanced pawn, and an empty original pawn square
 - en-passant targets require a zero halfmove clock because the previous move
   must have been a pawn move
-- en-passant targets are rejected when the apparent capture would expose the
-  moving side's king
+- en-passant targets remain valid without an adjacent capturer or when an
+  adjacent pawn is pinned, matching FEN's last-move semantics
 - the inactive side's king may not already be in check
 - independent semantic issues are reported together instead of stopping after
   the first issue
+
+The current public validation issue model does not attempt a complete
+reachability proof or report every historically impossible material count.
+Adding material-count issue cases remains a future public-API decision because
+consumers may switch exhaustively over `PositionValidationIssue`.
 
 Dead-position analysis is intentionally conservative. ChessCore reports dead
 positions when they are proven by insufficient mating material, a sealed
@@ -219,7 +224,7 @@ This coverage matrix is based on an inspection of upstream
 | Pieces | Symbol parsing, equality, hashing. | Piece equality and character mapping are covered. | Covered | Low |
 | Board storage | Default/empty boards, get/set/remove pieces, color lookup, piece maps. | Board square/index/coordinate access, copy independence, and enumeration are covered. | Covered | Low |
 | FEN syntax | Valid FEN, malformed FEN, counters, en-passant fields, castling fields. | Serialization, malformed fields, generated round trips, adjacent digit rejection, and counter bounds are covered. | Covered | Low |
-| FEN semantic status | Bad castling rights, multiple kings, impossible or inconsistent positions. | `PositionValidator`, `PositionValidator.validationResult(for:)`, `FENSerializer.validatedPosition(from:)`, and `FENSerializer.validationResult(for:)` cover king counts, pawn ranks, castling rights, en-passant availability, en-passant halfmove-clock consistency, inactive-side check, syntax-vs-semantic diagnostics, and multi-issue reporting. Dead-position adjudication is covered separately by `Game.status` and `DeadPositionAnalyzer`. | Covered | Low |
+| FEN semantic status | Bad castling rights, multiple kings, impossible or inconsistent positions. | `PositionValidator`, `PositionValidator.validationResult(for:)`, `FENSerializer.validatedPosition(from:)`, and `FENSerializer.validationResult(for:)` cover king counts, pawn ranks, castling rights, en-passant last-move consistency, inactive-side check, syntax-vs-semantic diagnostics, and multi-issue reporting. Full reachability and impossible material-count proofs remain outside the current 1.x issue model. Dead-position adjudication is covered separately by `Game.status` and `DeadPositionAnalyzer`. | Covered | Low |
 | EPD | EPD parsing, operations, best-move fields. | ChessCore does not support EPD. | Out of scope | Low |
 | Legal move generation | Legal move lists, move counts, perft-style fixtures, pseudo-legal distinctions. | Focused legal-move fixtures, 40 perft positions, a 53-position exact legal-move corpus, and 48 generated move-count/status positions created with a temporary `python-chess` oracle are covered, including castling, en-passant, promotion, underpromotion mate, checkmate, stalemate, and generated midgame positions. | Covered | Low |
 | Castling | SAN castling, selective castling, missing/invalid rights, rook/king edge cases, Chess960 castling. | Standard castling rights, missing rooks, matching rook color, attacked transit/destination, in-check rejection, b-file occupancy, rook-path attack tolerance, and application are covered. Chess960 is out of scope. | Covered | Low |

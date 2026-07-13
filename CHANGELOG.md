@@ -7,7 +7,59 @@ release. Tagged releases use dated version headings.
 
 ## Unreleased
 
-No unreleased changes.
+## 1.1.0 - 2026-07-13
+
+### Added
+
+- Exposed read-only `Square.isValid` so source-package consumers can safely
+  inspect coordinates and indexes accepted at application boundaries.
+- Expanded local validation and the optional hosted checks with a Release
+  build, the `ChessCoreRecipes` smoke test, and public-API compatibility
+  diagnostics against the latest Git tag. The hosted check also builds the
+  source package for generic iOS hardware.
+- Added regression coverage for Windows PGN input, FEN en-passant semantics,
+  extreme counters and evaluation scores, invalid coordinates, malformed SAN,
+  ChessUI game-history preservation, modal accessibility, timed hints, and
+  small-board Black promotion UI.
+
+### Changed
+
+- Made GitHub Actions CI manual-only instead of running on pushes or pull
+  requests, added repository scripts for the hosted checks and explicit
+  dispatch, and made hosted completion nonblocking for acceptance and release
+  work.
+- Clarified public FEN validation as structural rather than a complete
+  historical-reachability or material-count proof.
+- Corrected UCI session examples to place `isready` after `ucinewgame` and wait
+  for `readyok`, and documented free-form UCI command values as trusted
+  single-line text.
+- Updated installation guidance for version `1.1.0`, linked the Swift Package
+  Index listing, and updated the reference-app description for both embedded
+  engines.
+
+### Fixed
+
+- Fixed PGN lexing for CRLF line endings, semicolon comments, `%` escape lines,
+  source locations, and a leading BOM followed by a column-one escape line.
+- Fixed strict validation of FEN en-passant targets so legal FEN emitted after
+  a two-square pawn move remains valid even when no capture is available.
+- Prevented accepted maximum move counters from overflowing during legal move
+  application.
+- Hardened invalid `Square` and `Board` inputs, exact ASCII FEN piece/digit
+  parsing, syntax-only en-passant generation, off-home-square castling, and SAN
+  check-marker normalization.
+- Prevented `Int.min` overflow while normalizing UCI scores or formatting
+  ChessUI centipawn and mate values.
+- Preserved live `Game` history, repetition counts, and draw claims when
+  `ChessBoardModel.setFEN` renders the game's current position, while clearing
+  stale selection, drag, legal-move, and promotion state.
+- Kept `ChessBoardView.onMove` callbacks in the view instead of storing them on
+  the model, avoiding the documented ownership cycle while preserving
+  `ChessBoardModel.onMove` as a compatibility fallback.
+- Blocked underlying accessibility moves while waiting or choosing promotion,
+  used the promoting pawn's color in the picker, normalized timed UI durations,
+  canceled stale hint and move-list tasks, cleared disabled legal markers, and
+  improved coordinate-label contrast across bundled themes.
 
 ## 1.0.5 - 2026-07-02
 

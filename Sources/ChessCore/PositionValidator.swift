@@ -106,7 +106,9 @@ public struct PositionValidationResult: Equatable, Sendable {
 ///
 /// `PositionValidator` assumes FEN syntax has already been parsed into a
 /// `Position`. It checks standard-position constraints that are not expressible
-/// in the FEN grammar itself.
+/// in the FEN grammar itself. It is not a complete proof that a position is
+/// historically reachable, and the current issue model does not report every
+/// impossible material count.
 ///
 /// ```swift
 /// let position = try FENSerializer().position(from: fen)
@@ -199,6 +201,11 @@ public struct PositionValidator: Sendable {
             return false
         }
 
+        let expectedTargetRank = position.state.turn == .white ? 5 : 2
+        guard target.rank == expectedTargetRank else {
+            return false
+        }
+
         guard position.board[target] == nil else {
             return false
         }
@@ -214,22 +221,9 @@ public struct PositionValidator: Sendable {
             return false
         }
 
-        for fileOffset in [-1, 1] {
-            let source = Square(file: target.file + fileOffset, rank: sourceRank)
-            guard source.isValid else {
-                continue
-            }
-            guard position.board[source] == Piece(kind: .pawn, color: position.state.turn) else {
-                continue
-            }
-            if StandardRules().legalMovesForPiece(at: source, in: position)
-                .contains(Move(from: source, to: target))
-            {
-                return true
-            }
-        }
-
-        return false
+        let previousPawnRank = position.state.turn == .white ? target.rank + 1 : target.rank - 1
+        let previousPawnSquare = Square(file: target.file, rank: previousPawnRank)
+        return previousPawnSquare.isValid && position.board[previousPawnSquare] == nil
     }
 
 }

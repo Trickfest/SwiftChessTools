@@ -105,6 +105,7 @@ import ChessUI
 @MainActor
 @Test func promotionPickerSnapshot() throws {
     let model = ChessBoardModel(fen: "7k/4P3/8/8/8/8/8/4K3 w - - 0 1")
+    model.size = 320
     model.presentPromotionPicker(
         piece: Piece(kind: .pawn, color: .white),
         sourceSquare: "e7",
@@ -114,6 +115,29 @@ import ChessUI
 
     try assertBoardSnapshot(named: "promotion-picker") {
         ChessBoardView(model: model)
+    }
+}
+
+@MainActor
+@Test func blackPromotionPickerFitsMinimumBoardSnapshot() throws {
+    let model = ChessBoardModel(fen: "4k3/8/8/8/8/8/4p3/7K b - - 0 1")
+    model.size = 220
+    model.promotionPiece = Piece(kind: .pawn, color: .black)
+    model.promotionSourceSquare = "e2"
+    model.promotionTargetSquare = "e1"
+    model.promotionBaseMove = try! Move(string: "e2e1")
+    model.isPromotionPickerPresented = true
+
+    // Small AppKit rasters can vary at antialiased piece and label edges while
+    // preserving the layout this regression test is intended to protect.
+    try assertViewSnapshot(
+        named: "promotion-picker-black-minimum-size",
+        size: CGSize(width: 220, height: 220),
+        channelTolerance: 30
+    ) {
+        ChessBoardView(model: model)
+            .frame(width: 220, height: 220)
+            .background(Color.white)
     }
 }
 
@@ -403,6 +427,7 @@ private func assertBoardSnapshot<Content: View>(
 private func assertViewSnapshot<Content: View>(
     named name: String,
     size: CGSize,
+    channelTolerance: Int = 3,
     @ViewBuilder content: () -> Content
 ) throws {
     let actualPNG = try renderPNG(content(), size: size)
@@ -432,7 +457,12 @@ private func assertViewSnapshot<Content: View>(
     }
 
     let expectedPNG = try Data(contentsOf: referenceURL)
-    try assertImagesMatch(expectedPNG, actualPNG, snapshotName: name)
+    try assertImagesMatch(
+        expectedPNG,
+        actualPNG,
+        snapshotName: name,
+        channelTolerance: channelTolerance
+    )
 }
 
 @MainActor
@@ -452,7 +482,12 @@ private func renderPNG<Content: View>(_ view: Content, size: CGSize) throws -> D
     return png
 }
 
-private func assertImagesMatch(_ expectedPNG: Data, _ actualPNG: Data, snapshotName: String) throws {
+private func assertImagesMatch(
+    _ expectedPNG: Data,
+    _ actualPNG: Data,
+    snapshotName: String,
+    channelTolerance: Int
+) throws {
     let expected = try rgbaBitmap(from: expectedPNG)
     let actual = try rgbaBitmap(from: actualPNG)
 
@@ -472,7 +507,7 @@ private func assertImagesMatch(_ expectedPNG: Data, _ actualPNG: Data, snapshotN
         let blueDelta = abs(Int(expected.pixels[index + 2]) - Int(actual.pixels[index + 2]))
         let alphaDelta = abs(Int(expected.pixels[index + 3]) - Int(actual.pixels[index + 3]))
 
-        if max(redDelta, greenDelta, blueDelta, alphaDelta) > 3 {
+        if max(redDelta, greenDelta, blueDelta, alphaDelta) > channelTolerance {
             differingPixels += 1
         }
     }

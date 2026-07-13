@@ -295,6 +295,17 @@ import ChessUCI
     #expect(UCIScore.mate(-1).whiteRelative(sideToMove: .black) == .mate(moves: 1, side: .white))
 }
 
+@Test func scoreNormalizationSafelyHandlesMinimumIntegers() {
+    let minimum = String(Int.min)
+    let centipawns = expectInfo("info score cp \(minimum)")
+    let mate = expectInfo("info score mate \(minimum)")
+
+    #expect(centipawns.score == .centipawns(Int.min))
+    #expect(centipawns.whiteRelativeScore(sideToMove: .black) == .centipawns(Int.max))
+    #expect(mate.score == .mate(Int.min))
+    #expect(mate.whiteRelativeScore(sideToMove: .white) == .mate(moves: Int.max, side: .black))
+}
+
 @Test func infoLineConvenienceReturnsWhiteRelativeScore() {
     let blackToMoveInfo = expectInfo("info score cp 50 pv e7e5")
 

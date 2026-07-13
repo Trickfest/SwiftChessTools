@@ -52,6 +52,14 @@ func serialization(fen: String) {
             FENParsingError.invalidPiecePlacement("7P1/8/8/8/8/8/8/8")
         ),
         (
+            "K7/8/8/8/8/8/8/8 w - - 0 1",
+            FENParsingError.invalidPiecePlacement("K7/8/8/8/8/8/8/8")
+        ),
+        (
+            "٨/8/8/8/8/8/8/8 w - - 0 1",
+            FENParsingError.invalidPiecePlacement("٨/8/8/8/8/8/8/8")
+        ),
+        (
             "8/8/8/8/8/8/8/8 x - - 0 1",
             FENParsingError.invalidActiveColor("x")
         ),

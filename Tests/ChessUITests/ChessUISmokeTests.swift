@@ -128,6 +128,65 @@ import ChessCore
     #expect(model.movingPiece?.piece == Piece(kind: .pawn, color: .white))
 }
 
+@Test func setFENPreservesTheLiveGameWhenRenderingItsCurrentPosition() throws {
+    let model = ChessBoardModel(fen: initialFEN)
+    let originalGame = model.game
+    let moves = try ["g1f3", "g8f6", "f3g1", "f6g8"].map(Move.init(string:))
+
+    for move in moves {
+        try model.game.applyLegal(move: move)
+        let fen = FENSerializer().fen(from: model.game.position)
+        #expect(model.setFEN(fen, animatedMove: move))
+    }
+
+    #expect(model.game === originalGame)
+    #expect(model.game.moveHistory == moves)
+    #expect(model.game.currentRepetitionCount == 2)
+}
+
+@Test func setFENPreservesAClaimedDrawForTheSamePosition() throws {
+    let fen = "r3k3/8/8/8/8/8/8/R3K3 w - - 100 1"
+    let model = ChessBoardModel(fen: fen)
+    let originalGame = model.game
+    try model.game.claimDraw(.fiftyMoveRule)
+
+    #expect(model.setFEN(fen))
+    #expect(model.game === originalGame)
+    #expect(model.game.claimedDraw == .fiftyMoveRule)
+    #expect(model.game.status == .draw(.fiftyMoveRule))
+}
+
+@Test func setFENClearsPositionSpecificInteractionStateButKeepsAnnotations() throws {
+    let model = ChessBoardModel(fen: initialFEN)
+    let arrow = ChessBoardArrow(from: "e2", to: "e4")!
+    model.selectedSquare = BoardSquare(row: 1, column: 4)
+    model.updateLegalMoveHighlights(for: BoardSquare(row: 1, column: 4))
+    model.dropTarget = (row: 3, column: 4)
+    model.hint("d4")
+    model.arrows = [arrow]
+    model.presentPromotionPicker(
+        piece: Piece(kind: .pawn, color: .white),
+        sourceSquare: "e7",
+        targetSquare: "e8",
+        baseMove: try Move(string: "e7e8")
+    )
+
+    #expect(model.setFEN(emptyFEN))
+
+    #expect(model.selectedSquare == nil)
+    #expect(model.legalMoveSquares.isEmpty)
+    #expect(model.dropTarget == nil)
+    #expect(!model.isPromotionPickerPresented)
+    #expect(model.promotionPiece == nil)
+    #expect(model.promotionSourceSquare == nil)
+    #expect(model.promotionTargetSquare == nil)
+    #expect(model.promotionBaseMove == nil)
+    #expect(model.hintedSquares == [BoardSquare(row: 3, column: 3)])
+    #expect(model.arrows.count == 1)
+    #expect(model.arrows.first?.from == arrow.from)
+    #expect(model.arrows.first?.to == arrow.to)
+}
+
 @Test func directFenAssignmentClearsMoveFeedback() {
     let model = ChessBoardModel(fen: initialFEN)
     let move = try! Move(string: "e2e4")
@@ -195,6 +254,46 @@ import ChessCore
     #expect(model.hintedSquares.isEmpty)
 }
 
+@Test func invalidHintAndHighlightCoordinatesAreIgnored() {
+    let model = ChessBoardModel(fen: initialFEN)
+    model.hint("a0")
+    model.hint("a9")
+    model.hint(BoardSquare(row: -1, column: 0))
+    model.hint(row: 8, column: 7)
+
+    #expect(model.hintedSquares.isEmpty)
+
+    model.updateLegalMoveHighlights(for: BoardSquare(row: 1, column: 4))
+    #expect(!model.legalMoveSquares.isEmpty)
+    model.updateLegalMoveHighlights(for: BoardSquare(row: Int.max, column: Int.min))
+    #expect(model.legalMoveSquares.isEmpty)
+}
+
+@MainActor
+@Test func timedHintsRejectInvalidDurationsAndReplaceEarlierCleanup() async throws {
+    let model = ChessBoardModel(fen: initialFEN)
+
+    model.hint("e4", for: .nan)
+    #expect(model.hintedSquares.isEmpty)
+    model.hint("e4", for: .infinity)
+    #expect(model.hintedSquares.isEmpty)
+
+    model.hint("e4", for: 0.02)
+    model.hint("d4", for: 0)
+    model.hint("c4")
+    try await Task.sleep(for: .milliseconds(50))
+    await Task.yield()
+    #expect(model.hintedSquares == [BoardSquare(row: 3, column: 2)])
+
+    model.clearHint()
+    model.hint("e4", for: 0.02)
+    try await Task.sleep(for: .milliseconds(50))
+    for _ in 0..<100 where !model.hintedSquares.isEmpty {
+        await Task.yield()
+    }
+    #expect(model.hintedSquares.isEmpty)
+}
+
 @Test func boardArrowsCanBeConfiguredAndCleared() {
     let primaryArrow = ChessBoardArrow(
         from: BoardSquare(row: 1, column: 4),
@@ -257,6 +356,25 @@ import ChessCore
     #expect(model.promotionBaseMove == nil)
 }
 
+@Test func promotionArtworkUsesThePromotingPawnColorNotPerspective() throws {
+    let model = ChessBoardModel(
+        fen: "4k3/8/8/8/8/8/4p3/7K b - - 0 1",
+        perspective: .white
+    )
+    model.presentPromotionPicker(
+        piece: Piece(kind: .pawn, color: .black),
+        sourceSquare: "e2",
+        targetSquare: "e1",
+        baseMove: try Move(string: "e2e1")
+    )
+
+    #expect(model.promotionDisplayColor == .black)
+    #expect(
+        model.pieceSet.assetName(for: Piece(kind: .queen, color: model.promotionDisplayColor))
+            .contains("_bQ")
+    )
+}
+
 @Test func promotionChoiceIsOnlyRequiredForPawnsReachingLastRank() {
     let whitePawn = Piece(kind: .pawn, color: .white)
     let blackPawn = Piece(kind: .pawn, color: .black)
@@ -289,6 +407,52 @@ import ChessCore
     #expect(model.showsLegalMoveHighlights == false)
     #expect(model.moveAnimationDuration == 0)
     #expect(model.showsLastMoveHighlight == false)
+}
+
+@Test func mutableAnimationDurationIsNormalized() {
+    let model = ChessBoardModel(fen: initialFEN)
+
+    model.moveAnimationDuration = -.infinity
+    #expect(model.moveAnimationDuration == 0)
+    model.moveAnimationDuration = .nan
+    #expect(model.moveAnimationDuration == 0)
+    model.moveAnimationDuration = 1_000
+    #expect(model.moveAnimationDuration == 60)
+}
+
+@Test func disablingLegalMoveHighlightsClearsExistingMarkers() {
+    let model = ChessBoardModel(fen: initialFEN)
+    model.updateLegalMoveHighlights(for: BoardSquare(row: 1, column: 4))
+    #expect(!model.legalMoveSquares.isEmpty)
+
+    model.showsLegalMoveHighlights = false
+    #expect(model.legalMoveSquares.isEmpty)
+}
+
+@MainActor
+@Test func viewMoveHandlerDoesNotCreateAModelOwnershipCycle() {
+    weak var weakModel: ChessBoardModel?
+
+    do {
+        let model = ChessBoardModel(fen: initialFEN)
+        let owner = MoveHandlerOwner(model: model)
+        weakModel = model
+
+        let view = ChessBoardView(model: model).onMove { [owner] _ in
+            _ = owner.model
+        }
+        withExtendedLifetime(view) {}
+    }
+
+    #expect(weakModel == nil)
+}
+
+private final class MoveHandlerOwner {
+    let model: ChessBoardModel
+
+    init(model: ChessBoardModel) {
+        self.model = model
+    }
 }
 
 @Test func moveAnimationCleanupFallbackAddsGracePeriodAfterAnimationDuration() {

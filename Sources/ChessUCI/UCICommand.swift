@@ -24,7 +24,8 @@ public struct UCICommand: CustomStringConvertible, Equatable, Sendable {
     ///
     /// Use this for engine-specific commands that do not have a typed helper.
     /// The value should be one complete UCI command line without a trailing
-    /// newline.
+    /// newline. Validate untrusted text before passing it here; this initializer
+    /// intentionally preserves the supplied value exactly.
     public init(rawValue: String) {
         self.rawValue = rawValue
     }
@@ -67,16 +68,18 @@ public struct UCICommand: CustomStringConvertible, Equatable, Sendable {
 
     /// Formats a `register` command with user registration data.
     ///
-    /// Name and code are free-form command text. This helper preserves spaces
-    /// and does not quote or escape values.
+    /// Name and code are trusted, single-line, free-form command text. This
+    /// helper preserves spaces and does not quote, escape, or remove line
+    /// breaks.
     public static func register(name: String, code: String) -> UCICommand {
         UCICommand(rawValue: "register name \(name) code \(code)")
     }
 
     /// Formats a `setoption` command.
     ///
-    /// UCI option names and values are free-form command text. This helper
-    /// preserves spaces and does not quote or escape values.
+    /// UCI option names and values are trusted, single-line, free-form command
+    /// text. This helper preserves spaces and does not quote, escape, or remove
+    /// line breaks.
     public static func setOption(name: String, value: String? = nil) -> UCICommand {
         var command = "setoption name \(name)"
 
@@ -150,7 +153,10 @@ public enum UCIPosition: Equatable, Sendable {
     /// The standard chess starting position.
     case startpos
 
-    /// A Forsyth-Edwards Notation position.
+    /// A trusted, single-line Forsyth-Edwards Notation position.
+    ///
+    /// The formatter preserves the supplied text; validate external input
+    /// before sending the resulting command to an engine.
     case fen(String)
 
     fileprivate var commandText: String {

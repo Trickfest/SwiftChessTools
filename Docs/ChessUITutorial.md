@@ -110,6 +110,13 @@ Invalid FEN leaves the existing board unchanged and records the parser error in
 `fenError`. Use `setFEN(_:animatedMove:)` after a known move when you want the
 last-move highlight and piece animation to match the update.
 
+When the incoming position equals `boardModel.game.position`, `setFEN` retains
+that same `Game` instance. This is what preserves move history, repetition
+counts, and draw claims in the documented apply-move-then-render flow. A
+different imported position creates a new `Game`. Every successful update
+clears position-specific selection, legal-move, drag, and pending-promotion
+state; caller-owned hints and arrows remain until the app clears them.
+
 ## 4. Move Attempts
 
 `ChessBoardView.onMove(_:)` receives a `ChessBoardMoveAttempt`:
@@ -122,6 +129,11 @@ last-move highlight and piece animation to match the update.
     print(attempt.isLegal)
 }
 ```
+
+The modifier keeps its callback with the view rather than making the model own
+the closure. Prefer it for app callbacks. `ChessBoardModel.onMove` remains as a
+direct-configuration fallback; if you use that property, avoid strongly
+capturing an owner that also retains the model.
 
 The attempt contains:
 
@@ -161,6 +173,9 @@ The resulting move includes the promotion kind:
 ```text
 e7e8q
 ```
+
+The picker uses the promoting pawn's color regardless of board perspective and
+adapts its spacing for small board frames.
 
 Most apps do not need to present the picker directly. If you are building a
 custom setup or tutorial flow, `ChessBoardModel` also exposes
@@ -205,6 +220,10 @@ boardModel.updateLegalMoveHighlights(for: BoardSquare(row: 1, column: 4))
 boardModel.clearLegalMoveHighlights()
 ```
 
+Turning `showsLegalMoveHighlights` off also clears any markers that were already
+calculated. Off-board `BoardSquare` values are ignored by highlight and hint
+entry points.
+
 Last-move highlighting is enabled by default and is normally driven by
 `setFEN(_:animatedMove:)`:
 
@@ -223,6 +242,10 @@ boardModel.clearHint()
 ```
 
 Hints are display markers only. They do not affect legal move generation.
+Starting a new timed hint cancels the prior cleanup timer so an older request
+cannot clear a newer hint early. Non-finite or nonpositive durations clear
+immediately; timed hints are capped at one day. Move-animation durations are
+normalized to `0...60` seconds.
 
 ## 8. Board Arrows
 
@@ -511,6 +534,11 @@ Square hints describe the expected action, such as selecting a piece, moving to
 a legal destination, capturing, reporting an illegal attempt when configured, or
 clearing the current selection. Read-only boards remain accessible for
 inspection, but their squares do not expose move actions.
+
+The waiting overlay disables accessibility move actions, and the promotion
+picker behaves as a modal accessibility surface while it is presented.
+Decorative rank and file labels are hidden from VoiceOver because each square
+already includes its coordinate.
 
 Other useful identifiers include:
 

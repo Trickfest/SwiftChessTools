@@ -184,11 +184,15 @@ public class SANSerializer {
     }
 
     private func normalizedSAN(_ san: String) -> String {
-        san
+        var normalized = san
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "0", with: "O")
-            .replacingOccurrences(of: "+", with: "")
-            .replacingOccurrences(of: "#", with: "")
+
+        while normalized.last == "+" || normalized.last == "#" {
+            normalized.removeLast()
+        }
+
+        return normalized
     }
 
 }

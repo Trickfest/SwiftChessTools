@@ -128,7 +128,12 @@ public struct ChessMoveListView: View {
                     }
 
                     // Let SwiftUI lay out the inserted row before targeting the bottom anchor.
-                    try? await Task.sleep(for: .milliseconds(50))
+                    do {
+                        try await Task.sleep(for: .milliseconds(50))
+                    } catch {
+                        return
+                    }
+                    guard !Task.isCancelled else { return }
                     withAnimation(.easeOut(duration: 0.16)) {
                         proxy.scrollTo(Self.bottomAnchorID, anchor: .bottom)
                     }
@@ -156,7 +161,12 @@ public struct ChessMoveListView: View {
                     }
 
                     // Let SwiftUI lay out the inserted group before targeting the trailing anchor.
-                    try? await Task.sleep(for: .milliseconds(50))
+                    do {
+                        try await Task.sleep(for: .milliseconds(50))
+                    } catch {
+                        return
+                    }
+                    guard !Task.isCancelled else { return }
                     withAnimation(.easeOut(duration: 0.16)) {
                         proxy.scrollTo(Self.trailingAnchorID, anchor: .trailing)
                     }

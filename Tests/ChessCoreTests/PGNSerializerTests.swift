@@ -136,6 +136,51 @@ import Testing
     #expect(exported.contains("[Annotator \"\"]"))
 }
 
+@Test func pgnParsesWindowsLineEndingsCommentsEscapeLinesAndLeadingBOM() throws {
+    let pgnWithLF = """
+        \u{FEFF}% ignored escape line before tags
+        [Event "Windows PGN"]
+        [Result "*"]
+
+        % ignored escape line before movetext
+        1. e4 ; comment after White's move
+        % ignored escape line between moves
+        1... e5 *
+        """
+    let pgnWithCRLF = pgnWithLF.replacingOccurrences(of: "\n", with: "\r\n")
+
+    let game = try PGNSerializer().game(from: pgnWithCRLF)
+
+    #expect(game.tagValue(for: "Event") == "Windows PGN")
+    #expect(game.moveRecords.map(\.san) == ["e4", "e5"])
+    #expect(game.moveRecords[0].comments == ["comment after White's move"])
+}
+
+@Test func pgnTracksSourceLocationsAcrossWindowsLineEndings() {
+    let pgn = "[Event \"Windows Error\"]\r\n[Result \"*\"]\r\n\r\n1. e4 $999 *"
+
+    expectPGNParsingError(pgn, parseSingleGame: true) { error in
+        if case let .invalidNAG("$999", context) = error {
+            return context.location == PGNSourceLocation(line: 4, column: 7)
+        }
+        return false
+    }
+}
+
+@Test func pgnRejectsCheckMarkersInsideSAN() {
+    expectPGNParsingError("""
+        [Event "Malformed SAN"]
+        [Result "*"]
+
+        1. e+4 *
+        """, parseSingleGame: true) { error in
+        if case let .sanParsingFailed("e+4", .noMatchingLegalMove("e+4"), context) = error {
+            return context.ply == 1
+        }
+        return false
+    }
+}
+
 @Test func pgnParsesLichessStyleElapsedTimeMiniCorpus() throws {
     let database = """
         [Event "Rated blitz game"]

@@ -13,14 +13,15 @@ notation, and SwiftUI board UI that can support multiple future apps.
 For a complete example of these products in a realistic iOS chess app, see
 [SwiftChessDemo](https://github.com/Trickfest/SwiftChessDemo). The demo combines
 `ChessCore`, `ChessUI`, and `ChessUCI` with the separate
-[StockfishEmbedded](https://github.com/Trickfest/StockfishEmbedded) engine
-wrapper to show app-owned game state, legal move handling, Stockfish replies,
-evaluation display, move suggestions, move history, status feedback, and
-runtime board preferences.
+[StockfishEmbedded](https://github.com/Trickfest/StockfishEmbedded) and
+[ArasanEmbedded](https://github.com/Trickfest/ArasanEmbedded) engine wrappers to
+show app-owned game state, legal move handling, engine replies, evaluation
+display, move suggestions, move history, status feedback, and runtime board
+preferences.
 
 `SwiftChessTools` remains engine-independent and MIT licensed. Apps that choose
-to link `StockfishEmbedded` must also account for Stockfish's GPL-3.0 licensing
-requirements.
+to link engine wrappers must account for their separate licenses, including
+Stockfish's GPL-3.0 requirements.
 
 ## Requirements
 
@@ -33,6 +34,10 @@ supports these deployment targets:
 `ChessUI` is SwiftUI-based and intended for Apple-platform apps. tvOS, watchOS,
 Linux, Android, and WebAssembly are not currently supported targets.
 
+The package is listed on [Swift Package Index](https://swiftpackageindex.com/Trickfest/SwiftChessTools).
+All three library products are integrated and built from source; this repository
+does not publish binary targets or binary release assets.
+
 ## Installation
 
 Add SwiftChessTools to your app or package with Xcode's package dependency UI,
@@ -42,7 +47,7 @@ or declare it directly in `Package.swift`:
 dependencies: [
     .package(
         url: "https://github.com/Trickfest/SwiftChessTools.git",
-        from: "1.0.4"
+        from: "1.1.0"
     ),
 ]
 ```
@@ -125,6 +130,12 @@ let position = try FENSerializer().validatedPosition(from: Position.standardStar
 let validation = FENSerializer().validationResult(for: Position.standardStartingFEN)
 ```
 
+Strict validation checks the documented structural position constraints; it is
+not a proof that every position is reachable from the standard starting
+position. In particular, the current 1.x validation issue model does not report
+all historically impossible material counts. FEN en-passant targets record the
+preceding two-square pawn move even when no capture is currently available.
+
 ### PGN Import And Export
 
 `PGNSerializer` parses Portable Game Notation in `ChessCore`. It lexes PGN
@@ -178,8 +189,8 @@ import ChessUCI
 
 let commands: [UCICommand] = [
     .uci,
-    .isReady,
     .newGame,
+    .isReady,
     .position(.fen(Position.standardStartingFEN)),
     .go(.depth(12)),
 ]
@@ -216,6 +227,12 @@ case .unknown:
     break
 }
 ```
+
+The array illustrates command formatting, not a batch-send operation. In a real
+engine session, send `uci` and wait for `uciok`; after `ucinewgame`, send
+`isready` and wait for `readyok` before sending `position` and `go`.
+Free-form command names, values, and raw commands must be trusted single-line
+text. Validate external input before handing it to an engine transport.
 
 UCI centipawn and mate scores are reported from the side-to-move perspective
 for the searched position. Use `whiteRelativeScore(sideToMove:)` before handing
@@ -289,7 +306,10 @@ struct BoardDemoView: View {
 
 `Examples/ChessWorkbench` is the runnable integration example for these APIs.
 `ChessBoardModel.setFEN(_:animatedMove:)` returns `false` and records
-`fenError` when a FEN update fails, leaving the current board unchanged.
+`fenError` when a FEN update fails, leaving the current board unchanged. When
+the incoming FEN represents `model.game.position`, `setFEN` keeps that `Game`
+instance so move history, repetition state, and draw claims are not discarded;
+a genuinely different position starts a new game state.
 ChessUI includes runtime registries for bundled piece sets and board themes.
 Use `ChessPieceSet.availableSets` and `ChessBoardTheme.availableThemes` to build
 pickers for the options bundled by the current package version.
@@ -533,9 +553,32 @@ Run all automated tests from the repository root:
 Scripts/test-all.sh
 ```
 
-The script runs the SwiftPM test suite, the simulator-backed `ChessUIHarness`
-XCUITest suite, and the macOS `ChessWorkbench` UI tests. To use a different
-simulator or macOS destination, set `IOS_DESTINATION` or `MACOS_DESTINATION`.
+The script runs the SwiftPM suite, a Release build, the ChessCore recipe smoke
+test, a public-API compatibility comparison against the latest Git tag, the
+simulator-backed `ChessUIHarness` XCUITest suite, and the macOS
+`ChessWorkbench` UI tests. To use a different simulator or macOS destination,
+set `IOS_DESTINATION` or `MACOS_DESTINATION`. The API comparison is skipped when
+the checkout has no available Git tag.
+
+### Optional GitHub-hosted CI
+
+GitHub-hosted CI is manual-only. It does not run for pushes or pull requests,
+and a hosted run or successful hosted result is not required for accepting a
+change or preparing a release. The local `Scripts/test-all.sh` suite remains the
+expected full validation path.
+
+An authenticated maintainer can dispatch the optional workflow from the GitHub
+Actions page or from this checkout for a branch or tag that already exists on
+GitHub:
+
+```sh
+Scripts/run-github-ci.sh [ref]
+```
+
+The dispatcher does not commit or push local changes. The remote workflow uses
+the selected GitHub ref and calls `Scripts/github-ci.sh` for the headless Swift
+package, Release, generic-iOS, recipe, and public-API checks. It does not replace
+the simulator-backed and macOS UI suites in `Scripts/test-all.sh`.
 
 Run the package test suite from the repository root:
 

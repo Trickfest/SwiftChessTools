@@ -47,8 +47,8 @@ let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 let commands: [UCICommand] = [
     .uci,
-    .isReady,
     .newGame,
+    .isReady,
     .position(.fen(fen)),
     .go(.depth(12)),
 ]
@@ -60,14 +60,17 @@ That produces:
 
 ```text
 uci
-isready
 ucinewgame
+isready
 position fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 go depth 12
 ```
 
-The app still decides when to send those lines, how to wait for `readyok`, how
-to handle timeouts, and whether to cancel or replace a search.
+This list demonstrates formatting; do not send it as one unobserved batch. A
+real session sends `uci` and waits for `uciok`. When starting a new game, send
+`ucinewgame`, then `isready`, and wait for `readyok` before sending `position`
+and `go`. The app still owns those state transitions, timeouts, and any search
+cancellation or replacement policy.
 
 ## 3. Positions And Search Limits
 
@@ -121,7 +124,11 @@ UCICommand.setOption(name: "UCI_AnalyseMode", value: true).string
 ```
 
 UCI option names and values are free-form command text. `ChessUCI` preserves
-spaces and does not quote or escape values.
+spaces and does not quote, escape, or remove line breaks. Treat raw commands,
+registration data, option names, option values, and caller-supplied FEN as
+trusted single-line text. Validate untrusted external values before passing the
+result to an engine transport; a CR or LF would otherwise create another
+protocol command.
 
 Engines that require registration can also use the typed helpers:
 

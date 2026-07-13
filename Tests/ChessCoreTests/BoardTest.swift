@@ -39,6 +39,24 @@ import Testing
     #expect(whitePawn == board["e4"])
 }
 
+@Test func invalidBoardSubscriptsAreIgnored() {
+    let whitePawn = Piece(kind: .pawn, color: .white)
+    var board = Board()
+    board["e4"] = whitePawn
+
+    board[-1] = Piece(kind: .queen, color: .black)
+    board[Int.max] = Piece(kind: .rook, color: .black)
+    board[Square(coordinate: "eXX4")] = Piece(kind: .king, color: .black)
+    board["eXX4"] = Piece(kind: .bishop, color: .black)
+
+    #expect(board[-1] == nil)
+    #expect(board[Int.max] == nil)
+    #expect(board[Square(coordinate: "bad")] == nil)
+    #expect(board["bad"] == nil)
+    #expect(board["e4"] == whitePawn)
+    #expect(board.enumeratedPieces().count == 1)
+}
+
 @Test func accessByIndex() {
     var board = Board()
 

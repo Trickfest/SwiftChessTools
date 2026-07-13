@@ -35,27 +35,32 @@ public struct Square: Hashable, Sendable {
     }
 
     /// Algebraic coordinate for the square, such as `"e4"`.
+    ///
+    /// Invalid squares return `"-"` instead of trapping. Check `isValid` when
+    /// accepting coordinates or indexes from outside the package.
     public var coordinate: String {
+        guard isValid else { return "-" }
         let file = Board.fileCoordinates[self.file]
         let rank = Board.rankCoordinates[self.rank]
         return "\(file)\(rank)"
     }
 
     /// `true` when the square is inside the board.
-    private(set) var isValid: Bool
+    public private(set) var isValid: Bool
 
     // MARK: Initializers
 
     init(bitboardMask: Bitboard) {
         self.bitboardMask = bitboardMask
-        self.index = 0
-        self.isValid = bitboardMask > Int64.zero
-
-        var mask = bitboardMask
-        while mask > 1 {
-            mask = mask >> 1
-            self.index += 1
+        let mask = bitboardMask
+        guard mask != 0 else {
+            self.index = -1
+            self.isValid = false
+            return
         }
+
+        self.index = (UInt64.bitWidth - 1) - mask.leadingZeroBitCount
+        self.isValid = true
     }
 
     /// Creates a square from its zero-based board index.
@@ -64,8 +69,8 @@ public struct Square: Hashable, Sendable {
     /// indexes. For app-facing code, `init(coordinate:)` is usually clearer.
     public init(index: Int) {
         self.index = index
-        self.bitboardMask = 1 << index
         self.isValid = (Int.zero..<Board.squaresCount).contains(self.index)
+        self.bitboardMask = self.isValid ? Bitboard(1) << index : Bitboard.zero
     }
 
     /// Creates a square from zero-based file and rank indexes.
@@ -73,8 +78,12 @@ public struct Square: Hashable, Sendable {
     /// Files and ranks are both `0...7`; file `0` is `a`, and rank `0` is
     /// rank `1`.
     public init(file: Int, rank: Int) {
+        guard (Int.zero...7).contains(file), (Int.zero...7).contains(rank) else {
+            self.init(index: -1)
+            return
+        }
+
         self.init(index: file * Board.rankCoordinates.count + rank)
-        self.isValid = (Int.zero...7).contains(file) && (Int.zero...7).contains(rank)
     }
 
     /// Creates a square from an algebraic coordinate such as `"e4"`.
@@ -82,6 +91,11 @@ public struct Square: Hashable, Sendable {
     /// Coordinate parsing is case-sensitive and expects a file in `a...h` and
     /// a rank in `1...8`.
     public init(coordinate: String) {
+        guard coordinate.count == 2 else {
+            self.init(index: -1)
+            return
+        }
+
         let fileCharacter = coordinate.first ?? "-"
         let rankCharacter = coordinate.last ?? "-"
 
@@ -97,7 +111,13 @@ public struct Square: Hashable, Sendable {
 
     /// Returns the square reached by applying file and rank offsets.
     public func translate(file: Int, rank: Int) -> Square {
-        return Square(file: self.file + file, rank: self.rank + rank)
+        guard isValid else { return Square(index: -1) }
+
+        let (translatedFile, fileOverflow) = self.file.addingReportingOverflow(file)
+        let (translatedRank, rankOverflow) = self.rank.addingReportingOverflow(rank)
+        guard !fileOverflow, !rankOverflow else { return Square(index: -1) }
+
+        return Square(file: translatedFile, rank: translatedRank)
     }
 
 }

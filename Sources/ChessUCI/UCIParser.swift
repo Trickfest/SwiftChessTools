@@ -325,14 +325,24 @@ public enum UCIScore: Equatable, Sendable {
     case mate(Int)
 
     /// Converts the raw UCI score into a White-positive score.
+    ///
+    /// If negating `Int.min` would overflow, the normalized magnitude saturates
+    /// at `Int.max`.
     public func whiteRelative(sideToMove: PieceColor) -> UCIWhiteScore {
         switch self {
         case .centipawns(let centipawns):
-            return .centipawns(sideToMove == .white ? centipawns : -centipawns)
+            let whiteCentipawns: Int
+            if sideToMove == .white {
+                whiteCentipawns = centipawns
+            } else {
+                whiteCentipawns = centipawns == Int.min ? Int.max : -centipawns
+            }
+            return .centipawns(whiteCentipawns)
 
         case .mate(let moves):
             let matingSide = moves >= 0 ? sideToMove : sideToMove.opposite
-            return .mate(moves: abs(moves), side: matingSide)
+            let moveCount = moves == Int.min ? Int.max : abs(moves)
+            return .mate(moves: moveCount, side: matingSide)
         }
     }
 }

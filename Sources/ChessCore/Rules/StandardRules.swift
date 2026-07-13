@@ -168,11 +168,13 @@ public class StandardRules: Rules {
         return self.filterIllegal(moves: moves, for: position)
     }
 
-    /// Returns non-king squares attacked or reachable by the side to move.
+    /// Returns pseudo-legal non-king move destinations for the side to move.
     ///
-    /// This lower-level helper is useful for analysis and validation code. It
-    /// is not the same as `Game.legalMoves`, because it excludes king moves and
-    /// reports reachability rather than a playable move list.
+    /// This is not an attack map: pawn forward moves are included, empty pawn
+    /// capture diagonals are excluded, and king destinations are omitted. Do
+    /// not use it to decide check or whether a square is attacked. It is also
+    /// not the same as `Game.legalMoves`, because king-safety filtering is not
+    /// applied here.
     public func reachableSquares(in position: Position) -> [Square] {
         return self.piecesForSideToMove(in: position)
             .filter { $0.1.kind != .king }
