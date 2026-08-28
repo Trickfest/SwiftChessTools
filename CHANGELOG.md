@@ -7,6 +7,16 @@ release. Tagged releases use dated version headings.
 
 ## Unreleased
 
+### Fixed
+
+- Replaced gesture-only accessibility actions on interactive
+  `ChessBoardView` squares with native SwiftUI buttons. Direct VoiceOver touch
+  exploration now resolves to spatial square controls, while non-actionable
+  squares remain labeled accessibility elements and ordinary drag-to-move
+  behavior is preserved. Silent board artwork and highlight layers are hidden
+  from accessibility hit testing so they cannot intercept spatial exploration
+  above the labeled square controls.
+
 ## 1.1.0 - 2026-07-13
 
 ### Added

@@ -1132,9 +1132,10 @@ public struct ChessBoardView: View {
         GeometryReader { geometry in
             ZStack {
                 backgroundView
+                    .accessibilityHidden(true)
                 lastMoveHighlightsView
                     .allowsHitTesting(false)
-                    .accessibilityHidden(isBoardInteractionBlocked)
+                    .accessibilityHidden(true)
                 if model.showsCoordinateLabels {
                     labelsView
                         .allowsHitTesting(false)
@@ -1142,16 +1143,17 @@ public struct ChessBoardView: View {
                 }
                 squaresView
                     .allowsHitTesting(!isBoardInteractionBlocked)
-                    .accessibilityHidden(isBoardInteractionBlocked)
+                    .accessibilityHidden(true)
                 arrowsView
                     .allowsHitTesting(false)
-                    .accessibilityHidden(isBoardInteractionBlocked)
+                    .accessibilityHidden(true)
                 piecesView
                     .allowsHitTesting(!isBoardInteractionBlocked)
                     .accessibilityHidden(isBoardInteractionBlocked)
+                    .accessibilityElement(children: .contain)
                 legalMoveHighlightsView
                     .allowsHitTesting(false)
-                    .accessibilityHidden(isBoardInteractionBlocked)
+                    .accessibilityHidden(true)
                 
                 MovingPieceView(animation: animation)
                     .accessibilityHidden(true)
@@ -1637,6 +1639,7 @@ private struct ChessSquareView: View {
 private struct ChessPieceView: View {
     @Environment(ChessBoardModel.self) var boardModel
     @Environment(\.chessBoardMoveHandler) private var moveHandler
+    @Environment(\.accessibilityVoiceOverEnabled) private var isVoiceOverEnabled
     
     var animation: Namespace.ID
     
@@ -1678,10 +1681,81 @@ private struct ChessPieceView: View {
             || boardModel.isPromotionPickerPresented
             || boardModel.interactionMode == .readOnly
     }
+
+    private var usesNativeAccessibilityControls: Bool {
+        if isVoiceOverEnabled {
+            return true
+        }
+
+        #if canImport(UIKit)
+        // Consult UIKit as well as SwiftUI's environment. The direct platform
+        // query covers a physical-device launch where VoiceOver was already
+        // running before this package view entered the hierarchy.
+        if UIAccessibility.isVoiceOverRunning {
+            return true
+        }
+        #endif
+
+        #if DEBUG
+        return ProcessInfo.processInfo.arguments.contains(
+            "-forceNativeChessBoardAccessibilityControls"
+        )
+        #else
+        return false
+        #endif
+    }
     
-    var body: some View {
+    @ViewBuilder var body: some View {
         let accessibilityState = boardModel.accessibilityState(for: square)
 
+        if usesNativeAccessibilityControls && accessibilityState.isActivatable {
+            // VoiceOver needs a native control at each actionable square for
+            // spatial exploration and double-tap activation. A gesture view
+            // with a button trait appears actionable to XCTest, but is not
+            // consistently surfaced by VoiceOver on a physical device.
+            Button {
+                announceForAccessibility(
+                    boardModel.activate(square: square, handler: moveHandler)
+                )
+            } label: {
+                squareContents
+            }
+            .buttonStyle(.plain)
+            .zIndex(zIndex)
+            .offset(offset)
+            .accessibilityLabel(accessibilityState.label)
+            .accessibilityHint(accessibilityState.hint)
+            .accessibilityIdentifier("ChessUI.square.\(coordinate)")
+            .accessibilityAddTraits(
+                accessibilityState.isSelected ? .isSelected : []
+            )
+            .accessibilityHidden(isMovingPiece)
+        } else {
+            // Inactive squares remain labeled spatial items. They retain the
+            // original gesture surface so ordinary illegal-attempt reporting
+            // and board setup behavior continue to work where configured.
+            squareContents
+                .zIndex(zIndex)
+                .offset(offset)
+                .onTapGesture {
+                    boardModel.activate(square: square, handler: moveHandler)
+                }
+                .gesture(dragGesture)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(accessibilityState.label)
+                .accessibilityHint(accessibilityState.hint)
+                .accessibilityIdentifier("ChessUI.square.\(coordinate)")
+                .accessibilityHidden(isMovingPiece)
+                .chessBoardAccessibilityTraits(accessibilityState)
+                .chessBoardAccessibilityAction(accessibilityState.isActivatable) {
+                    announceForAccessibility(
+                        boardModel.activate(square: square, handler: moveHandler)
+                    )
+                }
+        }
+    }
+
+    private var squareContents: some View {
         ZStack {
             if let piece {
                 let imageName = boardModel.pieceSet.assetName(for: piece)
@@ -1694,24 +1768,9 @@ private struct ChessPieceView: View {
                 Color.clear.contentShape(Rectangle())
             }
         }
-        .zIndex(zIndex)
         .font(.system(size: boardModel.size / 8 * 0.75))
         .frame(width: boardModel.size / 8, height: boardModel.size / 8)
         .contentShape(Rectangle())
-        .offset(offset)
-        .onTapGesture {
-            boardModel.activate(square: square, handler: moveHandler)
-        }
-        .gesture(dragGesture)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityState.label)
-        .accessibilityHint(accessibilityState.hint)
-        .accessibilityIdentifier("ChessUI.square.\(coordinate)")
-        .accessibilityHidden(isMovingPiece)
-        .chessBoardAccessibilityTraits(accessibilityState)
-        .chessBoardAccessibilityAction(accessibilityState.isActivatable) {
-            announceForAccessibility(boardModel.activate(square: square, handler: moveHandler))
-        }
     }
 
     private var coordinate: String {

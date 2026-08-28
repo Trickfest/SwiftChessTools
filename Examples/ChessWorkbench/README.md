@@ -91,9 +91,10 @@ Scripts/test-all.sh
 2. Confirm the board renders with the starting FEN.
 3. Drag a legal piece move on the board.
 4. Confirm the FEN field updates.
-5. With VoiceOver or the Accessibility Inspector, confirm a movable square can
-   be selected, legal destinations are announced, and activating a destination
-   reports the move.
+5. With VoiceOver or the Accessibility Inspector, touch a movable square
+   directly and confirm its piece and coordinate are announced. Activate it,
+   confirm legal destinations are announced, and activate a destination to
+   report the move.
 6. Confirm the vertical move list records the legal move in SAN and stays at a
    fixed height as moves are added.
 7. Change `Moves` from `Vertical` to `Horizontal` and confirm the move list

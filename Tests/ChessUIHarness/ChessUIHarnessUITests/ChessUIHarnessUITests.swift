@@ -45,6 +45,25 @@ final class ChessUIHarnessUITests: XCTestCase {
         XCTAssertTrue(square("e4").label.contains("White pawn, e4"))
     }
 
+    func testNativeVoiceOverButtonsSelectAndMove() {
+        app.terminate()
+        app = XCUIApplication()
+        app.launchArguments.append("-forceNativeChessBoardAccessibilityControls")
+        app.launch()
+
+        let source = square("e2")
+        XCTAssertEqual(source.elementType, .button)
+        source.tap()
+
+        let target = square("e4")
+        XCTAssertEqual(target.elementType, .button)
+        XCTAssertTrue(target.label.contains("legal destination"))
+        target.tap()
+
+        XCTAssertEqual(lastMoveLabel(), "e2e4")
+        XCTAssertTrue(square("e4").label.contains("White pawn, e4"))
+    }
+
     func testInvalidMoveIsRejectedBeforeCallback() {
         tapSquare("e2")
         tapSquare("e5")
