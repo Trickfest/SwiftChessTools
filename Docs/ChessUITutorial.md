@@ -213,6 +213,9 @@ boardModel.showsLegalMoveHighlights = true
 ```
 
 The board updates legal highlights during normal selection and drag gestures.
+If a source is already selected, tapping another movable piece of the same
+color replaces the selection instead of reporting a move attempt. Tapping the
+selected piece again clears the selection.
 You can also control them directly:
 
 ```swift
@@ -505,9 +508,11 @@ accessibility actions that it supports through taps:
 
 1. Activate a movable piece square to select it.
 2. Listen for the selected piece and legal destination announcement.
-3. Activate a destination square to report the move attempt through
+3. If needed, activate another movable piece of the same color to replace the
+   source selection without reporting an attempt.
+4. Activate a destination square to report the move attempt through
    `onMove(_:)`.
-4. If the move promotes a pawn, choose the promotion piece from the picker.
+5. If the move promotes a pawn, choose the promotion piece from the picker.
 
 ChessUI still does not apply the move for you. Accessibility activation reports
 the same `ChessBoardMoveAttempt` value as tap and drag gestures, so the app
@@ -531,9 +536,9 @@ Black pawn, e7, not side to move
 ```
 
 Square hints describe the expected action, such as selecting a piece, moving to
-a legal destination, capturing, reporting an illegal attempt when configured, or
-clearing the current selection. Read-only boards remain accessible for
-inspection, but their squares do not expose move actions.
+a legal destination, capturing, replacing or clearing the current selection,
+or reporting an illegal attempt when configured. Read-only boards remain
+accessible for inspection, but their squares do not expose move actions.
 
 The waiting overlay disables accessibility move actions, and the promotion
 picker behaves as a modal accessibility surface while it is presented.

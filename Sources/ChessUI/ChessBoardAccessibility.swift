@@ -91,6 +91,12 @@ extension ChessBoardModel {
         if selectedSquare == square {
             deselect()
             return "Selection cleared."
+        } else if let selectedSquare,
+                  canReselectPiece(at: square, from: selectedSquare)
+        {
+            self.selectedSquare = square
+            updateLegalMoveHighlights(for: square)
+            return selectionAnnouncement(for: square)
         } else if piece(at: square) != nil && selectedSquare == nil {
             selectedSquare = square
             updateLegalMoveHighlights(for: square)
@@ -100,6 +106,20 @@ extension ChessBoardModel {
         }
 
         return nil
+    }
+
+    private func canReselectPiece(
+        at targetSquare: BoardSquare,
+        from sourceSquare: BoardSquare
+    ) -> Bool {
+        guard let sourcePiece = piece(at: sourceSquare),
+              let targetPiece = piece(at: targetSquare),
+              sourcePiece.color == targetPiece.color
+        else {
+            return false
+        }
+
+        return interactionMode.canInteract(with: targetPiece, turn: turn)
     }
 
     func selectionAnnouncement(for square: BoardSquare) -> String? {
@@ -261,6 +281,12 @@ extension ChessBoardModel {
         }
 
         if hasSelection {
+            if let selectedSquare,
+               canReselectPiece(at: square, from: selectedSquare)
+            {
+                return "Activate to select this piece instead."
+            }
+
             if isCaptureDestination {
                 return "Activate to capture on this square."
             }

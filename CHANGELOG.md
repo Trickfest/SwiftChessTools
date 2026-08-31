@@ -9,6 +9,9 @@ release. Tagged releases use dated version headings.
 
 ### Fixed
 
+- Changed tap and VoiceOver source selection so activating a different movable
+  piece of the same color reselects it without emitting an illegal move
+  attempt. Opposing pieces remain move or capture targets.
 - Replaced gesture-only accessibility actions on interactive
   `ChessBoardView` squares with native SwiftUI buttons. Direct VoiceOver touch
   exploration now resolves to spatial square controls, while non-actionable

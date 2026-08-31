@@ -176,6 +176,40 @@ import ChessCore
     #expect(model.legalMoveSquares.isEmpty)
 }
 
+@Test func boardSquareAccessibilityReselectsFriendlyPieceWithoutReportingMove() {
+    let model = ChessBoardModel(fen: initialFEN, interactionMode: .reportsIllegalAttempts)
+    var attempts = [ChessBoardMoveAttempt]()
+    model.onMove = { attempts.append($0) }
+
+    #expect(model.activate(square: square("e2")) == "White pawn selected on e2. Legal moves: e3, e4.")
+
+    let replacementSource = model.accessibilityState(for: square("d2"))
+    #expect(replacementSource.hint == "Activate to select this piece instead.")
+    #expect(replacementSource.isActivatable)
+
+    #expect(model.activate(square: square("d2")) == "White pawn selected on d2. Legal moves: d3, d4.")
+    #expect(attempts.isEmpty)
+    #expect(model.selectedSquare == square("d2"))
+    #expect(model.legalMoveSquares == [square("d3"), square("d4")])
+}
+
+@Test func boardSquareAccessibilityStillReportsOpponentPieceAsMoveTarget() throws {
+    let model = ChessBoardModel(
+        fen: "4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1",
+        interactionMode: .reportsIllegalAttempts
+    )
+    var attempts = [ChessBoardMoveAttempt]()
+    model.onMove = { attempts.append($0) }
+
+    #expect(model.activate(square: square("e4")) != nil)
+    #expect(model.activate(square: square("d5")) == "Move e4 to d5 requested.")
+
+    let attempt = try #require(attempts.first)
+    #expect(attempt.coordinateMove == "e4d5")
+    #expect(attempt.isLegal)
+    #expect(model.selectedSquare == nil)
+}
+
 @Test func boardSquareAccessibilityReportsPiecesWithNoLegalDestinations() {
     let model = ChessBoardModel(fen: initialFEN)
 

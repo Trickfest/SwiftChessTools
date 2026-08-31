@@ -21,7 +21,8 @@ For the public ChessUI walkthrough, see
 - Exercising the default ChessUI board interaction mode, where the board
   reports move attempts and the workbench decides whether to apply them.
 - Manually checking board accessibility labels, hints, and VoiceOver-style
-  square activation for selecting pieces and reporting destination moves.
+  square activation for selecting or reselecting pieces and reporting
+  destination moves.
 - Piece-set selection, board-theme selection, coordinate-label visibility,
   board sizing, hints, app-supplied arrow annotations, reset behavior, and the
   promotion picker UI.
@@ -93,8 +94,9 @@ Scripts/test-all.sh
 4. Confirm the FEN field updates.
 5. With VoiceOver or the Accessibility Inspector, touch a movable square
    directly and confirm its piece and coordinate are announced. Activate it,
-   confirm legal destinations are announced, and activate a destination to
-   report the move.
+   confirm legal destinations are announced, activate a different friendly
+   piece to replace the source without reporting a move, and activate a
+   destination to report the move.
 6. Confirm the vertical move list records the legal move in SAN and stays at a
    fixed height as moves are added.
 7. Change `Moves` from `Vertical` to `Horizontal` and confirm the move list
