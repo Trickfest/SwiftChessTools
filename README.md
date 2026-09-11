@@ -502,6 +502,9 @@ SwiftChessTools does not provide:
   sequencing, or asynchronous search orchestration.
 - Opening books, clocks, online play, accounts, or sync.
 
+For a noncommitted collection of possible future directions, see
+[Docs/PossibleEnhancements.md](Docs/PossibleEnhancements.md).
+
 ## Manual Workbench
 
 `Examples/ChessWorkbench` is a small macOS SwiftUI app for manually exercising
