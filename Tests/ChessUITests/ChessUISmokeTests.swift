@@ -68,6 +68,14 @@ import ChessCore
     }
 }
 
+@Test func sashiteMeridaUsesItsTunedRenderingScale() {
+    #expect(ChessPieceSet.sashiteMerida.renderingScale == 0.80)
+
+    for pieceSet in ChessPieceSet.availableSets where pieceSet != .sashiteMerida {
+        #expect(pieceSet.renderingScale == 0.85)
+    }
+}
+
 @Test func builtInBoardThemesAreAvailableInDisplayOrder() {
     #expect(ChessBoardTheme.availableThemes == [
         .classicGreen,

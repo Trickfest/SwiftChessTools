@@ -32,7 +32,8 @@ larger study model to develop carefully:
 3. Typed PGN comment directives.
 4. Public game tree and recursive PGN variations.
 5. Annotated variation UI and richer board annotations.
-6. Consumer-defined board appearance and piece artwork.
+6. Per-set piece rendering scale overrides.
+7. Consumer-defined board appearance and piece artwork.
 
 The sequence is only a starting point. External coordinates are independent of
 the study features and can be implemented whenever convenient.
@@ -69,6 +70,12 @@ explicit placement. Model, layout, public-API, snapshot, Workbench, and iOS
 harness coverage protects the new behavior, while the existing inside-label
 path remains the compatibility default. More detailed edge selection should be
 added only if there is a demonstrated use case.
+
+The companion [SwiftChessDemo](https://github.com/Trickfest/SwiftChessDemo)
+has also adopted this API through an in-game `None` / `Inside` / `Outside`
+coordinate-label preference. It provides a concrete example of how a package
+consumer can expose label visibility and placement without replacing
+`ChessBoardView`.
 
 The issue discussion also mentions interest in more complex arrows and
 annotations. Those are related analysis features, but they should remain
@@ -152,6 +159,39 @@ and evaluations without depending on SwiftUI. `ChessUI` can separately map
 those values into board arrows, square marks, and evaluation displays.
 
 ## ChessUI Presentation And Interaction
+
+### Per-Set Piece Rendering Scale Overrides
+
+Allow package consumers to adjust the effective piece rendering scale for an
+individual `ChessPieceSet` while preserving the bundled defaults when no
+override is supplied. The current defaults keep Sashite Merida at `0.80` and
+the other bundled sets at `0.85`.
+
+This would help applications tune the artwork for their board size and visual
+context. On a compact iPhone board, slightly smaller pieces can preserve more
+separation from inside coordinate labels. On a larger board, an application
+might prefer slightly larger artwork. External coordinate labels already avoid
+piece-and-label overlap and remain a good alternative when an application does
+not need custom scaling.
+
+Possible requirements:
+
+- Keep every existing rendering scale as the source-compatible default.
+- Scope overrides to a board, model, or appearance instance so one application
+  can choose different scales for compact and large layouts without mutating a
+  process-wide piece-set setting.
+- Let a consumer override one set without changing the appearance of the
+  others.
+- Apply the effective scale consistently to board pieces, moving pieces, and
+  promotion choices.
+- Normalize invalid or extreme values to a documented safe range.
+- Preserve each square's layout, interaction target, and accessibility frame;
+  scaling should affect artwork only.
+- Cover compact and large boards with focused rendering tests.
+
+This is presentation polish rather than an urgent dependency. It can be
+designed independently or folded into the broader consumer-defined appearance
+work when that API becomes concrete.
 
 ### Richer Board Annotations
 

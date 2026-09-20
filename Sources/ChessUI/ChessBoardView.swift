@@ -2165,7 +2165,7 @@ private struct PieceImageView: View {
                 .foregroundStyle(fallbackColor)
                 .font(.system(size: 18))
                 .scaledToFit()
-                .scaleEffect(0.85)
+                .scaleEffect(pieceSet.renderingScale)
                 .contentShape(Rectangle())
         }
     }
@@ -2175,7 +2175,7 @@ private struct PieceImageView: View {
             .resizable()
             .interpolation(imageInterpolation)
             .scaledToFit()
-            .scaleEffect(0.85)
+            .scaleEffect(pieceSet.renderingScale)
             .contentShape(Rectangle())
     }
 

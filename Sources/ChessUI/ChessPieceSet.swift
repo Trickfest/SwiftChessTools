@@ -9,6 +9,7 @@
 //
 
 import ChessCore
+import CoreGraphics
 
 /// Built-in chess piece artwork bundled with ChessUI.
 ///
@@ -79,6 +80,15 @@ public enum ChessPieceSet: String, CaseIterable, Identifiable, Sendable {
 
     var imageInterpolation: ImageInterpolation {
         .high
+    }
+
+    var renderingScale: CGFloat {
+        switch self {
+        case .sashiteMerida:
+            0.80
+        default:
+            0.85
+        }
     }
 
     static var bundledAssetNames: Set<String> {

@@ -7,13 +7,23 @@ release. Tagged releases use dated version headings.
 
 ## Unreleased
 
+## 1.2.0 - 2026-09-20
+
 ### Added
 
 - Added opt-in external rank and file labels to `ChessBoardView` through
   `ChessBoardCoordinateLabelPlacement.outside`. The existing inside-label
   appearance remains the default, hidden labels continue to use
   `showsCoordinateLabels`, and outside labels keep the complete board and
-  left-and-bottom gutters within the view's existing outer frame.
+  left-and-bottom gutters within the view's existing outer frame. The companion
+  `SwiftChessDemo` app now exposes the API as an in-game `None` / `Inside` /
+  `Outside` preference.
+
+### Changed
+
+- Reduced the bundled Sashite Merida piece rendering scale from `0.85` to
+  `0.80` so pieces leave more room around inside coordinate labels on compact
+  boards. Other bundled piece sets retain their existing scale.
 
 ### Fixed
 
