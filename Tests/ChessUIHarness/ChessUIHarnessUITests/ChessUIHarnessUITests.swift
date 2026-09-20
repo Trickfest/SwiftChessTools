@@ -113,6 +113,50 @@ final class ChessUIHarnessUITests: XCTestCase {
         XCTAssertTrue(element("ChessUI.lastMove.e4").waitForExistence(timeout: 2))
     }
 
+    func testOutsideCoordinatesKeepBlackPerspectiveDragMapping() {
+        let outsideCoordinates = app.buttons["Harness.outsideCoordinates"]
+        XCTAssertTrue(outsideCoordinates.waitForExistence(timeout: 2))
+        outsideCoordinates.tap()
+        app.buttons["Harness.blackPerspective"].tap()
+
+        dragSquare("e2", to: "e4")
+
+        XCTAssertEqual(lastMoveLabel(), "e2e4")
+        XCTAssertTrue(square("e4").label.contains("White pawn, e4"))
+        XCTAssertTrue(element("ChessUI.lastMove.e2").waitForExistence(timeout: 2))
+        XCTAssertTrue(element("ChessUI.lastMove.e4").waitForExistence(timeout: 2))
+    }
+
+    func testOutsideCoordinatesKeepTapMapping() {
+        let outsideCoordinates = app.buttons["Harness.outsideCoordinates"]
+        XCTAssertTrue(outsideCoordinates.waitForExistence(timeout: 2))
+        outsideCoordinates.tap()
+
+        tapSquare("e2")
+        XCTAssertTrue(element("ChessUI.legalMove.e4").waitForExistence(timeout: 2))
+        tapSquare("e4")
+
+        XCTAssertEqual(lastMoveLabel(), "e2e4")
+        XCTAssertTrue(square("e4").label.contains("White pawn, e4"))
+    }
+
+    func testOutsideCoordinatesKeepPromotionPickerAligned() {
+        let outsideCoordinates = app.buttons["Harness.outsideCoordinates"]
+        XCTAssertTrue(outsideCoordinates.waitForExistence(timeout: 2))
+        outsideCoordinates.tap()
+        app.buttons["Harness.promotionScenario"].tap()
+
+        tapSquare("e7")
+        tapSquare("e8")
+
+        let queenButton = app.buttons["ChessUI.promotion.queen"]
+        XCTAssertTrue(queenButton.waitForExistence(timeout: 2))
+        queenButton.tap()
+
+        XCTAssertEqual(lastMoveLabel(), "e7e8q")
+        XCTAssertTrue(square("e8").label.contains("White queen, e8"))
+    }
+
     func testReadOnlyModeBlocksSelectionAndMoveReporting() {
         app.buttons["Harness.mode.readOnly"].tap()
         waitForLabel("Mode: readOnly", in: element("Harness.interactionMode"))

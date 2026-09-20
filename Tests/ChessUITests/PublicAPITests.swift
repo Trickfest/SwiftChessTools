@@ -25,6 +25,23 @@ import ChessUI
     #expect(type(of: hiddenIndicatorMoveList) == ChessMoveListView.self)
 }
 
+@Test func coordinateLabelPlacementAPIsArePubliclyUsable() {
+    #expect(ChessBoardCoordinateLabelPlacement.allCases == [.inside, .outside])
+    #expect(ChessBoardCoordinateLabelPlacement.inside.id == "inside")
+    #expect(ChessBoardCoordinateLabelPlacement.outside.id == "outside")
+
+    let existingInitializerModel = ChessBoardModel(fen: initialFEN)
+    #expect(existingInitializerModel.coordinateLabelPlacement == .inside)
+
+    let outsideLabelsModel = ChessBoardModel(
+        fen: initialFEN,
+        coordinateLabelPlacement: .outside,
+        showsCoordinateLabels: false
+    )
+    #expect(outsideLabelsModel.showsCoordinateLabels == false)
+    #expect(outsideLabelsModel.coordinateLabelPlacement == .outside)
+}
+
 @Test func boardArrowAPIsArePubliclyUsable() {
     let customStyle = ChessBoardArrowStyle(
         red: -1,

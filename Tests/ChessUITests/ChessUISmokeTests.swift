@@ -8,6 +8,7 @@
 // See the LICENSE file for more information.
 //
 
+import CoreGraphics
 import Testing
 
 import ChessCore
@@ -98,6 +99,7 @@ import ChessCore
     let model = ChessBoardModel(fen: initialFEN)
 
     #expect(model.showsCoordinateLabels)
+    #expect(model.coordinateLabelPlacement == .inside)
 
     model.showsCoordinateLabels = false
     #expect(model.showsCoordinateLabels == false)
@@ -107,6 +109,72 @@ import ChessCore
         showsCoordinateLabels: false
     )
     #expect(hiddenLabelsModel.showsCoordinateLabels == false)
+
+    let outsideLabelsModel = ChessBoardModel(
+        fen: initialFEN,
+        coordinateLabelPlacement: .outside
+    )
+    #expect(outsideLabelsModel.showsCoordinateLabels)
+    #expect(outsideLabelsModel.coordinateLabelPlacement == .outside)
+
+    let hiddenOutsideLabelsModel = ChessBoardModel(
+        fen: initialFEN,
+        coordinateLabelPlacement: .outside,
+        showsCoordinateLabels: false
+    )
+    #expect(hiddenOutsideLabelsModel.showsCoordinateLabels == false)
+    #expect(hiddenOutsideLabelsModel.coordinateLabelPlacement == .outside)
+}
+
+@Test func coordinateLabelLayoutPreservesTheOuterFrame() {
+    let insideLayout = ChessBoardLayout(
+        containerSize: CGSize(width: 320, height: 420),
+        showsCoordinateLabels: true,
+        coordinateLabelPlacement: .inside
+    )
+    #expect(insideLayout.containerSide == 320)
+    #expect(insideLayout.boardSide == 320)
+    #expect(insideLayout.boardOrigin == .zero)
+    #expect(insideLayout.usesOutsideCoordinates == false)
+
+    let outsideLayout = ChessBoardLayout(
+        containerSize: CGSize(width: 320, height: 420),
+        showsCoordinateLabels: true,
+        coordinateLabelPlacement: .outside
+    )
+    #expect(outsideLayout.containerSide == 320)
+    #expect(abs(outsideLayout.boardSide - 310.4) < 0.0001)
+    #expect(abs(outsideLayout.boardOrigin.x - 9.6) < 0.0001)
+    #expect(outsideLayout.boardOrigin.y == 0)
+    #expect(abs(outsideLayout.boardOrigin.x + outsideLayout.boardSide - 320) < 0.0001)
+    #expect(abs(outsideLayout.boardSide + outsideLayout.coordinateGutter - 320) < 0.0001)
+    #expect(outsideLayout.usesOutsideCoordinates)
+}
+
+@Test func hiddenCoordinateLabelsDoNotReserveAnOutsideGutter() {
+    let layout = ChessBoardLayout(
+        containerSize: CGSize(width: 320, height: 320),
+        showsCoordinateLabels: false,
+        coordinateLabelPlacement: .outside
+    )
+
+    #expect(layout.boardSide == 320)
+    #expect(layout.boardOrigin == .zero)
+    #expect(layout.coordinateGutter == 0)
+    #expect(layout.usesOutsideCoordinates == false)
+}
+
+@Test func outsideCoordinateLayoutRemainsUsableAtTheMinimumWorkbenchSize() {
+    let layout = ChessBoardLayout(
+        containerSize: CGSize(width: 220, height: 220),
+        showsCoordinateLabels: true,
+        coordinateLabelPlacement: .outside
+    )
+
+    #expect(layout.containerSide == 220)
+    #expect(layout.boardSide > 200)
+    #expect(layout.boardSide < layout.containerSide)
+    #expect(layout.coordinateGutter == 8)
 }
 
 @Test func setFENWithAnimatedMoveRecordsFeedback() {

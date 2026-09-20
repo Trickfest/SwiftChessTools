@@ -313,9 +313,24 @@ a genuinely different position starts a new game state.
 ChessUI includes runtime registries for bundled piece sets and board themes.
 Use `ChessPieceSet.availableSets` and `ChessBoardTheme.availableThemes` to build
 pickers for the options bundled by the current package version.
-Rank and file coordinate labels are shown by default; set
-`ChessBoardModel.showsCoordinateLabels` to `false` for diagrams, training modes,
-or app surfaces that provide their own coordinates.
+Rank and file coordinate labels are shown inside the board by default, which
+preserves the appearance used by earlier SwiftChessTools releases. Opt into
+external labels when an app benefits from a separate dark coordinate surround:
+
+```swift
+let model = ChessBoardModel(
+    fen: initialFEN,
+    coordinateLabelPlacement: .outside
+)
+```
+
+External labels place ranks in a dark gutter to the left and files in a dark
+gutter below the board, leaving the top and right edges flush. The playable 8×8
+surface shrinks so the complete board and label gutters remain within the same
+`ChessBoardView` frame. White and Black perspectives reverse the labels with
+the board. Set `ChessBoardModel.showsCoordinateLabels` to `false` for
+diagrams, training modes, or app surfaces that provide their own coordinates;
+hidden labels reserve no gutter regardless of the selected placement.
 Use `ChessBoardModel.arrows` for display-only board annotations such as
 engine suggestions or study arrows:
 
@@ -486,7 +501,8 @@ SwiftChessTools provides:
   markers, best moves, search info, score bounds, MultiPV indexes, principal
   variations, refutations, and current lines.
 - A reusable SwiftUI chessboard with selectable piece assets, selectable board
-  themes, coordinate-label visibility, move interaction, highlighting, hints,
+  themes, coordinate-label placement and visibility, move interaction,
+  highlighting, hints,
   app-supplied arrows, promotion UI, and board perspective support.
 - A standalone SwiftUI evaluation bar for caller-supplied centipawn, mate, or
   unavailable evaluation states.
@@ -511,7 +527,8 @@ For a noncommitted collection of possible future directions, see
 `ChessCore` and `ChessUI` from inside this package. It renders a real
 `ChessBoardView`, lets you edit the current FEN, applies legal board moves, and
 exposes quick controls for reset, hints, board sizing, piece-set selection,
-board-theme selection, coordinate-label visibility, app-supplied arrows,
+board-theme selection, coordinate-label placement and visibility,
+app-supplied arrows,
 move-list display, game-status display, evaluation-bar samples, and promotion
 UI.
 

@@ -43,7 +43,7 @@ private struct WorkbenchView: View {
     @State private var didCopyFEN = false
     @State private var pieceSet = ChessPieceSet.artDecoMonochrome
     @State private var boardTheme = ChessBoardTheme.artDecoMonochrome
-    @State private var showsCoordinateLabels = true
+    @State private var coordinateLabelMode = WorkbenchCoordinateLabelMode.inside
     @State private var evaluationSample = WorkbenchEvaluationSample.whiteEdge
     @State private var evaluationPlacement = WorkbenchEvaluationPlacement.leading
     @State private var evaluationWhiteSide = ChessEvaluationBarWhiteSide.bottom
@@ -134,7 +134,7 @@ private struct WorkbenchView: View {
                 handleBoardMove(move: attempt.move, isLegal: attempt.isLegal)
             }
             .overlay(alignment: .topLeading) {
-                Text("Coordinate labels \(showsCoordinateLabels ? "Shown" : "Hidden")")
+                Text("Coordinate labels \(coordinateLabelMode.displayName)")
                     .foregroundStyle(.clear)
                     .font(.caption2)
                     .frame(width: 1, height: 1)
@@ -432,7 +432,6 @@ private struct WorkbenchView: View {
                     .frame(width: 200, height: 24)
                     .onChange(of: pieceSet) { _, newValue in
                         boardModel.pieceSet = newValue
-                        boardModel.size = size
                     }
                     .accessibilityValue(pieceSet.displayName)
                 }
@@ -448,7 +447,6 @@ private struct WorkbenchView: View {
                     .frame(width: 200, height: 24)
                     .onChange(of: boardTheme) { _, newValue in
                         boardModel.boardTheme = newValue
-                        boardModel.size = size
                     }
                     .accessibilityValue(boardTheme.displayName)
                 }
@@ -470,13 +468,20 @@ private struct WorkbenchView: View {
                     .accessibilityIdentifier("Workbench.moveListScrollBarsToggle")
                     .accessibilityValue(showsMoveListScrollIndicators ? "On" : "Off")
 
-                Toggle("Coordinates", isOn: $showsCoordinateLabels)
-                    .toggleStyle(.checkbox)
-                    .onChange(of: showsCoordinateLabels) { _, newValue in
-                        boardModel.showsCoordinateLabels = newValue
+                displayPickerRow("Coords") {
+                    WorkbenchMenuPicker(
+                        title: "Coordinate labels",
+                        options: WorkbenchCoordinateLabelMode.allCases,
+                        selection: $coordinateLabelMode,
+                        displayName: { $0.displayName },
+                        accessibilityIdentifier: "Workbench.coordinateLabelModePicker"
+                    )
+                    .frame(width: 200, height: 24)
+                    .onChange(of: coordinateLabelMode) { _, newValue in
+                        applyCoordinateLabelMode(newValue)
                     }
-                    .accessibilityIdentifier("Workbench.coordinateLabelsToggle")
-                    .accessibilityValue(showsCoordinateLabels ? "On" : "Off")
+                    .accessibilityValue(coordinateLabelMode.displayName)
+                }
 
                 HStack {
                     Text("Board size")
@@ -489,9 +494,6 @@ private struct WorkbenchView: View {
                 .font(.callout)
 
                 Slider(value: $size, in: 220...420, step: 10)
-                    .onChange(of: size) { _, newValue in
-                        boardModel.size = newValue
-                    }
             }
         }
     }
@@ -615,6 +617,19 @@ private struct WorkbenchView: View {
         clearMoveRecords()
     }
 
+    private func applyCoordinateLabelMode(_ mode: WorkbenchCoordinateLabelMode) {
+        switch mode {
+        case .inside:
+            boardModel.showsCoordinateLabels = true
+            boardModel.coordinateLabelPlacement = .inside
+        case .outside:
+            boardModel.showsCoordinateLabels = true
+            boardModel.coordinateLabelPlacement = .outside
+        case .hidden:
+            boardModel.showsCoordinateLabels = false
+        }
+    }
+
     private func handleBoardMove(move: Move, isLegal: Bool) {
         guard isLegal else {
             return
@@ -682,6 +697,23 @@ private extension ChessMoveListLayout {
             "Vertical"
         case .horizontal:
             "Horizontal"
+        }
+    }
+}
+
+private enum WorkbenchCoordinateLabelMode: String, CaseIterable, Hashable {
+    case inside
+    case outside
+    case hidden
+
+    var displayName: String {
+        switch self {
+        case .inside:
+            "Inside"
+        case .outside:
+            "Outside"
+        case .hidden:
+            "Hidden"
         }
     }
 }

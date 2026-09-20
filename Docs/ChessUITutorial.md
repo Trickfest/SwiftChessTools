@@ -197,12 +197,39 @@ The board keeps coordinates logical after flipping. A tap or drag from `e2` to
 Use `shouldFlipBoard` only when you are building adjacent UI that needs to align
 with the board's orientation.
 
-Rank and file coordinate labels are shown by default. Hide them for cleaner
-diagrams, training modes, or app surfaces that provide their own coordinates:
+Rank and file coordinate labels are shown inside the board by default. This
+keeps existing clients and their board appearance unchanged. To place ranks to
+the left and files below the board instead, set the placement on an existing
+model:
+
+```swift
+boardModel.coordinateLabelPlacement = .outside
+```
+
+You can also choose outside labels when creating the model:
+
+```swift
+let boardModel = ChessBoardModel(
+    fen: initialFEN,
+    coordinateLabelPlacement: .outside
+)
+```
+
+Outside-label mode keeps the complete board and its dark left-and-bottom
+coordinate gutters inside the same `ChessBoardView` frame by shrinking the
+playable 8×8 surface. The top and right edges remain flush, and the rank and
+file order follows White or Black perspective automatically.
+
+Hide labels for cleaner diagrams, training modes, or app surfaces that provide
+their own coordinates:
 
 ```swift
 boardModel.showsCoordinateLabels = false
 ```
+
+Hiding labels reserves no outside gutter. Visibility and placement are
+separate settings, so showing labels again restores the previously selected
+placement.
 
 ## 7. Highlights And Hints
 
@@ -572,7 +599,8 @@ open Examples/ChessWorkbench/ChessWorkbench.xcodeproj
 ```
 
 Run the `ChessWorkbench` scheme on My Mac. The app exercises board rendering,
-FEN editing, move application, promotion UI, hints, coordinate-label visibility,
+FEN editing, move application, promotion UI, hints, coordinate-label placement
+and visibility,
 app-supplied arrows, piece sets, board themes, move lists, evaluation bars, and
 game status display.
 
@@ -586,7 +614,7 @@ ChessUI provides:
 - A reusable SwiftUI board.
 - Board interaction callbacks.
 - Piece-set and board-theme selection.
-- Coordinate-label visibility.
+- Coordinate-label placement and visibility.
 - Legal-move, hint, last-move, and app-supplied arrow annotations.
 - Board accessibility labels, hints, and square activation actions.
 - Promotion picker UI.

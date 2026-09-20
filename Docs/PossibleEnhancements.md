@@ -27,7 +27,7 @@ criteria.
 The following sequence would produce useful increments while allowing the
 larger study model to develop carefully:
 
-1. External coordinate-label placement.
+1. External coordinate-label placement. *(Implemented.)*
 2. Linear game timeline and historical-position navigation.
 3. Typed PGN comment directives.
 4. Public game tree and recursive PGN variations.
@@ -37,34 +37,38 @@ larger study model to develop carefully:
 The sequence is only a starting point. External coordinates are independent of
 the study features and can be implemented whenever convenient.
 
-## Near-Term Candidate: External Coordinate Labels
+## Implemented: External Coordinate Labels
 
 Source: [GitHub issue #1, External coordinates](https://github.com/Trickfest/SwiftChessTools/issues/1),
 opened by Josh McKinney on August 21, 2026.
 
-The board currently shows file and rank coordinates inside its edge squares or
-hides them entirely. The issue requests a configuration that can place those
-coordinates outside the board, similar to the presentation in
+Before this work, the board showed file and rank coordinates inside its edge
+squares or hid them entirely. The issue requests a configuration that can
+place those coordinates outside the board, similar to the presentation in
 [imihaly/ChessBoard](https://github.com/imihaly/ChessBoard).
 
-Possible first scope:
+Selected first scope:
 
-- Add an explicit coordinate-label placement setting with at least `inside`,
-  `outside`, and `hidden` behavior.
+- Add `ChessBoardCoordinateLabelPlacement` with `inside` and `outside` values,
+  while retaining `showsCoordinateLabels` as the separate visibility control.
 - Preserve the current inside-label presentation as the compatibility default.
 - Keep file and rank ordering correct for both White and Black perspectives.
-- Make the outside-label gutters part of predictable board layout rather than
-  shrinking or obscuring squares unexpectedly.
+- Keep the total `ChessBoardView` frame unchanged and shrink the playable 8×8
+  surface predictably to make room for the external gutters.
 - Retain readable contrast without requiring every existing board theme to
   provide a second coordinate palette.
 - Cover compact board sizes, Dynamic Type, VoiceOver, iPhone, iPad, and Mac.
 - Add Workbench controls and snapshot or UI coverage for inside, outside, and
   hidden labels from both perspectives.
 
-The exact public API needs a short design pass. It could replace the current
-Boolean concept with a placement value while retaining
-`showsCoordinateLabels` as a compatibility convenience. More detailed edge
-selection should be added only if there is a demonstrated use case.
+The implementation uses dark external gutters modeled on the issue's visual
+reference, with ranks at the left and files at the bottom while the top and
+right edges remain flush. The existing public initializer remains available
+with its original signature, and a distinct initializer overload accepts an
+explicit placement. Model, layout, public-API, snapshot, Workbench, and iOS
+harness coverage protects the new behavior, while the existing inside-label
+path remains the compatibility default. More detailed edge selection should be
+added only if there is a demonstrated use case.
 
 The issue discussion also mentions interest in more complex arrows and
 annotations. Those are related analysis features, but they should remain

@@ -89,34 +89,46 @@ final class ChessWorkbenchUITests: XCTestCase {
         let piecePicker = element("Workbench.pieceSetPicker")
         let boardPicker = element("Workbench.boardThemePicker")
         let moveListPicker = element("Workbench.moveListLayoutPicker")
+        let coordinateLabelPicker = element("Workbench.coordinateLabelModePicker")
         let scrollBarsToggle = element("Workbench.moveListScrollBarsToggle")
-        let coordinateLabelsToggle = element("Workbench.coordinateLabelsToggle")
 
         assertExists(piecePicker)
         assertExists(boardPicker)
         assertExists(moveListPicker)
+        assertExists(coordinateLabelPicker)
         assertExists(scrollBarsToggle)
-        assertExists(coordinateLabelsToggle)
         XCTAssertEqual(piecePicker.frame.minX, boardPicker.frame.minX, accuracy: 1)
         XCTAssertEqual(piecePicker.frame.width, boardPicker.frame.width, accuracy: 1)
         XCTAssertEqual(piecePicker.frame.height, boardPicker.frame.height, accuracy: 1)
         XCTAssertEqual(piecePicker.frame.minX, moveListPicker.frame.minX, accuracy: 1)
         XCTAssertEqual(piecePicker.frame.width, moveListPicker.frame.width, accuracy: 1)
         XCTAssertEqual(piecePicker.frame.height, moveListPicker.frame.height, accuracy: 1)
+        XCTAssertEqual(piecePicker.frame.minX, coordinateLabelPicker.frame.minX, accuracy: 1)
+        XCTAssertEqual(piecePicker.frame.width, coordinateLabelPicker.frame.width, accuracy: 1)
+        XCTAssertEqual(piecePicker.frame.height, coordinateLabelPicker.frame.height, accuracy: 1)
     }
 
-    func testCoordinateLabelsTogglePreservesBoardInteraction() {
-        let toggle = element("Workbench.coordinateLabelsToggle")
+    func testCoordinateLabelPickerChangesModes() {
+        let picker = element("Workbench.coordinateLabelModePicker")
         let state = element("Workbench.coordinateLabelsState")
-        assertExists(toggle)
+        assertExists(picker)
         assertExists(state)
 
-        waitForText("Coordinate labels Shown", in: state)
-        toggle.click()
+        waitForText("Coordinate labels Inside", in: state)
+        picker.click()
+        menuActionItem("Outside").click()
+        waitForValue("Outside", in: picker)
+        waitForText("Coordinate labels Outside", in: state)
+
+        picker.click()
+        menuActionItem("Hidden").click()
+        waitForValue("Hidden", in: picker)
         waitForText("Coordinate labels Hidden", in: state)
 
-        moveQueenToD7()
-        waitForFEN(Self.queenD7FEN)
+        picker.click()
+        menuActionItem("Inside").click()
+        waitForValue("Inside", in: picker)
+        waitForText("Coordinate labels Inside", in: state)
     }
 
     func testEvaluationBarControlsDemoSamplesAndPlacement() {

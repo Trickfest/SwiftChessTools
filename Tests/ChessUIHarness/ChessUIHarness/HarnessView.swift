@@ -81,12 +81,19 @@ struct HarnessView: View {
             }
             .accessibilityIdentifier("Harness.blackPerspective")
 
+            Button("Outside") {
+                model.showsCoordinateLabels = true
+                model.coordinateLabelPlacement = .outside
+            }
+            .accessibilityIdentifier("Harness.outsideCoordinates")
+
             Button("Promotion") {
                 showPromotionScenario()
             }
             .accessibilityIdentifier("Harness.promotionScenario")
         }
         .buttonStyle(.bordered)
+        .controlSize(.small)
     }
 
     private var interactionModeControls: some View {

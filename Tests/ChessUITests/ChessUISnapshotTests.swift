@@ -40,6 +40,98 @@ import ChessUI
 }
 
 @MainActor
+@Test func outsideCoordinateLabelsWhitePerspectiveSnapshot() throws {
+    try assertBoardSnapshot(named: "coordinate-labels-outside-white") {
+        ChessBoardView(
+            model: ChessBoardModel(
+                fen: initialFEN,
+                coordinateLabelPlacement: .outside
+            )
+        )
+    }
+}
+
+@MainActor
+@Test func outsideCoordinateLabelsBlackPerspectiveSnapshot() throws {
+    try assertBoardSnapshot(named: "coordinate-labels-outside-black") {
+        ChessBoardView(
+            model: ChessBoardModel(
+                fen: initialFEN,
+                perspective: .black,
+                coordinateLabelPlacement: .outside
+            )
+        )
+    }
+}
+
+@MainActor
+@Test func outsideCoordinateLabelsFitMinimumBoardSnapshot() throws {
+    try assertViewSnapshot(
+        named: "coordinate-labels-outside-minimum-size",
+        size: CGSize(width: 220, height: 220),
+        channelTolerance: 30
+    ) {
+        ChessBoardView(
+            model: ChessBoardModel(
+                fen: initialFEN,
+                coordinateLabelPlacement: .outside
+            )
+        )
+        .frame(width: 220, height: 220)
+        .background(Color.white)
+    }
+}
+
+@MainActor
+@Test func outsideCoordinateLabelsFitWorkbenchDefaultSizeSnapshot() throws {
+    try assertViewSnapshot(
+        named: "coordinate-labels-outside-workbench-size",
+        size: CGSize(width: 360, height: 360),
+        channelTolerance: 30
+    ) {
+        ChessBoardView(
+            model: ChessBoardModel(
+                fen: "5k2/1P2bn2/8/8/8/3Q4/3K4/8 w - - 0 1",
+                coordinateLabelPlacement: .outside
+            )
+        )
+        .frame(width: 360, height: 360)
+        .background(Color.white)
+    }
+}
+
+@MainActor
+@Test func outsideCoordinateLabelsTouchBoardBottomEdge() throws {
+    let size = CGSize(width: 360, height: 360)
+    let png = try renderPNG(
+        ChessBoardView(
+            model: ChessBoardModel(
+                fen: "5k2/1P2bn2/8/8/8/3Q4/3K4/8 w - - 0 1",
+                coordinateLabelPlacement: .outside
+            )
+        )
+        .frame(width: size.width, height: size.height)
+        .background(Color.white),
+        size: size
+    )
+
+    guard let bitmap = NSBitmapImageRep(data: png) else {
+        throw SnapshotError.imageDecodingFailed
+    }
+
+    // At 360 points the playable board ends at y = 349.2. Sample between
+    // file labels so every pixel below that edge must be the dark coordinate
+    // strip. This catches a vertically centered gutter background, which
+    // leaves a visible light band between the board and the strip.
+    for y in 349..<360 {
+        let color = try #require(bitmap.colorAt(x: 180, y: y))
+        #expect(color.redComponent < 0.2, "Unexpected light seam at y=\(y)")
+        #expect(color.greenComponent < 0.2, "Unexpected light seam at y=\(y)")
+        #expect(color.blueComponent < 0.2, "Unexpected light seam at y=\(y)")
+    }
+}
+
+@MainActor
 @Test func selectedPieceSnapshot() throws {
     let model = ChessBoardModel(fen: initialFEN)
     model.selectedSquare = BoardSquare(row: 1, column: 4)

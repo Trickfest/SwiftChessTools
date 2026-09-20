@@ -7,6 +7,14 @@ release. Tagged releases use dated version headings.
 
 ## Unreleased
 
+### Added
+
+- Added opt-in external rank and file labels to `ChessBoardView` through
+  `ChessBoardCoordinateLabelPlacement.outside`. The existing inside-label
+  appearance remains the default, hidden labels continue to use
+  `showsCoordinateLabels`, and outside labels keep the complete board and
+  left-and-bottom gutters within the view's existing outer frame.
+
 ### Fixed
 
 - Changed tap and VoiceOver source selection so activating a different movable

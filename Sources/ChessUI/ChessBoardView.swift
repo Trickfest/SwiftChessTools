@@ -138,6 +138,24 @@ public enum ChessBoardInteractionMode: String, CaseIterable, Identifiable, Senda
     }
 }
 
+/// Placement of rank and file labels around a `ChessBoardView`.
+public enum ChessBoardCoordinateLabelPlacement: String, CaseIterable, Hashable, Identifiable, Sendable {
+    /// Draws labels inside the board squares.
+    ///
+    /// This is the default and preserves the appearance used by earlier
+    /// SwiftChessTools releases.
+    case inside
+
+    /// Draws rank labels to the left of the board and file labels below it.
+    ///
+    /// The board shrinks to keep the complete board-and-label view within the
+    /// same outer frame.
+    case outside
+
+    /// Stable identifier for picker and list usage.
+    public var id: String { rawValue }
+}
+
 /// A zero-based board square used by ChessUI state and highlighting APIs.
 ///
 /// `BoardSquare` mirrors `Square`'s file/rank indexing but uses row/column
@@ -231,6 +249,14 @@ public class ChessBoardModel {
 
     /// Controls whether rank and file coordinate labels render on the board.
     public var showsCoordinateLabels: Bool = true
+
+    /// Controls whether coordinate labels render inside or outside the board.
+    ///
+    /// The default is ``ChessBoardCoordinateLabelPlacement/inside`` so
+    /// existing callers keep their current board appearance without code
+    /// changes. This value has no visible effect while
+    /// ``showsCoordinateLabels`` is `false`.
+    public var coordinateLabelPlacement: ChessBoardCoordinateLabelPlacement = .inside
 
     /// Side displayed at the bottom of the board.
     public var perspective: PieceColor
@@ -386,6 +412,56 @@ public class ChessBoardModel {
         self.moveAnimationDuration = Self.normalizedMoveAnimationDuration(moveAnimationDuration)
         self.showsLastMoveHighlight = showsLastMoveHighlight
         self.lastMoveHighlightColor = boardTheme.lastMoveHighlight
+    }
+
+    /// Creates a chess board model with an explicit coordinate-label
+    /// placement.
+    ///
+    /// This overload leaves the original initializer unchanged for source
+    /// compatibility. Coordinate labels remain visible by default.
+    ///
+    /// - Parameters:
+    ///   - fen: Initial board position.
+    ///   - perspective: Side displayed at the bottom of the board.
+    ///   - boardTheme: Board styling used for squares, labels, and markers.
+    ///   - pieceSet: Built-in piece artwork used by the board.
+    ///   - coordinateLabelPlacement: Placement of rank and file labels.
+    ///   - showsCoordinateLabels: Shows rank and file coordinate labels.
+    ///   - arrows: App-supplied display arrows rendered over the board.
+    ///   - interactionMode: User-interaction policy for tap and drag move
+    ///     gestures.
+    ///   - showsLegalMoveHighlights: Shows legal destination markers while a
+    ///     piece is selected or dragged.
+    ///   - moveAnimationDuration: Duration, in seconds, for move animations
+    ///     triggered by `setFEN(_:animatedMove:)`.
+    ///   - showsLastMoveHighlight: Keeps the source and destination squares of
+    ///     the last move highlighted after `setFEN(_:animatedMove:)`.
+    public convenience init(
+        fen: String = emptyFEN,
+        perspective: PieceColor = .white,
+        boardTheme: ChessBoardTheme = .artDecoMonochrome,
+        pieceSet: ChessPieceSet = .sashiteMerida,
+        coordinateLabelPlacement: ChessBoardCoordinateLabelPlacement,
+        showsCoordinateLabels: Bool = true,
+        arrows: [ChessBoardArrow] = [],
+        interactionMode: ChessBoardInteractionMode = .reportsIllegalAttempts,
+        showsLegalMoveHighlights: Bool = true,
+        moveAnimationDuration: Double = 0.45,
+        showsLastMoveHighlight: Bool = true
+    ) {
+        self.init(
+            fen: fen,
+            perspective: perspective,
+            boardTheme: boardTheme,
+            pieceSet: pieceSet,
+            showsCoordinateLabels: showsCoordinateLabels,
+            arrows: arrows,
+            interactionMode: interactionMode,
+            showsLegalMoveHighlights: showsLegalMoveHighlights,
+            moveAnimationDuration: moveAnimationDuration,
+            showsLastMoveHighlight: showsLastMoveHighlight
+        )
+        self.coordinateLabelPlacement = coordinateLabelPlacement
     }
 
     /// Callback invoked when the user attempts a move on the board.
@@ -1102,6 +1178,43 @@ private struct ChessBoardSportsCourtTexture: View {
     }
 }
 
+struct ChessBoardLayout: Equatable {
+    let containerSide: CGFloat
+    let boardSide: CGFloat
+    let boardOrigin: CGPoint
+    let coordinateGutter: CGFloat
+    let usesOutsideCoordinates: Bool
+
+    init(
+        containerSize: CGSize,
+        showsCoordinateLabels: Bool,
+        coordinateLabelPlacement: ChessBoardCoordinateLabelPlacement
+    ) {
+        let containerSide = min(containerSize.width, containerSize.height)
+        let usesOutsideCoordinates = showsCoordinateLabels
+            && coordinateLabelPlacement == .outside
+
+        self.containerSide = containerSide
+        self.usesOutsideCoordinates = usesOutsideCoordinates
+
+        guard usesOutsideCoordinates, containerSide > 0 else {
+            boardSide = containerSide
+            boardOrigin = .zero
+            coordinateGutter = 0
+            return
+        }
+
+        let coordinateGutter = max(8, containerSide * 0.03)
+
+        self.coordinateGutter = coordinateGutter
+        boardSide = max(0, containerSide - coordinateGutter)
+        boardOrigin = CGPoint(
+            x: coordinateGutter,
+            y: 0
+        )
+    }
+}
+
 /// SwiftUI chessboard view backed by `ChessBoardModel`.
 ///
 /// The view renders the board, pieces, markers, move gestures, promotion UI,
@@ -1116,7 +1229,7 @@ public struct ChessBoardView: View {
     /// State model rendered and mutated by the board.
     public var model: ChessBoardModel
     private var moveHandler: ChessBoardMoveHandler?
-    
+
     @Namespace private var animation
     
     /// Creates a chessboard view for the provided model.
@@ -1130,47 +1243,29 @@ public struct ChessBoardView: View {
     /// SwiftUI content for the chessboard and its overlays.
     public var body: some View {
         GeometryReader { geometry in
-            ZStack {
-                backgroundView
-                    .accessibilityHidden(true)
-                lastMoveHighlightsView
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-                if model.showsCoordinateLabels {
-                    labelsView
+            let layout = ChessBoardLayout(
+                containerSize: geometry.size,
+                showsCoordinateLabels: model.showsCoordinateLabels,
+                coordinateLabelPlacement: model.coordinateLabelPlacement
+            )
+
+            ZStack(alignment: .topLeading) {
+                if layout.usesOutsideCoordinates {
+                    outsideCoordinateBackground(layout: layout)
+                        .accessibilityHidden(true)
+
+                    outsideCoordinateLabels(layout: layout)
                         .allowsHitTesting(false)
                         .accessibilityHidden(true)
                 }
-                squaresView
-                    .allowsHitTesting(!isBoardInteractionBlocked)
-                    .accessibilityHidden(true)
-                arrowsView
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-                piecesView
-                    .allowsHitTesting(!isBoardInteractionBlocked)
-                    .accessibilityHidden(isBoardInteractionBlocked)
-                    .accessibilityElement(children: .contain)
-                legalMoveHighlightsView
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-                
-                MovingPieceView(animation: animation)
-                    .accessibilityHidden(true)
-                
-                if model.isPromotionPickerPresented {
-                    promotionPickerView(boardSize: boardSize(from: geometry.size))
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                }
-                
-                if model.isWaiting {
-                    waitingOverlayView
-                }
+
+                boardSurface(boardSize: layout.boardSide)
+                    .position(
+                        x: layout.boardOrigin.x + layout.boardSide / 2,
+                        y: layout.boardOrigin.y + layout.boardSide / 2
+                    )
             }
-            .environment(model)
-            .environment(\.chessBoardMoveHandler, moveHandler)
-            .frame(width: boardSize(from: geometry.size),
-                   height: boardSize(from: geometry.size))
+            .frame(width: layout.containerSide, height: layout.containerSide)
             .onAppear {
                 updateBoardSize(geometry.size)
             }
@@ -1181,6 +1276,12 @@ public struct ChessBoardView: View {
                 updateBoardSize(geometry.size)
             }
             .onChange(of: model.pieceSet) { _, _ in
+                updateBoardSize(geometry.size)
+            }
+            .onChange(of: model.showsCoordinateLabels) { _, _ in
+                updateBoardSize(geometry.size)
+            }
+            .onChange(of: model.coordinateLabelPlacement) { _, _ in
                 updateBoardSize(geometry.size)
             }
             .task {
@@ -1194,16 +1295,138 @@ public struct ChessBoardView: View {
         model.isWaiting || model.isPromotionPickerPresented
     }
 
-    private func boardSize(from geometrySize: CGSize) -> CGFloat {
-        return min(geometrySize.width, geometrySize.height)
+    private func boardSurface(boardSize: CGFloat) -> some View {
+        ZStack {
+            backgroundView
+                .accessibilityHidden(true)
+            lastMoveHighlightsView
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            if model.showsCoordinateLabels,
+               model.coordinateLabelPlacement == .inside
+            {
+                labelsView
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+            squaresView
+                .allowsHitTesting(!isBoardInteractionBlocked)
+                .accessibilityHidden(true)
+            arrowsView
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            piecesView
+                .allowsHitTesting(!isBoardInteractionBlocked)
+                .accessibilityHidden(isBoardInteractionBlocked)
+                .accessibilityElement(children: .contain)
+            legalMoveHighlightsView
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+
+            MovingPieceView(animation: animation)
+                .accessibilityHidden(true)
+
+            if model.isPromotionPickerPresented {
+                promotionPickerView(boardSize: boardSize)
+                    .frame(width: boardSize, height: boardSize)
+            }
+
+            if model.isWaiting {
+                waitingOverlayView
+            }
+        }
+        .environment(model)
+        .environment(\.chessBoardMoveHandler, moveHandler)
+        .frame(width: boardSize, height: boardSize)
     }
 
     private func updateBoardSize(_ geometrySize: CGSize) {
-        let newSize = boardSize(from: geometrySize)
+        let newSize = ChessBoardLayout(
+            containerSize: geometrySize,
+            showsCoordinateLabels: model.showsCoordinateLabels,
+            coordinateLabelPlacement: model.coordinateLabelPlacement
+        ).boardSide
         guard newSize > 0 else {
             return
         }
         model.size = newSize
+    }
+
+    private func outsideCoordinateBackground(layout: ChessBoardLayout) -> some View {
+        // Extend the gutters slightly behind the board so fractional point
+        // rounding cannot expose the caller's background at either seam.
+        let seamOverlap = min(1, layout.boardSide)
+
+        return ZStack(alignment: .topLeading) {
+            Color(white: 0.08)
+                .frame(
+                    width: layout.coordinateGutter + seamOverlap,
+                    height: layout.boardSide
+                )
+
+            Color(white: 0.08)
+                .frame(
+                    width: layout.containerSide,
+                    height: layout.coordinateGutter + seamOverlap
+                )
+                .offset(y: layout.boardSide - seamOverlap)
+        }
+        .frame(
+            width: layout.containerSide,
+            height: layout.containerSide,
+            alignment: .topLeading
+        )
+    }
+
+    private func outsideCoordinateLabels(layout: ChessBoardLayout) -> some View {
+        let squareSize = layout.boardSide / 8
+        let labelSize = max(7, layout.coordinateGutter * 0.6)
+
+        return ZStack(alignment: .topLeading) {
+            ForEach(0..<8) { displayRow in
+                Text(outsideRankLabel(forDisplayRow: displayRow))
+                    .font(.system(size: labelSize, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.88))
+                    .frame(
+                        width: layout.coordinateGutter,
+                        height: squareSize,
+                        alignment: .center
+                    )
+                    .position(
+                        x: layout.coordinateGutter / 2,
+                        y: layout.boardOrigin.y
+                            + (CGFloat(displayRow) + 0.5) * squareSize
+                    )
+            }
+
+            ForEach(0..<8) { displayColumn in
+                Text(outsideFileLabel(forDisplayColumn: displayColumn))
+                    .font(.system(size: labelSize, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.88))
+                    .frame(
+                        width: squareSize,
+                        height: layout.coordinateGutter,
+                        alignment: .center
+                    )
+                    .position(
+                        x: layout.boardOrigin.x
+                            + (CGFloat(displayColumn) + 0.5) * squareSize,
+                        y: layout.boardOrigin.y
+                            + layout.boardSide
+                            + layout.coordinateGutter / 2
+                    )
+            }
+        }
+        .frame(width: layout.containerSide, height: layout.containerSide)
+    }
+
+    private func outsideRankLabel(forDisplayRow row: Int) -> String {
+        "\(boardModel.shouldFlipBoard ? row + 1 : 8 - row)"
+    }
+
+    private func outsideFileLabel(forDisplayColumn column: Int) -> String {
+        let displayColumn = boardModel.shouldFlipBoard ? 7 - column : column
+        return ["a", "b", "c", "d", "e", "f", "g", "h"][displayColumn]
     }
     
     var waitingOverlayView: some View {

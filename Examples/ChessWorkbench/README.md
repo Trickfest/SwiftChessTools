@@ -23,7 +23,8 @@ For the public ChessUI walkthrough, see
 - Manually checking board accessibility labels, hints, and VoiceOver-style
   square activation for selecting or reselecting pieces and reporting
   destination moves.
-- Piece-set selection, board-theme selection, coordinate-label visibility,
+- Piece-set selection, board-theme selection, inside/outside/hidden coordinate
+  labels,
   board sizing, hints, app-supplied arrow annotations, reset behavior, and the
   promotion picker UI.
 - Fixed-size, scrolling `ChessMoveListView` display for legal moves made on the
@@ -107,7 +108,10 @@ Scripts/test-all.sh
    re-renders.
 10. Select each built-in board theme from the `Board` menu and confirm the board
    re-renders.
-11. Toggle `Coordinates` and confirm the board remains playable.
+11. Change `Coords` from `Inside` to `Outside`, confirm the board shrinks within
+    the same card while labels move to the left and bottom, then choose `Hidden`
+    and confirm the board again fills its original frame. Confirm the board
+    remains playable in every mode.
 12. Confirm the `Status` section shows the side to move.
 13. Paste a claimable draw FEN such as
    `4k3/8/8/8/8/8/Q7/4K3 w - - 100 1`, claim the draw, and confirm the
