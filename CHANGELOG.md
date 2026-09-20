@@ -7,6 +7,13 @@ release. Tagged releases use dated version headings.
 
 ## Unreleased
 
+### Fixed
+
+- Updated the ChessWorkbench macOS UI automation for Xcode 27 mouse-event and
+  accessibility behavior, and made the complete validation script resolve its
+  preferred available iPhone simulator by identifier instead of assuming that
+  model exists on the newest installed iOS runtime.
+
 ## 1.2.0 - 2026-09-20
 
 ### Added

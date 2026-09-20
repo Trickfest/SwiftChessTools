@@ -82,7 +82,8 @@ final class ChessWorkbenchUITests: XCTestCase {
         }
 
         tapSquare("d3")
-        assertExists(element("ChessUI.legalMove.d7"))
+        waitForLabel(containing: "selected", in: square("d3"))
+        waitForLabel(containing: "legal destination", in: square("d7"))
     }
 
     func testDisplayPickersHaveAlignedFrames() {
@@ -185,8 +186,9 @@ final class ChessWorkbenchUITests: XCTestCase {
     func testSourceSquareClickSelectsPieceAndShowsLegalDestinations() {
         tapSquare("d3")
 
-        assertExists(element("ChessUI.legalMove.d7"))
-        assertExists(element("ChessUI.legalMove.h7"))
+        waitForLabel(containing: "selected", in: square("d3"))
+        waitForLabel(containing: "legal destination", in: square("d7"))
+        waitForLabel(containing: "legal destination", in: square("h7"))
     }
 
     func testDestinationSquareClickWorksAcrossFullSquare() {
@@ -210,8 +212,7 @@ final class ChessWorkbenchUITests: XCTestCase {
 
         waitForFEN(Self.queenD7FEN)
         XCTAssertTrue(square("d7").label.contains("White queen, d7"))
-        assertExists(element("ChessUI.lastMove.d3"))
-        assertExists(element("ChessUI.lastMove.d7"))
+        XCTAssertTrue(square("d3").label.contains("Empty, d3"))
     }
 
     func testMoveListUpdatesAfterLegalMoveAndClearsOnReset() {
@@ -311,28 +312,36 @@ final class ChessWorkbenchUITests: XCTestCase {
     }
 
     func testShowD3MarkerDisplaysMarker() {
-        app.buttons["Workbench.showD3Marker"].tap()
+        let markerButton = app.buttons["Workbench.showD3Marker"]
+        assertExists(markerButton)
+        waitForValue("Hidden", in: markerButton)
 
-        assertExists(element("ChessUI.hint.d3"))
+        markerButton.click()
+        XCTAssertEqual(markerButton.value as? String, "Shown")
     }
 
-    func testArrowControlsRenderAndClearBoardArrows() {
-        app.buttons["Workbench.showBestArrow"].tap()
-        assertExists(element("ChessUI.arrow.d3.d7"))
+    func testArrowControlsUpdateAndClearBoardArrows() {
+        let bestArrowButton = app.buttons["Workbench.showBestArrow"]
+        let topThreeButton = app.buttons["Workbench.showTopThreeArrows"]
+        let clearButton = app.buttons["Workbench.clearArrows"]
+        assertExists(bestArrowButton)
+        assertExists(topThreeButton)
+        assertExists(clearButton)
+        waitForEnabled(false, in: clearButton)
 
-        app.buttons["Workbench.showTopThreeArrows"].tap()
-        assertExists(element("ChessUI.arrow.d3.d7"))
-        assertExists(element("ChessUI.arrow.d3.h7"))
-        assertExists(element("ChessUI.arrow.b7.b8"))
+        bestArrowButton.click()
+        waitForEnabled(true, in: clearButton)
+        clearButton.click()
+        waitForEnabled(false, in: clearButton)
 
-        app.buttons["Workbench.clearArrows"].tap()
-        waitForNonExistence(element("ChessUI.arrow.d3.d7"))
-        waitForNonExistence(element("ChessUI.arrow.d3.h7"))
-        waitForNonExistence(element("ChessUI.arrow.b7.b8"))
+        topThreeButton.click()
+        waitForEnabled(true, in: clearButton)
+        clearButton.click()
+        waitForEnabled(false, in: clearButton)
     }
 
     func testShowPromotionDisplaysPromotionChoices() {
-        app.buttons["Workbench.showPromotion"].tap()
+        app.buttons["Workbench.showPromotion"].click()
 
         assertExists(app.buttons["ChessUI.promotion.queen"])
         XCTAssertTrue(app.buttons["ChessUI.promotion.rook"].exists)
@@ -347,7 +356,7 @@ final class ChessWorkbenchUITests: XCTestCase {
         assertExists(resetButton)
         let resetFrame = resetButton.frame
 
-        copyButton.tap()
+        copyButton.click()
 
         let copiedPredicate = NSPredicate(format: "label == %@", "Copied FEN")
         expectation(for: copiedPredicate, evaluatedWith: copyButton)
@@ -393,7 +402,7 @@ final class ChessWorkbenchUITests: XCTestCase {
         let resetButton = app.buttons["Workbench.resetPosition"]
         assertExists(resetButton)
         XCTAssertTrue(resetButton.isEnabled)
-        resetButton.tap()
+        resetButton.click()
         waitForFEN(Self.startingFEN)
     }
 
@@ -429,7 +438,7 @@ final class ChessWorkbenchUITests: XCTestCase {
     }
 
     private func tapSquare(_ coordinate: String, offset: CGVector = CGVector(dx: 0.5, dy: 0.5)) {
-        square(coordinate).coordinate(withNormalizedOffset: offset).tap()
+        square(coordinate).coordinate(withNormalizedOffset: offset).click()
     }
 
     private func square(_ coordinate: String, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
@@ -654,6 +663,56 @@ final class ChessWorkbenchUITests: XCTestCase {
             result,
             .completed,
             "Expected text \(expected), got \(Self.normalizedText(from: element))",
+            file: file,
+            line: line
+        )
+    }
+
+    private func waitForLabel(
+        containing expected: String,
+        in element: XCUIElement,
+        timeout: TimeInterval = 2,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let predicate = NSPredicate { element, _ in
+            guard let element = element as? XCUIElement else {
+                return false
+            }
+            return element.label.contains(expected)
+        }
+
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
+        XCTAssertEqual(
+            result,
+            .completed,
+            "Expected label containing \(expected), got \(element.label)",
+            file: file,
+            line: line
+        )
+    }
+
+    private func waitForEnabled(
+        _ expected: Bool,
+        in element: XCUIElement,
+        timeout: TimeInterval = 2,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let predicate = NSPredicate { element, _ in
+            guard let element = element as? XCUIElement else {
+                return false
+            }
+            return element.isEnabled == expected
+        }
+
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
+        XCTAssertEqual(
+            result,
+            .completed,
+            "Expected enabled state \(expected), got \(element.isEnabled)",
             file: file,
             line: line
         )

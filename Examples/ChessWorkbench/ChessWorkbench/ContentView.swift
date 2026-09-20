@@ -315,6 +315,11 @@ private struct WorkbenchView: View {
                 }
                 .buttonStyle(WorkbenchButtonStyle())
                 .accessibilityIdentifier("Workbench.showD3Marker")
+                .accessibilityValue(
+                    boardModel.hintedSquares.contains(BoardSquare(row: 2, column: 3))
+                        ? "Shown"
+                        : "Hidden"
+                )
 
                 Button {
                     withAnimation {

@@ -16,8 +16,39 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
 cd "$repo_root"
 
-ios_destination="${IOS_DESTINATION:-platform=iOS Simulator,name=iPhone 17 Pro}"
 macos_destination="${MACOS_DESTINATION:-platform=macOS,arch=arm64}"
+
+resolve_ios_destination() {
+  if [[ -n "${IOS_DESTINATION:-}" ]]; then
+    printf '%s' "$IOS_DESTINATION"
+    return
+  fi
+
+  local simulator_name="${IOS_SIMULATOR_NAME:-iPhone 17 Pro}"
+  local simulator_id
+  simulator_id="$({
+    xcrun simctl list devices available |
+      awk -v name="$simulator_name" '
+        {
+          device = $0
+          sub(/^[[:space:]]+/, "", device)
+        }
+        index(device, name " (") == 1 && match(device, /\([0-9A-F-]+\)/) {
+          print substr(device, RSTART + 1, RLENGTH - 2)
+          exit
+        }
+      '
+  })"
+
+  if [[ -z "$simulator_id" ]]; then
+    printf 'No available iOS simulator named %s. Set IOS_SIMULATOR_NAME or IOS_DESTINATION.\n' "$simulator_name" >&2
+    return 1
+  fi
+
+  printf 'platform=iOS Simulator,id=%s' "$simulator_id"
+}
+
+ios_destination="$(resolve_ios_destination)"
 
 run() {
   printf '\n==> %s\n' "$1"
