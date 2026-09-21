@@ -34,6 +34,7 @@ larger study model to develop carefully:
 5. Annotated variation UI and richer board annotations.
 6. Per-set piece rendering scale overrides.
 7. Consumer-defined board appearance and piece artwork.
+8. Public chess-service API clients, beginning with Lichess.
 
 The sequence is only a starting point. External coordinates are independent of
 the study features and can be implemented whenever convenient.
@@ -243,6 +244,62 @@ apply, replace, or cancel it.
 
 ## Developer And Portability Capabilities
 
+### Lichess And Public Chess-Service API Clients
+
+Explore a maintained Swift interface to public chess services, beginning with
+Lichess and potentially adding the read-only Chess.com Published-Data API.
+The initial inspiration is
+[navanchauhan/swift-lichess](https://swiftpackageindex.com/navanchauhan/swift-lichess),
+which demonstrates broad typed coverage, OAuth with PKCE, and NDJSON streaming.
+Its current Swift Package Index record shows a September 2025 update, twelve
+direct and transitive dependencies, and no detected license, so it should be
+treated as design inspiration rather than copied or adopted without a separate
+licensing and maintenance review.
+
+The service surface is large and changes on a different cadence from chess
+rules and UI. The preferred design should therefore evaluate a companion
+package or optional products such as `LichessAPI` and `ChessComAPI` instead of
+adding networking responsibilities to `ChessCore`, `ChessUI`, or `ChessUCI`.
+Provider-specific models should remain distinct unless a genuinely stable
+shared abstraction emerges.
+
+Possible staged scope:
+
+- Start with useful unauthenticated, read-only operations such as profiles,
+  ratings, game export, broadcasts, puzzles, opening exploration, and public
+  archives.
+- Add Lichess OAuth 2 with PKCE and caller-managed token storage without ever
+  persisting credentials inside the package.
+- Provide typed `AsyncSequence` support for Lichess NDJSON event and game
+  streams, cancellation, reconnect boundaries, and incremental decoding.
+- Add authenticated challenges, board play, studies, tournaments, or bot
+  operations only after a concrete application needs them.
+- Treat Chess.com's current PubAPI as a separate read-only provider; honor its
+  JSON-LD responses, cache headers, and user-agent guidance instead of implying
+  feature parity with Lichess.
+
+Maintenance and quality requirements:
+
+- Use the official Lichess OpenAPI specification and official Chess.com API
+  documentation as the source of truth, recording the upstream schema revision
+  used for each release.
+- Keep any code generation reproducible and reviewed, with a small handwritten
+  Swift facade that presents stable names and isolates upstream schema churn.
+- Prefer Swift concurrency and an injectable `URLSession`-style transport so
+  tests can use recorded fixtures without contacting live services.
+- Model HTTP, decoding, authentication, cancellation, cache, and rate-limit
+  failures explicitly. Lichess currently advises one request at a time and a
+  full one-minute pause after HTTP 429 responses.
+- Avoid unnecessary dependencies, require Swift 6 concurrency safety, redact
+  authorization data from diagnostics, and never make live network access part
+  of the deterministic local test gate.
+- Review each provider's terms, attribution, branding, and rate-limit rules
+  before release, and document which endpoints are intentionally unsupported.
+
+The goal would be a dependable Apple-platform client maintained alongside the
+rest of the chess workspace, not a promise to mirror every endpoint immediately
+or a provider-neutral online-play framework.
+
 ### Public Perft And Divide Utilities
 
 Promote the repository's private perft test helper into a small public
@@ -310,6 +367,9 @@ owned by applications or dedicated engine wrappers:
 - Bundled chess engines or a built-in minimax opponent.
 - UCI process management, engine lifecycle, option policy, or search
   orchestration.
-- Opening-database services, online play, accounts, matchmaking, or sync.
+- App-owned online-play flows, account presentation, matchmaking policy, or
+  sync. A narrowly scoped transport client may live in an optional product or
+  companion package, but it should not move those product decisions into the
+  shared chess rules or UI layers.
 - Product-specific training, grading, entitlement, persistence, or navigation
   flows.
