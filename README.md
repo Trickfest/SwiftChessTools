@@ -1,5 +1,7 @@
 # SwiftChessTools
 
+[![Swift versions](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FTrickfest%2FSwiftChessTools%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/Trickfest/SwiftChessTools) [![Supported platforms](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FTrickfest%2FSwiftChessTools%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/Trickfest/SwiftChessTools)
+
 SwiftChessTools is an independent Swift package for reusable chess rules,
 notation, and SwiftUI board UI that can support multiple future apps.
 
