@@ -9,6 +9,9 @@ release. Tagged releases use dated version headings.
 
 ### Fixed
 
+- Waited for the outside-coordinate board's measured size before showing its
+  contents, avoiding a visible first-frame repositioning. Last-move highlights
+  remain anchored to the playable board.
 - Updated the ChessWorkbench macOS UI automation for Xcode 27 mouse-event and
   accessibility behavior, and made the complete validation script resolve its
   preferred available iPhone simulator by identifier instead of assuming that

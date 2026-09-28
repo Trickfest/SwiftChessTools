@@ -1259,11 +1259,15 @@ public struct ChessBoardView: View {
                         .accessibilityHidden(true)
                 }
 
-                boardSurface(boardSize: layout.boardSide)
-                    .position(
-                        x: layout.boardOrigin.x + layout.boardSide / 2,
-                        y: layout.boardOrigin.y + layout.boardSide / 2
-                    )
+                if !layout.usesOutsideCoordinates
+                    || abs(model.size - layout.boardSide) < 0.5
+                {
+                    boardSurface(boardSize: layout.boardSide)
+                        .position(
+                            x: layout.boardOrigin.x + layout.boardSide / 2,
+                            y: layout.boardOrigin.y + layout.boardSide / 2
+                        )
+                }
             }
             .frame(width: layout.containerSide, height: layout.containerSide)
             .onAppear {
@@ -1300,6 +1304,7 @@ public struct ChessBoardView: View {
             backgroundView
                 .accessibilityHidden(true)
             lastMoveHighlightsView
+                .frame(width: boardSize, height: boardSize, alignment: .topLeading)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
             if model.showsCoordinateLabels,

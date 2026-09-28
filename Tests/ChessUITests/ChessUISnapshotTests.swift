@@ -156,6 +156,46 @@ import ChessUI
 }
 
 @MainActor
+@Test func outsideCoordinateLastMoveHighlightStaysWithinItsSquares() throws {
+    let size = CGSize(width: 320, height: 320)
+    let move = try Move(string: "e2e4")
+
+    func boardPNG(highlightsLastMove: Bool) throws -> Data {
+        let model = ChessBoardModel(
+            fen: initialFEN,
+            boardTheme: .blueStudy,
+            coordinateLabelPlacement: .outside,
+            showsLastMoveHighlight: highlightsLastMove
+        )
+        model.game.apply(move: move)
+        model.setFEN(FENSerializer().fen(from: model.game.position), animatedMove: move)
+        model.movingPiece = nil
+
+        return try renderPNG(
+            ChessBoardView(model: model)
+                .frame(width: size.width, height: size.height),
+            size: size
+        )
+    }
+
+    let highlighted = try #require(NSBitmapImageRep(data: boardPNG(highlightsLastMove: true)))
+    let plain = try #require(NSBitmapImageRep(data: boardPNG(highlightsLastMove: false)))
+
+    func differsAt(x: Int, y: Int) throws -> Bool {
+        let actual = try #require(highlighted.colorAt(x: x, y: y))
+        let reference = try #require(plain.colorAt(x: x, y: y))
+        return abs(actual.redComponent - reference.redComponent) > 0.04
+            || abs(actual.greenComponent - reference.greenComponent) > 0.04
+            || abs(actual.blueComponent - reference.blueComponent) > 0.04
+    }
+
+    // The e2 square starts at y=232.8. The highlight must not leak into e3,
+    // and must cover the top of e2 even with the outside-coordinate gutter.
+    #expect(try !differsAt(x: 170, y: 230))
+    #expect(try differsAt(x: 170, y: 235))
+}
+
+@MainActor
 @Test func primaryArrowSnapshot() throws {
     let model = ChessBoardModel(fen: initialFEN)
     model.arrows = [
