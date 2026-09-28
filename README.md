@@ -49,7 +49,7 @@ or declare it directly in `Package.swift`:
 dependencies: [
     .package(
         url: "https://github.com/Trickfest/SwiftChessTools.git",
-        from: "1.2.0"
+        from: "1.2.1"
     ),
 ]
 ```
@@ -330,7 +330,9 @@ External labels place ranks in a dark gutter to the left and files in a dark
 gutter below the board, leaving the top and right edges flush. The playable 8×8
 surface shrinks so the complete board and label gutters remain within the same
 `ChessBoardView` frame. White and Black perspectives reverse the labels with
-the board. Set `ChessBoardModel.showsCoordinateLabels` to `false` for
+the board. The board waits for its measured outside-label layout before drawing
+its contents, preventing an initial shift; last-move highlights stay aligned
+with the playable squares. Set `ChessBoardModel.showsCoordinateLabels` to `false` for
 diagrams, training modes, or app surfaces that provide their own coordinates;
 hidden labels reserve no gutter regardless of the selected placement.
 Use `ChessBoardModel.arrows` for display-only board annotations such as

@@ -7,6 +7,8 @@ release. Tagged releases use dated version headings.
 
 ## Unreleased
 
+## 1.2.1 - 2026-09-28
+
 ### Fixed
 
 - Waited for the outside-coordinate board's measured size before showing its
