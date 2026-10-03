@@ -32,7 +32,7 @@ larger study model to develop carefully:
 3. Typed PGN comment directives.
 4. Public game tree and recursive PGN variations.
 5. Annotated variation UI and richer board annotations.
-6. Per-set piece rendering scale overrides.
+6. Per-set piece rendering scale overrides. *(Implemented in 1.3.0.)*
 7. Consumer-defined board appearance and piece artwork.
 8. Public chess-service API clients, beginning with Lichess.
 
@@ -162,6 +162,17 @@ those values into board arrows, square marks, and evaluation displays.
 ## ChessUI Presentation And Interaction
 
 ### Per-Set Piece Rendering Scale Overrides
+
+Implemented in SwiftChessTools 1.3.0, with physical iPhone, iPad, and Mac
+visual acceptance completed on October 3, 2026. SwiftChessDemo 1.5.0
+demonstrates the controls in both gameplay modes.
+`ChessBoardModel.pieceRenderingScaleOverrides` holds
+per-set values local to each board. Finite values clamp to `0.50...1.00`;
+nonfinite values restore the bundled default. `effectiveRenderingScale(for:)`
+resolves the override or default for stationary, dragged, animated, and
+promotion artwork. ChessWorkbench and both SwiftChessDemo gameplay modes
+provide a slider and per-set default reset. The original design considerations
+are retained below.
 
 Allow package consumers to adjust the effective piece rendering scale for an
 individual `ChessPieceSet` while preserving the bundled defaults when no

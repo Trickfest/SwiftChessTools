@@ -51,6 +51,29 @@ final class ChessWorkbenchUITests: XCTestCase {
         XCTAssertTrue(square("f8").label.contains("Black king, f8"))
     }
 
+    func testPieceSizeSliderUpdatesAndRestoresDefault() {
+        let slider = element("Workbench.pieceSizeSlider")
+        assertExists(slider)
+        let value = element("Workbench.pieceSizeValue")
+        waitForValue("85%", in: value)
+        let originalFrame = square("d3").frame
+        // Coordinate gestures need the slider within the visible inspector.
+        // AX queries also find controls below the scroll viewport.
+        for _ in 0..<6 {
+            if slider.isHittable { break }
+            app.scrollViews.firstMatch.scroll(byDeltaX: 0, deltaY: -300)
+        }
+        waitForHittable(slider)
+        // Native macOS sliders do not support XCTest's normalized AX adjustment
+        // on Xcode 27. Click the minimum end of the track instead.
+        slider.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.5)).click()
+        waitForValue("50%", in: value)
+        XCTAssertEqual(square("d3").frame.width, originalFrame.width, accuracy: 0.5)
+        XCTAssertEqual(square("d3").frame.height, originalFrame.height, accuracy: 0.5)
+        element("Workbench.resetPieceSize").click()
+        waitForValue("85%", in: value)
+    }
+
     func testPieceSetPickerSelectsEveryBuiltInSet() {
         let picker = element("Workbench.pieceSetPicker")
 

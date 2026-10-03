@@ -350,6 +350,28 @@ drag means.
 
 ## 10. Piece Sets And Board Themes
 
+Piece sizing can be customized per board and per bundled set:
+
+```swift
+model.pieceRenderingScaleOverrides[.sashiteMerida] = 0.76
+model.pieceRenderingScaleOverrides[.origamiMonochrome] = 0.90
+let currentScale = model.effectiveRenderingScale(for: model.pieceSet)
+model.pieceRenderingScaleOverrides[.sashiteMerida] = nil
+```
+
+An absent override uses `ChessPieceSet.renderingScale`: `0.80` for Sashite
+Merida and `0.85` for other sets. Finite values clamp to `0.50...1.00`;
+nonfinite values remove the entry. The factor scales the fitted image,
+including its transparent padding. Stationary, dragged, animated, and promotion
+pieces use the same factor. Board geometry, square targets, and accessibility
+frames are preserved. Changing `pieceSet` recalls that set's override.
+
+The additive `ChessBoardModel` initializer overload accepts
+`pieceRenderingScaleOverrides` together with optional coordinate placement.
+Existing initializers keep their defaults. An app can bind a slider to
+`effectiveRenderingScale(for:)` and update the selected set's dictionary entry;
+the app owns any saving across games or launches.
+
 `ChessUI` ships with selectable piece sets and board themes. Use the runtime
 registries to build pickers:
 

@@ -247,6 +247,33 @@ public class ChessBoardModel {
     /// Piece artwork used by the board and promotion picker.
     public var pieceSet: ChessPieceSet = .sashiteMerida
 
+    /// Supported artwork scales relative to a piece's available dimensions.
+    public static let pieceRenderingScaleRange: ClosedRange<CGFloat> = 0.50...1.00
+
+    /// Per-board artwork scale overrides for individual bundled piece sets.
+    ///
+    /// An absent entry uses the set's bundled ``ChessPieceSet/renderingScale``.
+    /// Finite values are clamped to ``pieceRenderingScaleRange``; nonfinite
+    /// values remove that entry and restore the default. Changing artwork size
+    /// preserves board layout and square interaction and accessibility frames.
+    public var pieceRenderingScaleOverrides: [ChessPieceSet: CGFloat] = [:] {
+        didSet {
+            let normalized = pieceRenderingScaleOverrides.compactMapValues { value -> CGFloat? in
+                guard value.isFinite else { return nil }
+                return min(max(value, Self.pieceRenderingScaleRange.lowerBound),
+                           Self.pieceRenderingScaleRange.upperBound)
+            }
+            if normalized != pieceRenderingScaleOverrides {
+                pieceRenderingScaleOverrides = normalized
+            }
+        }
+    }
+
+    /// Artwork scale used for a set on this board, including any override.
+    public func effectiveRenderingScale(for pieceSet: ChessPieceSet) -> CGFloat {
+        pieceRenderingScaleOverrides[pieceSet] ?? pieceSet.renderingScale
+    }
+
     /// Controls whether rank and file coordinate labels render on the board.
     public var showsCoordinateLabels: Bool = true
 
@@ -461,6 +488,40 @@ public class ChessBoardModel {
             moveAnimationDuration: moveAnimationDuration,
             showsLastMoveHighlight: showsLastMoveHighlight
         )
+        self.coordinateLabelPlacement = coordinateLabelPlacement
+    }
+
+    /// Creates a board with per-set artwork scale overrides.
+    ///
+    /// The existing initializer signatures remain available. Coordinate labels
+    /// default to inside; callers may configure both sizing and placement here.
+    public convenience init(
+        fen: String = emptyFEN,
+        perspective: PieceColor = .white,
+        boardTheme: ChessBoardTheme = .artDecoMonochrome,
+        pieceSet: ChessPieceSet = .sashiteMerida,
+        pieceRenderingScaleOverrides: [ChessPieceSet: CGFloat],
+        coordinateLabelPlacement: ChessBoardCoordinateLabelPlacement = .inside,
+        showsCoordinateLabels: Bool = true,
+        arrows: [ChessBoardArrow] = [],
+        interactionMode: ChessBoardInteractionMode = .reportsIllegalAttempts,
+        showsLegalMoveHighlights: Bool = true,
+        moveAnimationDuration: Double = 0.45,
+        showsLastMoveHighlight: Bool = true
+    ) {
+        self.init(
+            fen: fen,
+            perspective: perspective,
+            boardTheme: boardTheme,
+            pieceSet: pieceSet,
+            showsCoordinateLabels: showsCoordinateLabels,
+            arrows: arrows,
+            interactionMode: interactionMode,
+            showsLegalMoveHighlights: showsLegalMoveHighlights,
+            moveAnimationDuration: moveAnimationDuration,
+            showsLastMoveHighlight: showsLastMoveHighlight
+        )
+        self.pieceRenderingScaleOverrides = pieceRenderingScaleOverrides
         self.coordinateLabelPlacement = coordinateLabelPlacement
     }
 
@@ -1491,6 +1552,7 @@ public struct ChessBoardView: View {
                             ZStack {
                                 PieceImageView(imageName: imageName,
                                                pieceSet: boardModel.pieceSet,
+                                               renderingScale: boardModel.effectiveRenderingScale(for: boardModel.pieceSet),
                                                fallback: piece.uppercased(),
                                                fallbackColor: Color.black)
                                     .frame(width: boardSize / 8,
@@ -1990,6 +2052,7 @@ private struct ChessPieceView: View {
                 
                 PieceImageView(imageName: imageName,
                                pieceSet: boardModel.pieceSet,
+                               renderingScale: boardModel.effectiveRenderingScale(for: boardModel.pieceSet),
                                fallback: "\(piece)",
                                fallbackColor: piece.color == PieceColor.white ? Color.white : Color.black)
             } else {
@@ -2157,6 +2220,7 @@ private func announceForAccessibility(_ message: String?) {
 private struct PieceImageView: View {
     var imageName: String
     var pieceSet: ChessPieceSet
+    var renderingScale: CGFloat
     var fallback: String
     var fallbackColor: Color
 
@@ -2170,7 +2234,7 @@ private struct PieceImageView: View {
                 .foregroundStyle(fallbackColor)
                 .font(.system(size: 18))
                 .scaledToFit()
-                .scaleEffect(pieceSet.renderingScale)
+                .scaleEffect(renderingScale)
                 .contentShape(Rectangle())
         }
     }
@@ -2180,7 +2244,7 @@ private struct PieceImageView: View {
             .resizable()
             .interpolation(imageInterpolation)
             .scaledToFit()
-            .scaleEffect(pieceSet.renderingScale)
+            .scaleEffect(renderingScale)
             .contentShape(Rectangle())
     }
 

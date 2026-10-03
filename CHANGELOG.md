@@ -7,6 +7,20 @@ release. Tagged releases use dated version headings.
 
 ## Unreleased
 
+## 1.3.0 - 2026-10-03
+
+### Added
+
+- Added per-board `ChessBoardModel.pieceRenderingScaleOverrides`, an initializer
+  overload, and `effectiveRenderingScale(for:)` so consumers can size individual
+  bundled piece sets. Existing defaults and initializer signatures are retained.
+  Stationary, dragged, animated, and promotion artwork use the effective scale;
+  square layout and interaction targets are unchanged. Finite overrides clamp
+  to `0.50...1.00`, and nonfinite values restore the bundled default.
+- Added a piece-size slider and per-set default reset to ChessWorkbench.
+  SwiftChessDemo also exposes the setting during both human-vs-engine and
+  engine-vs-engine gameplay in its 1.5.0 release.
+
 ## 1.2.1 - 2026-09-28
 
 ### Fixed

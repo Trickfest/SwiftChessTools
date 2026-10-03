@@ -82,7 +82,10 @@ public enum ChessPieceSet: String, CaseIterable, Identifiable, Sendable {
         .high
     }
 
-    var renderingScale: CGFloat {
+    /// Bundled artwork scale relative to its square's available dimensions.
+    ///
+    /// Override individual sets on ``ChessBoardModel/pieceRenderingScaleOverrides``.
+    public var renderingScale: CGFloat {
         switch self {
         case .sashiteMerida:
             0.80

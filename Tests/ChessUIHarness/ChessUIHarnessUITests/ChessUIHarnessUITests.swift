@@ -23,6 +23,25 @@ final class ChessUIHarnessUITests: XCTestCase {
         app = nil
     }
 
+    func testSmallArtworkPreservesSquareFramesDragAndPromotion() {
+        let originalFrame = square("e2").frame
+        app.terminate()
+        app.launchEnvironment["CHESS_UI_HARNESS_PIECE_SCALE"] = "0.50"
+        app.launch()
+        XCTAssertEqual(square("e2").frame.width, originalFrame.width, accuracy: 0.5)
+        XCTAssertEqual(square("e2").frame.height, originalFrame.height, accuracy: 0.5)
+        dragSquare("g1", to: "f3")
+        XCTAssertEqual(lastMoveLabel(), "g1f3")
+        app.buttons["Harness.promotionScenario"].tap()
+        tapSquare("e7")
+        tapSquare("e8")
+        let queen = app.buttons["ChessUI.promotion.queen"]
+        XCTAssertTrue(queen.waitForExistence(timeout: 2))
+        queen.tap()
+        XCTAssertEqual(lastMoveLabel(), "e7e8q")
+        XCTAssertTrue(square("e8").label.contains("White queen, e8"))
+    }
+
     func testTapMoveShowsLegalMovesAndLastMoveHighlight() {
         tapSquare("e2")
 

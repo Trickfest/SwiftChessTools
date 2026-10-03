@@ -76,6 +76,50 @@ import ChessCore
     }
 }
 
+@Test func pieceScaleOverridesArePerSetAndPerBoard() {
+    let model = ChessBoardModel(
+        fen: initialFEN,
+        pieceRenderingScaleOverrides: [.sashiteMerida: 0.76, .origamiMonochrome: 0.90],
+        coordinateLabelPlacement: .outside
+    )
+    let otherBoard = ChessBoardModel(fen: initialFEN)
+    #expect(model.coordinateLabelPlacement == .outside)
+    #expect(model.effectiveRenderingScale(for: .sashiteMerida) == 0.76)
+    #expect(model.effectiveRenderingScale(for: .origamiMonochrome) == 0.90)
+    #expect(model.effectiveRenderingScale(for: .artDecoMonochrome) == 0.85)
+    #expect(otherBoard.effectiveRenderingScale(for: .sashiteMerida) == 0.80)
+
+    model.pieceSet = .origamiMonochrome
+    model.pieceSet = .sashiteMerida
+    #expect(model.effectiveRenderingScale(for: model.pieceSet) == 0.76)
+    model.pieceRenderingScaleOverrides[.sashiteMerida] = nil
+    #expect(model.effectiveRenderingScale(for: .sashiteMerida) == 0.80)
+    #expect(model.effectiveRenderingScale(for: .origamiMonochrome) == 0.90)
+    model.pieceRenderingScaleOverrides = [:]
+    for set in ChessPieceSet.availableSets {
+        #expect(model.effectiveRenderingScale(for: set) == set.renderingScale)
+    }
+}
+
+@Test func pieceScaleOverridesNormalizeInvalidValues() {
+    let model = ChessBoardModel(pieceRenderingScaleOverrides: [
+        .sashiteMerida: -.infinity,
+        .artDecoMonochrome: 1.5,
+        .origamiMonochrome: -1,
+        .brutalistMonochrome: .nan,
+    ])
+    #expect(model.pieceRenderingScaleOverrides[.sashiteMerida] == nil)
+    #expect(model.pieceRenderingScaleOverrides[.brutalistMonochrome] == nil)
+    #expect(model.effectiveRenderingScale(for: .artDecoMonochrome) == 1)
+    #expect(model.effectiveRenderingScale(for: .origamiMonochrome) == 0.5)
+    model.pieceRenderingScaleOverrides[.artDecoMonochrome] = .infinity
+    #expect(model.effectiveRenderingScale(for: .artDecoMonochrome) == 0.85)
+    model.pieceRenderingScaleOverrides[.sashiteMerida] = 0.5
+    #expect(model.effectiveRenderingScale(for: .sashiteMerida) == 0.5)
+    model.pieceRenderingScaleOverrides[.sashiteMerida] = 1
+    #expect(model.effectiveRenderingScale(for: .sashiteMerida) == 1)
+}
+
 @Test func builtInBoardThemesAreAvailableInDisplayOrder() {
     #expect(ChessBoardTheme.availableThemes == [
         .classicGreen,

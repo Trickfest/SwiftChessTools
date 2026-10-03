@@ -19,6 +19,63 @@ import ChessCore
 import ChessUI
 
 @MainActor
+@Test(arguments: [220, 420])
+func pieceScaleOverrideBoardSnapshot(side: Int) throws {
+    let model = ChessBoardModel(
+        fen: initialFEN,
+        pieceRenderingScaleOverrides: [.sashiteMerida: side == 220 ? 0.65 : 0.95]
+    )
+    model.size = CGFloat(side)
+    try assertViewSnapshot(
+        named: "piece-scale-\(side)",
+        size: CGSize(width: side, height: side),
+        channelTolerance: 30
+    ) {
+        ChessBoardView(model: model)
+            .frame(width: CGFloat(side), height: CGFloat(side))
+            .background(Color.white)
+    }
+}
+
+@MainActor
+@Test func pieceScaleOverridePromotionSnapshot() throws {
+    let model = ChessBoardModel(
+        fen: "7k/4P3/8/8/8/8/8/4K3 w - - 0 1",
+        pieceRenderingScaleOverrides: [.sashiteMerida: 0.60]
+    )
+    model.size = 320
+    model.presentPromotionPicker(
+        piece: Piece(kind: .pawn, color: .white),
+        sourceSquare: "e7", targetSquare: "e8",
+        baseMove: try! Move(string: "e7e8")
+    )
+    try assertBoardSnapshot(named: "piece-scale-promotion") {
+        ChessBoardView(model: model)
+    }
+}
+
+@MainActor
+@Test func pieceScaleRuntimeChangesArtworkPixels() throws {
+    let model = ChessBoardModel(fen: initialFEN)
+    model.size = 320
+    let size = CGSize(width: 320, height: 320)
+    let view = ChessBoardView(model: model).frame(width: 320, height: 320)
+    let original = try rgbaBitmap(from: renderPNG(view, size: size))
+    model.pieceRenderingScaleOverrides[.sashiteMerida] = 0.5
+    let smaller = try rgbaBitmap(from: renderPNG(view, size: size))
+    #expect(original.width == smaller.width)
+    #expect(original.height == smaller.height)
+    #expect(original.pixels != smaller.pixels)
+    model.pieceRenderingScaleOverrides[.sashiteMerida] = nil
+    try assertImagesMatch(
+        try renderPNG(view, size: size),
+        try renderPNG(ChessBoardView(model: ChessBoardModel(fen: initialFEN))
+            .frame(width: 320, height: 320), size: size),
+        snapshotName: "piece-scale-restored", channelTolerance: 3
+    )
+}
+
+@MainActor
 @Test func initialWhitePerspectiveSnapshot() throws {
     try assertBoardSnapshot(named: "initial-white") {
         ChessBoardView(model: ChessBoardModel(fen: initialFEN))

@@ -156,6 +156,10 @@ struct HarnessView: View {
     }
 
     private func configureModel() {
+        if let value = ProcessInfo.processInfo.environment["CHESS_UI_HARNESS_PIECE_SCALE"],
+           let scale = Double(value) {
+            model.pieceRenderingScaleOverrides[model.pieceSet] = CGFloat(scale)
+        }
         model.interactionMode = interactionMode
         model.showsLegalMoveHighlights = true
         model.showsLastMoveHighlight = true

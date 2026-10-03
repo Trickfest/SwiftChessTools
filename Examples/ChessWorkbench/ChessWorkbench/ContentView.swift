@@ -441,6 +441,31 @@ private struct WorkbenchView: View {
                     .accessibilityValue(pieceSet.displayName)
                 }
 
+                HStack {
+                    Text("Piece size")
+                    Spacer()
+                    Text("\(Int((boardModel.effectiveRenderingScale(for: pieceSet) * 100).rounded()))%")
+                        .monospacedDigit()
+                        .accessibilityIdentifier("Workbench.pieceSizeValue")
+                    Button("Default") {
+                        boardModel.pieceRenderingScaleOverrides[pieceSet] = nil
+                    }
+                    .disabled(boardModel.pieceRenderingScaleOverrides[pieceSet] == nil)
+                    .accessibilityIdentifier("Workbench.resetPieceSize")
+                }
+                .font(.callout)
+
+                Slider(
+                    value: Binding(
+                        get: { boardModel.effectiveRenderingScale(for: pieceSet) },
+                        set: { boardModel.pieceRenderingScaleOverrides[pieceSet] = $0 }
+                    ),
+                    in: ChessBoardModel.pieceRenderingScaleRange,
+                    step: 0.01
+                )
+                .accessibilityLabel("Piece size")
+                .accessibilityIdentifier("Workbench.pieceSizeSlider")
+
                 displayPickerRow("Board") {
                     WorkbenchMenuPicker(
                         title: "Board",

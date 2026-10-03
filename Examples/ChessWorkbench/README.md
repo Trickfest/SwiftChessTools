@@ -1,5 +1,10 @@
 # ChessWorkbench
 
+The Display panel includes a **Piece size** slider (50–100%) and **Default**
+reset for the selected piece set. Each set retains its own value for the
+current window session. Try compact and large boards, move or drag a piece,
+and open promotion to compare sizing across all artwork paths.
+
 ChessWorkbench is a small macOS SwiftUI workbench for the reusable chess UI and
 rules code in `SwiftChessTools`. It opens with the Art Deco Monochrome piece set
 and board theme selected so newly generated ChessUI artwork is visible

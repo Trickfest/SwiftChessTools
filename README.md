@@ -49,7 +49,7 @@ or declare it directly in `Package.swift`:
 dependencies: [
     .package(
         url: "https://github.com/Trickfest/SwiftChessTools.git",
-        from: "1.2.1"
+        from: "1.3.0"
     ),
 ]
 ```
@@ -463,6 +463,31 @@ The move list is intentionally not a full PGN viewer. It does not render tag
 pairs, comments, NAGs, variations, or game results (yet). Apps that need PGN
 records should parse them with `ChessCore` and pass the move records they want
 to display into ChessUI.
+
+### Piece Rendering Size
+
+Customize individual sets on a board without changing its frame or square targets:
+
+```swift
+let model = ChessBoardModel(
+    fen: initialFEN,
+    pieceRenderingScaleOverrides: [.sashiteMerida: 0.76]
+)
+model.pieceRenderingScaleOverrides[.artDecoMonochrome] = 0.90
+model.pieceRenderingScaleOverrides[.sashiteMerida] = nil // Restore the default.
+let scale = model.effectiveRenderingScale(for: model.pieceSet)
+```
+
+The bundled `ChessPieceSet.renderingScale` defaults remain `0.80` for Sashite
+Merida and `0.85` for other sets. Finite overrides clamp to
+`ChessBoardModel.pieceRenderingScaleRange` (`0.50...1.00`); NaN and infinity
+remove the override. Values scale the fitted artwork relative to its available
+dimensions, including any transparent padding in the image. Board, drag,
+move-animation, and promotion artwork use the same effective scale. Settings
+are local to the model; applications own controls and persistence.
+
+ChessWorkbench and [SwiftChessDemo](https://github.com/Trickfest/SwiftChessDemo)
+provide sliders and a per-set default reset for visual experimentation.
 
 ### Managing Piece Sets
 
