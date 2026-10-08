@@ -12,6 +12,27 @@ import Testing
 import SwiftUI
 
 import ChessUI
+import ChessCore
+
+@MainActor
+@Test func historyPresentationAPIsArePubliclyUsable() throws {
+    let timeline = try GameTimeline()
+    let model = ChessBoardModel()
+    model.setGame(try timeline.game(atPly: 0))
+    let list = ChessMoveListView(records: timeline.moveRecords, selectedPly: 0,
+                                scrollBehavior: .selectedMove) { _ in }
+    #expect(type(of: list) == ChessMoveListView.self)
+    #expect(ChessMoveListScrollBehavior.allCases == [.latestMove, .selectedMove])
+}
+
+@MainActor
+@Test func moveNavigationAPIsArePubliclyUsable() {
+    let view = ChessMoveNavigationView(selectedPly: 0, moveCount: 4) { _ in }
+    let shortcuts = ChessMoveNavigationView(selectedPly: 2, moveCount: 4, keyboardShortcutsEnabled: true) { _ in }
+    #expect(type(of: view) == ChessMoveNavigationView.self)
+    #expect(type(of: shortcuts) == ChessMoveNavigationView.self)
+    #expect(ChessMoveNavigationState(selectedPly: 1, moveCount: 4).destination(for: .end) == 4)
+}
 
 @MainActor
 @Test func moveListAPIsArePubliclyUsable() {

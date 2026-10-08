@@ -21,6 +21,28 @@ public enum ChessMoveListLayout: String, CaseIterable, Hashable, Sendable {
     case horizontal
 }
 
+/// Automatic scrolling policy for a move list. Selection remains caller-owned.
+public enum ChessMoveListScrollBehavior: String, CaseIterable, Hashable, Sendable {
+    /// Existing behavior: follow the newest move when content overflows.
+    case latestMove
+    /// Reveal the selected ply, including after line growth or replacement.
+    /// Ply zero reveals the beginning without selecting a move; nil or an
+    /// unavailable ply requests no automatic scroll.
+    case selectedMove
+
+    func target(records: [ChessMoveRecord], selectedPly: Int?, overflows: Bool) -> MoveListScrollTarget? {
+        guard !records.isEmpty else { return nil }
+        switch self {
+        case .latestMove:
+            return overflows ? .end : nil
+        case .selectedMove:
+            guard let selectedPly else { return nil }
+            if selectedPly == 0 { return .start }
+            return records.contains { $0.ply == selectedPly } ? .move(selectedPly) : nil
+        }
+    }
+}
+
 /// Displays a compact, selectable list of game moves.
 ///
 /// The view renders caller-supplied `ChessMoveRecord` values. It does not own a
@@ -33,6 +55,7 @@ public enum ChessMoveListLayout: String, CaseIterable, Hashable, Sendable {
 /// }
 /// ```
 public struct ChessMoveListView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private static let moveRowMinimumHeight: CGFloat = 26
     private static let moveRowSpacing: CGFloat = 3
     private static let moveRowsVerticalPadding: CGFloat = 1
@@ -50,6 +73,7 @@ public struct ChessMoveListView: View {
     private let selectedPly: Int?
     private let layout: ChessMoveListLayout
     private let scrollIndicatorVisibility: ScrollIndicatorVisibility
+    private let scrollBehavior: ChessMoveListScrollBehavior
     private let onSelectRecord: ((ChessMoveRecord) -> Void)?
 
     /// Creates a move-list view.
@@ -77,11 +101,31 @@ public struct ChessMoveListView: View {
         scrollIndicatorVisibility: ScrollIndicatorVisibility = .automatic,
         onSelectRecord: ((ChessMoveRecord) -> Void)? = nil
     ) {
+        self.init(records: records, selectedPly: selectedPly, title: title,
+                  layout: layout, scrollBehavior: .latestMove,
+                  scrollIndicatorVisibility: scrollIndicatorVisibility,
+                  onSelectRecord: onSelectRecord)
+    }
+
+    /// Creates a list with an explicit scrolling policy, preserving the original
+    /// initializer and its latest-move default for existing clients.
+    /// Selected-move scrolling reveals the supplied ply without changing it or
+    /// invoking the selection callback. Nil/invalid selection does not scroll.
+    public init(
+        records: [ChessMoveRecord],
+        selectedPly: Int? = nil,
+        title: String? = "Moves",
+        layout: ChessMoveListLayout = .vertical,
+        scrollBehavior: ChessMoveListScrollBehavior,
+        scrollIndicatorVisibility: ScrollIndicatorVisibility = .automatic,
+        onSelectRecord: ((ChessMoveRecord) -> Void)? = nil
+    ) {
         self.records = records.sorted { $0.ply < $1.ply }
         self.selectedPly = selectedPly
         self.title = title
         self.layout = layout
         self.scrollIndicatorVisibility = scrollIndicatorVisibility
+        self.scrollBehavior = scrollBehavior
         self.onSelectRecord = onSelectRecord
     }
 
@@ -122,21 +166,8 @@ public struct ChessMoveListView: View {
                 .defaultScrollAnchor(.top)
                 .scrollIndicators(scrollIndicatorVisibility, axes: .vertical)
                 .accessibilityIdentifier("ChessUI.moveList.scrollView")
-                .task(id: verticalScrollViewIdentity(for: viewportHeight)) {
-                    guard shouldAnchorToBottom(in: viewportHeight) else {
-                        return
-                    }
-
-                    // Let SwiftUI lay out the inserted row before targeting the bottom anchor.
-                    do {
-                        try await Task.sleep(for: .milliseconds(50))
-                    } catch {
-                        return
-                    }
-                    guard !Task.isCancelled else { return }
-                    withAnimation(.easeOut(duration: 0.16)) {
-                        proxy.scrollTo(Self.bottomAnchorID, anchor: .bottom)
-                    }
+                .task(id: scrollRequest(viewport: viewportHeight, overflows: shouldAnchorToBottom(in: viewportHeight))) {
+                    await scroll(proxy, viewport: viewportHeight, overflows: shouldAnchorToBottom(in: viewportHeight))
                 }
             }
         }
@@ -155,35 +186,26 @@ public struct ChessMoveListView: View {
                 .defaultScrollAnchor(.leading)
                 .scrollIndicators(scrollIndicatorVisibility, axes: .horizontal)
                 .accessibilityIdentifier("ChessUI.moveList.scrollView")
-                .task(id: horizontalScrollViewIdentity(for: viewportWidth)) {
-                    guard shouldAnchorToTrailing(in: viewportWidth) else {
-                        return
-                    }
-
-                    // Let SwiftUI lay out the inserted group before targeting the trailing anchor.
-                    do {
-                        try await Task.sleep(for: .milliseconds(50))
-                    } catch {
-                        return
-                    }
-                    guard !Task.isCancelled else { return }
-                    withAnimation(.easeOut(duration: 0.16)) {
-                        proxy.scrollTo(Self.trailingAnchorID, anchor: .trailing)
-                    }
+                .task(id: scrollRequest(viewport: viewportWidth, overflows: shouldAnchorToTrailing(in: viewportWidth))) {
+                    await scroll(proxy, viewport: viewportWidth, overflows: shouldAnchorToTrailing(in: viewportWidth))
                 }
             }
         }
     }
 
     private var verticalMoveRows: some View {
-        VStack(alignment: .leading, spacing: Self.moveRowSpacing) {
-            ForEach(Self.rows(from: records)) { row in
-                verticalMoveRow(row)
+        let rows = Self.rows(from: records)
+        let widestMoveNumber = rows.last?.fullMoveNumber ?? 1
+
+        return VStack(alignment: .leading, spacing: Self.moveRowSpacing) {
+            ForEach(rows) { row in
+                verticalMoveRow(row, widestMoveNumber: widestMoveNumber)
             }
 
             bottomAnchor
         }
         .padding(.vertical, Self.moveRowsVerticalPadding)
+        .id(MoveListScrollTarget.start)
     }
 
     private var bottomAnchor: some View {
@@ -202,12 +224,21 @@ public struct ChessMoveListView: View {
             .accessibilityIdentifier("ChessUI.moveList.empty")
     }
 
-    private func verticalMoveRow(_ row: MoveListRow) -> some View {
+    private func verticalMoveRow(_ row: MoveListRow, widestMoveNumber: Int) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text("\(row.fullMoveNumber).")
-                .font(.callout.monospacedDigit())
-                .foregroundStyle(.secondary)
-                .frame(width: 32, alignment: .trailing)
+            // Reserve the same intrinsic width in every row. The old fixed
+            // 32-point column wrapped the period once numbers reached 100.
+            ZStack(alignment: .trailing) {
+                Text("\(widestMoveNumber).")
+                    .hidden()
+                    .accessibilityHidden(true)
+                Text("\(row.fullMoveNumber).")
+            }
+            .font(.callout.monospacedDigit())
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .frame(minWidth: 32, alignment: .trailing)
 
             moveCell(row.white, placeholder: row.white == nil && row.black != nil ? "..." : "")
 
@@ -224,6 +255,7 @@ public struct ChessMoveListView: View {
             trailingAnchor
         }
         .padding(.horizontal, Self.horizontalGroupsHorizontalPadding)
+        .id(MoveListScrollTarget.start)
     }
 
     private var trailingAnchor: some View {
@@ -259,15 +291,20 @@ public struct ChessMoveListView: View {
                         onSelectRecord(record)
                     } label: {
                         moveLabel(record)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .id(MoveListScrollTarget.move(record.ply))
                     .accessibilityElement(children: .ignore)
+                    .accessibilityAddTraits(record.ply == selectedPly ? .isSelected : [])
                     .accessibilityIdentifier("ChessUI.moveList.move.\(record.ply)")
                     .accessibilityLabel(accessibilityLabel(for: record))
                     .accessibilityValue(record.move.description)
                 } else {
                     moveLabel(record)
+                        .id(MoveListScrollTarget.move(record.ply))
                         .accessibilityElement(children: .ignore)
+                        .accessibilityAddTraits(record.ply == selectedPly ? .isSelected : [])
                         .accessibilityIdentifier("ChessUI.moveList.move.\(record.ply)")
                         .accessibilityLabel(accessibilityLabel(for: record))
                         .accessibilityValue(record.move.description)
@@ -309,24 +346,38 @@ public struct ChessMoveListView: View {
         "\(record.fullMoveNumber). \(record.side.accessibilityName) \(record.san)"
     }
 
-    private var latestPly: Int? {
-        records.last?.ply
+    private func scrollRequest(viewport: CGFloat, overflows: Bool) -> MoveListScrollRequest {
+        switch scrollBehavior {
+        case .latestMove:
+            // Preserve the original triggers: newest ply, rounded viewport,
+            // and overflow. Merely selecting an older move must not scroll.
+            return .latest(ply: records.last?.ply ?? 0,
+                           viewport: Int(viewport.rounded(.toNearestOrAwayFromZero)),
+                           overflows: overflows)
+        case .selectedMove:
+            return .selected(records: records, selectedPly: selectedPly, viewport: viewport)
+        }
     }
 
-    private func verticalScrollViewIdentity(for viewportHeight: CGFloat) -> MoveListScrollViewIdentity {
-        let latestPly = latestPly ?? 0
-        let roundedViewportHeight = Int(viewportHeight.rounded(.toNearestOrAwayFromZero))
-        return shouldAnchorToBottom(in: viewportHeight)
-            ? .verticalOverflowing(latestPly, roundedViewportHeight)
-            : .verticalFitting(latestPly, roundedViewportHeight)
-    }
-
-    private func horizontalScrollViewIdentity(for viewportWidth: CGFloat) -> MoveListScrollViewIdentity {
-        let latestPly = latestPly ?? 0
-        let roundedViewportWidth = Int(viewportWidth.rounded(.toNearestOrAwayFromZero))
-        return shouldAnchorToTrailing(in: viewportWidth)
-            ? .horizontalOverflowing(latestPly, roundedViewportWidth)
-            : .horizontalFitting(latestPly, roundedViewportWidth)
+    @MainActor private func scroll(_ proxy: ScrollViewProxy, viewport: CGFloat, overflows: Bool) async {
+        guard viewport > 0,
+              let target = scrollBehavior.target(records: records, selectedPly: selectedPly, overflows: overflows)
+        else { return }
+        // Allow newly inserted/replaced content to be laid out. A new request
+        // cancels this task so rapid navigation cannot apply a stale target.
+        do { try await Task.sleep(for: .milliseconds(50)) } catch { return }
+        guard !Task.isCancelled else { return }
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.16)) {
+            switch target {
+            case .start:
+                proxy.scrollTo(target, anchor: layout == .vertical ? .top : .leading)
+            case .move:
+                proxy.scrollTo(target, anchor: .center)
+            case .end:
+                proxy.scrollTo(layout == .vertical ? Self.bottomAnchorID : Self.trailingAnchorID,
+                               anchor: layout == .vertical ? .bottom : .trailing)
+            }
+        }
     }
 
     private func shouldAnchorToBottom(in viewportHeight: CGFloat) -> Bool {
@@ -394,11 +445,13 @@ public struct ChessMoveListView: View {
     }
 }
 
-private enum MoveListScrollViewIdentity: Hashable {
-    case verticalFitting(Int, Int)
-    case verticalOverflowing(Int, Int)
-    case horizontalFitting(Int, Int)
-    case horizontalOverflowing(Int, Int)
+enum MoveListScrollTarget: Hashable {
+    case start, move(Int), end
+}
+
+private enum MoveListScrollRequest: Equatable {
+    case latest(ply: Int, viewport: Int, overflows: Bool)
+    case selected(records: [ChessMoveRecord], selectedPly: Int?, viewport: CGFloat)
 }
 
 private struct MoveListRow: Identifiable {

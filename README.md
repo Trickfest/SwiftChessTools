@@ -85,6 +85,10 @@ For local development in a sibling checkout, use a path dependency instead:
 
 ## ChessCore Quick Start
 
+`GameTimeline` provides linear history, cached SAN records, and game
+reconstruction at a selected ply. See the tutorial's
+[linear timeline example](Docs/ChessCoreTutorial.md#linear-timelines).
+
 Use `ChessCore` when you need rules, positions, legal moves, and notation
 without any SwiftUI dependency:
 
@@ -426,10 +430,15 @@ ChessMoveListView(records: records, selectedPly: selectedPly) { record in
 .frame(height: 160)
 ```
 
+With a selection callback, each move's padded label is tappable, including
+unselected labels in either layout.
+
 The default layout is vertical: full moves render as rows, with White and Black
 shown on the same row. Give vertical lists a fixed height in the surrounding
-layout. Populated vertical lists grow downward, then scroll inside that viewport
-and follow the newest move as records are appended.
+layout. The aligned number column grows for longer move numbers and larger text,
+keeping each number and its period together. Populated vertical lists grow
+downward, then scroll inside that viewport and follow the newest move as records
+are appended.
 
 Use horizontal layout for a compact left-to-right move strip:
 
@@ -463,6 +472,47 @@ The move list is intentionally not a full PGN viewer. It does not render tag
 pairs, comments, NAGs, variations, or game results (yet). Apps that need PGN
 records should parse them with `ChessCore` and pass the move records they want
 to display into ChessUI.
+
+### Move Navigation
+
+`ChessMoveNavigationView` adds start, previous, next, and line-end controls.
+The caller supplies selection and decides whether to accept each requested
+destination:
+
+```swift
+ChessMoveNavigationView(
+    selectedPly: selectedPly,
+    moveCount: timeline.moveCount
+) { requestedPly in
+    selectedPly = requestedPly
+}
+.buttonStyle(.bordered)
+.tint(.blue)
+.frame(maxWidth: 340)
+```
+
+Ply zero is the initial position. Invalid input or a reached boundary disables
+the corresponding actions. The control does not modify a board, move list,
+timeline, or engine. Keyboard shortcuts are off by default; see the
+[navigation tutorial](Docs/ChessUITutorial.md#move-navigation)
+for keyboard ownership, accessibility, and styling.
+
+For history browsing, pass `scrollBehavior: .selectedMove` to
+`ChessMoveListView`. It keeps the selected move visible as the line grows;
+omitting the option retains existing newest-move scrolling. Ply zero reveals
+the beginning; nil or unavailable selections do not request an automatic scroll.
+Use `boardModel.setGame(try timeline.game(atPly: selectedPly))` to display a
+complete independent game, not just its FEN. This preserves repetition and move
+history, updates the last-move highlight, and clears stale gestures/promotion
+without resetting board preferences. See the tutorial for synchronization.
+
+[SwiftChessDemo](https://github.com/Trickfest/SwiftChessDemo)
+uses these APIs for read-only history in both human-vs-engine and
+engine-vs-engine games. It keeps a separate live game for engine requests,
+claims, and outcomes; browsing never changes that authority. ChessWorkbench
+shows editable-line behavior instead. See the
+[live-game browsing example](Docs/ChessUITutorial.md#browsing-while-a-live-game-continues)
+for the distinction.
 
 ### Piece Rendering Size
 
@@ -559,7 +609,10 @@ exposes quick controls for reset, hints, board sizing, piece-set selection,
 board-theme selection, coordinate-label placement and visibility,
 app-supplied arrows,
 move-list display, game-status display, evaluation-bar samples, and promotion
-UI.
+UI. The Workbench also demonstrates timeline navigation and editing:
+replaying the next recorded move retains the future, while a different move
+replaces it. Both move-list layouts follow the selected historical position.
+See the [Workbench manual-review checklist](Examples/ChessWorkbench/README.md#timeline-editing-and-manual-review).
 
 Open the app in Xcode:
 

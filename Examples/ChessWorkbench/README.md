@@ -19,6 +19,12 @@ For the public ChessUI walkthrough, see
 
 ## What It Exercises
 
+The Workbench uses `GameTimeline`, `ChessMoveNavigationView`,
+selected-move list scrolling, and `ChessBoardModel.setGame(_:)` for complete
+historical game display. See the
+[navigation tutorial](../../Docs/ChessUITutorial.md#move-navigation)
+for the caller-controlled APIs and opt-in keyboard policy.
+
 - Rendering a `ChessUI.ChessBoardView` on macOS.
 - Loading and editing a FEN position.
 - Applying legal board moves through `ChessCore`.
@@ -34,10 +40,57 @@ For the public ChessUI walkthrough, see
   promotion picker UI.
 - Fixed-size, scrolling `ChessMoveListView` display for legal moves made on the
   board, including vertical and horizontal layouts and scroll-bar visibility.
+  Vertical move-number columns expand for long games without wrapping periods.
+- Start/previous/next/end navigation and direct move-list selection, with the
+  board, FEN, status, selected move, and last-move highlight synchronized.
+  The full padded move label is clickable, including unselected moves.
 - `ChessGameStatusView` display for side-to-move, terminal statuses, and
   claimable draw callbacks.
 - `ChessEvaluationBar` samples, placement, White-side orientation, label
   visibility, and centipawn scale controls.
+
+## Timeline Editing and Manual Review
+
+The four controls below the board browse the recorded line. The position
+counter uses half-moves: zero is the loaded root. Left/Right step and
+Command-Left/Right jump to the start/end. Shortcuts are disabled while the FEN
+editor or promotion picker is active. Click a navigation button or the board
+to leave FEN editing before using shortcuts.
+
+- A legal board move at the end appends to the line.
+- Playing the already recorded next move advances without deleting the future.
+- Playing a different legal move immediately replaces the remaining continuation.
+- Finished displayed positions reject new board moves. You can still browse
+  the line or rewind before an ending and choose another continuation.
+- Draw claims are remembered by Workbench at their selected position, including
+  after navigating away and back. Replacing the claimed continuation or loading
+  a new root discards its claim; the timeline itself does not store outcomes.
+- Editing a valid FEN starts a new line, including pasting the currently displayed
+  FEN. Invalid notation or an invalid root leaves the existing board/history
+  unchanged and shows an error. Navigation replaces that draft with displayed FEN.
+- Reset restores the original sample root and clears the entire line and claims,
+  even when the board was already showing that root. Board preferences remain.
+- Position changes clear stale selection, promotion, hints, and arrows. Evaluation
+  remains the manually selected sample, not analysis of the displayed position.
+
+Suggested hands-on review:
+
+1. Paste the standard starting FEN below, then play `e2-e4`, `e7-e5`, `g1-f3`.
+2. Use all four buttons and click moves in the list. Confirm board, FEN, status,
+   highlights, counter, and disabled boundary buttons agree.
+3. Return to Start and play `e2-e4` again: all three recorded moves should remain.
+4. Return to Start and play `d2-d4`: the line should now contain only `d4`.
+5. Try both move-list layouts, outside coordinates, and piece sizing. Navigation
+   and Reset should preserve these preferences. Check the controls at your
+   preferred window and board sizes.
+6. Enter invalid FEN and confirm the board/history survive; load another valid
+   FEN and confirm it becomes position zero with an empty list.
+7. Try arrow shortcuts on the board, then use arrow keys inside the FEN editor
+   and confirm they edit/move the text cursor without navigating history.
+
+```text
+rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+```
 
 ## Local Dependency
 
@@ -126,7 +179,7 @@ Scripts/test-all.sh
 15. Change the evaluation placement and White-side controls and confirm the bar
    moves between the board edges.
 16. Try `Show Best Arrow`, `Show Top Three`, and `Clear Arrows`.
-17. Try `Reset`, `Hint`, and `Show Promotion Picker`.
+17. Try `Reset Position`, `Show d3 Marker`, and `Show Promotion`.
 
 Use this example app when you need a small, disposable workbench for future
 `SwiftChessTools` UI or rules changes.

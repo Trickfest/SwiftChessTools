@@ -16,7 +16,7 @@ import ChessUI
 struct ContentView: View {
     var body: some View {
         WorkbenchView()
-            .frame(minWidth: 820, minHeight: 560)
+            .frame(minWidth: 820, minHeight: 700)
             .preferredColorScheme(.light)
     }
 }
@@ -34,7 +34,6 @@ private struct WorkbenchView: View {
         ChessBoardArrow(from: "d3", to: "h7", style: .secondarySuggestion, label: "Secondary suggestion"),
         ChessBoardArrow(from: "b7", to: "b8", style: .tertiarySuggestion, label: "Tertiary suggestion"),
     ].compactMap { $0 }
-    private let moveRecordBuilder = ChessMoveRecordBuilder()
 
     @State private var showError = false
     @State private var errorMessage = ""
@@ -51,8 +50,11 @@ private struct WorkbenchView: View {
     @State private var showsEvaluationLabel = true
     @State private var moveListLayout = ChessMoveListLayout.vertical
     @State private var showsMoveListScrollIndicators = false
-    @State private var moveRecords: [ChessMoveRecord] = []
-    @State private var selectedMovePly: Int?
+    @State private var timeline = try! GameTimeline(initialPosition: FENSerializer().position(from: startingPosition))
+    @State private var selectedMovePly = 0
+    // Explicit claims are app-owned and cannot be reconstructed from moves.
+    @State private var claimedDraws: [Int: GameDrawClaim] = [:]
+    @FocusState private var isEditingFEN: Bool
     @State private var gameStatusRevision = 0
 
     @State private var boardModel = ChessBoardModel(
@@ -64,6 +66,7 @@ private struct WorkbenchView: View {
 
     private var isResetDisabled: Bool {
         boardModel.fen == Self.startingPosition && fen == Self.startingPosition
+            && timeline.moveCount == 0 && claimedDraws.isEmpty
     }
 
     private var evaluationMaximumCentipawnsValue: Int {
@@ -119,7 +122,10 @@ private struct WorkbenchView: View {
 
             Spacer(minLength: 0)
 
-            boardStage
+            VStack(spacing: 10) {
+                boardStage
+                navigationControls
+            }
                 .frame(maxWidth: .infinity)
 
             Spacer(minLength: 0)
@@ -133,6 +139,7 @@ private struct WorkbenchView: View {
             .onMove { attempt in
                 handleBoardMove(move: attempt.move, isLegal: attempt.isLegal)
             }
+            .simultaneousGesture(TapGesture().onEnded { isEditingFEN = false })
             .overlay(alignment: .topLeading) {
                 Text("Coordinate labels \(coordinateLabelMode.displayName)")
                     .foregroundStyle(.clear)
@@ -141,6 +148,28 @@ private struct WorkbenchView: View {
                     .accessibilityIdentifier("Workbench.coordinateLabelsState")
                     .allowsHitTesting(false)
             }
+    }
+
+    private var navigationControls: some View {
+        VStack(spacing: 4) {
+            ChessMoveNavigationView(
+                selectedPly: selectedMovePly,
+                moveCount: timeline.moveCount,
+                keyboardShortcutsEnabled: !isEditingFEN && !boardModel.isPromotionPickerPresented,
+                onSelectPly: selectPosition
+            )
+            .buttonStyle(.bordered)
+            .tint(.primary)
+            .help("Left/Right: previous/next. Command-Left/Right: start/end. Disabled while editing FEN.")
+            Text("Position \(selectedMovePly) of \(timeline.moveCount)")
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("Workbench.timelineState")
+            Text("A different move replaces the following moves.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(width: boardCardSide)
     }
 
     private var boardStage: some View {
@@ -189,13 +218,14 @@ private struct WorkbenchView: View {
 
     private var horizontalMovesStrip: some View {
         ChessMoveListView(
-            records: moveRecords,
+            records: timeline.moveRecords,
             selectedPly: selectedMovePly,
             title: nil,
             layout: .horizontal,
+            scrollBehavior: .selectedMove,
             scrollIndicatorVisibility: moveListScrollIndicatorVisibility
         ) { record in
-            selectedMovePly = record.ply
+            selectPosition(record.ply)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, 8)
@@ -353,12 +383,7 @@ private struct WorkbenchView: View {
                 .accessibilityIdentifier("Workbench.clearArrows")
 
                 Button {
-                    withAnimation {
-                        fen = Self.startingPosition
-                        boardModel.setFEN(Self.startingPosition)
-                        boardModel.clearArrows()
-                        clearMoveRecords()
-                    }
+                    updatePosition(with: Self.startingPosition)
                 } label: {
                     Label("Reset Position", systemImage: "arrow.counterclockwise")
                 }
@@ -393,7 +418,11 @@ private struct WorkbenchView: View {
     private var positionSection: some View {
         WorkbenchSection("Position") {
             VStack(alignment: .leading, spacing: 8) {
-                TextEditor(text: $fen)
+                TextEditor(text: Binding(get: { fen }, set: { newValue in
+                    fen = newValue
+                    updatePosition(with: newValue, keepFENFocus: true)
+                }))
+                    .focused($isEditingFEN)
                     .font(.system(.callout, design: .monospaced))
                     .frame(minHeight: 92)
                     .padding(7)
@@ -405,12 +434,6 @@ private struct WorkbenchView: View {
                     .overlay {
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(Color.black.opacity(showError ? 0.36 : 0.14), lineWidth: 1)
-                    }
-                    .onChange(of: fen) { _, newValue in
-                        updatePosition(with: newValue)
-                    }
-                    .onChange(of: boardModel.fen) { _, newValue in
-                        fen = newValue
                     }
                     .accessibilityLabel("FEN")
                     .accessibilityIdentifier("Workbench.fenEditor")
@@ -531,13 +554,14 @@ private struct WorkbenchView: View {
     private var movesSection: some View {
         WorkbenchSection("Moves") {
             ChessMoveListView(
-                records: moveRecords,
+                records: timeline.moveRecords,
                 selectedPly: selectedMovePly,
                 title: nil,
                 layout: .vertical,
+                scrollBehavior: .selectedMove,
                 scrollIndicatorVisibility: moveListScrollIndicatorVisibility
             ) { record in
-                selectedMovePly = record.ply
+                selectPosition(record.ply)
             }
             .frame(height: 150)
         }
@@ -627,24 +651,18 @@ private struct WorkbenchView: View {
         .font(.callout)
     }
 
-    private func updatePosition(with newValue: String) {
-        if newValue == boardModel.fen {
-            showError = false
-            errorMessage = ""
-            return
-        }
-
-        if (try? FENSerializer().position(from: newValue)) == nil {
+    private func updatePosition(with newValue: String, keepFENFocus: Bool = false) {
+        do {
+            let root = try FENSerializer().position(from: newValue)
+            let newTimeline = try GameTimeline(initialPosition: root)
+            let game = try newTimeline.game(atPly: 0)
+            timeline = newTimeline
+            claimedDraws = [:]
+            display(game, at: 0, keepFENFocus: keepFENFocus)
+        } catch {
             showError = true
-            errorMessage = "Invalid FEN notation."
-            return
+            errorMessage = error.localizedDescription
         }
-
-        showError = false
-        errorMessage = ""
-        boardModel.setFEN(newValue)
-        boardModel.clearArrows()
-        clearMoveRecords()
     }
 
     private func applyCoordinateLabelMode(_ mode: WorkbenchCoordinateLabelMode) {
@@ -661,29 +679,39 @@ private struct WorkbenchView: View {
     }
 
     private func handleBoardMove(move: Move, isLegal: Bool) {
-        guard isLegal else {
+        guard isLegal, boardModel.game.status.outcome == nil else {
             return
         }
 
         do {
-            try appendMoveRecord(for: move)
+            var updated = timeline
+            let replacesFuture = selectedMovePly < timeline.moveCount && timeline.moves[selectedMovePly] != move
+            if selectedMovePly == timeline.moveCount {
+                try updated.append(move)
+            } else if replacesFuture {
+                try updated.replaceContinuation(afterPly: selectedMovePly, with: [move])
+            }
+            let nextPly = selectedMovePly + 1
+            let game = try updated.game(atPly: nextPly)
+            if !replacesFuture, let claim = claimedDraws[nextPly] {
+                try game.claimDraw(claim)
+            }
+            timeline = updated
+            if replacesFuture {
+                claimedDraws = claimedDraws.filter { $0.key <= selectedMovePly }
+            }
+            display(game, at: nextPly, animatedMove: move)
         } catch {
             showError = true
             errorMessage = error.localizedDescription
             return
         }
-
-        boardModel.game.apply(move: move)
-        boardModel.setFEN(
-            FENSerializer().fen(from: boardModel.game.position),
-            animatedMove: move
-        )
-        boardModel.clearArrows()
     }
 
     private func claimDraw(_ claim: GameDrawClaim) {
         do {
             try boardModel.game.claimDraw(claim)
+            claimedDraws[selectedMovePly] = claim
             showError = false
             errorMessage = ""
             gameStatusRevision += 1
@@ -693,19 +721,30 @@ private struct WorkbenchView: View {
         }
     }
 
-    private func appendMoveRecord(for move: Move) throws {
-        let record = try moveRecordBuilder.record(
-            for: move,
-            in: boardModel.game,
-            ply: moveRecords.count + 1
-        )
-        moveRecords.append(record)
-        selectedMovePly = record.ply
+    private func selectPosition(_ ply: Int) {
+        do {
+            let game = try timeline.game(atPly: ply)
+            if let claim = claimedDraws[ply] { try game.claimDraw(claim) }
+            display(game, at: ply)
+        } catch {
+            showError = true
+            errorMessage = error.localizedDescription
+        }
     }
 
-    private func clearMoveRecords() {
-        moveRecords.removeAll()
-        selectedMovePly = nil
+    private func display(_ game: Game, at ply: Int, animatedMove: Move? = nil, keepFENFocus: Bool = false) {
+        boardModel.setGame(game)
+        if let animatedMove {
+            boardModel.setFEN(boardModel.fen, animatedMove: animatedMove)
+        }
+        boardModel.clearArrows()
+        boardModel.clearHint()
+        selectedMovePly = ply
+        fen = boardModel.fen
+        showError = false
+        errorMessage = ""
+        gameStatusRevision += 1
+        if !keepFENFocus { isEditingFEN = false }
     }
 
     private func copyFENToPasteboard() {

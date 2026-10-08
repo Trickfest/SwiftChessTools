@@ -5,7 +5,50 @@ All notable changes to SwiftChessTools should be documented in this file.
 Entries stay under `Unreleased` until they are assigned to a planned or tagged
 release. Tagged releases use dated version headings.
 
-## Unreleased
+## Timeline and Move Navigation
+
+Owner validation is complete across Mac, physical iPhone/iPad, accessibility/
+layout, and documentation review. Completed planning records were removed;
+current API guidance remains in the tutorials and examples.
+
+### Fixed
+
+- Kept vertical move-list numbers and their periods on one line, expanding the
+  shared number column for long games and larger text while retaining aligned
+  move columns.
+- Made the full padded move-label area tappable, including transparent areas
+  of unselected moves, in both selectable move-list layouts.
+
+### Added
+
+- SwiftChessDemo demonstrates the timeline/navigation APIs
+  in both gameplay modes, with read-only history separated from live engine
+  authority, selected-position scrolling, and explicit return-to-live behavior.
+- Integrated linear history navigation/editing into ChessWorkbench, with
+  synchronized board/FEN/status/highlights, both selectable move-list layouts,
+  keyboard shortcuts guarded during FEN editing, same-next preservation,
+  continuation replacement, and complete root reset. The app retains explicit
+  draw claims across browsing and rejects new moves at terminal positions.
+- Added opt-in `ChessMoveListScrollBehavior.selectedMove` scrolling in both
+  move-list layouts. History growth follows the supplied selection instead of
+  forcing a jump to the newest move. Existing initializers retain latest-move
+  scrolling. Selected moves now expose the native accessibility selected trait.
+- Added `ChessBoardModel.setGame(_:)` to display an isolated full-game copy,
+  retaining history, repetition, and claimed draws. It immediately updates the
+  last-move highlight and clears transient interaction/animation state without
+  changing board preferences or existing FEN-loading behavior.
+- Added `ChessUI.ChessMoveNavigationView`, a caller-controlled start/previous/
+  next/end button bar, plus `ChessMoveNavigationState` and
+  `ChessMoveNavigationAction`. Includes boundary/invalid-input disabling,
+  accessible labels and position descriptions, inherited button styling, and
+  opt-in arrow/Command-arrow shortcuts. Apps retain selection and engine policy;
+  existing board and move-list APIs are unchanged.
+- Added `ChessCore.GameTimeline`, a value-semantic linear history with cached
+  SAN records, independent game/position access at any ply, validated append,
+  and all-or-nothing continuation replacement. Apps retain selection, editing,
+  explicit outcome, and engine policy; existing Game and replay APIs are unchanged.
+  Timeline validation checks move legality, including analysis continuations
+  after automatic draws, rather than enforcing an app's end-of-game policy.
 
 ## 1.3.0 - 2026-10-03
 

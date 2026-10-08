@@ -28,7 +28,7 @@ The following sequence would produce useful increments while allowing the
 larger study model to develop carefully:
 
 1. External coordinate-label placement. *(Implemented.)*
-2. Linear game timeline and historical-position navigation.
+2. Linear game timeline and historical-position navigation. *(Implemented.)*
 3. Typed PGN comment directives.
 4. Public game tree and recursive PGN variations.
 5. Annotated variation UI and richer board annotations.
@@ -36,74 +36,43 @@ larger study model to develop carefully:
 7. Consumer-defined board appearance and piece artwork.
 8. Public chess-service API clients, beginning with Lichess.
 
-The sequence is only a starting point. External coordinates are independent of
-the study features and can be implemented whenever convenient.
+The sequence is only a starting point. Completed capabilities are summarized
+here for context; the tutorials and changelog own their API details and history.
 
 ## Implemented: External Coordinate Labels
 
-Source: [GitHub issue #1, External coordinates](https://github.com/Trickfest/SwiftChessTools/issues/1),
-opened by Josh McKinney on August 21, 2026.
-
-Before this work, the board showed file and rank coordinates inside its edge
-squares or hid them entirely. The issue requests a configuration that can
-place those coordinates outside the board, similar to the presentation in
-[imihaly/ChessBoard](https://github.com/imihaly/ChessBoard).
-
-Selected first scope:
-
-- Add `ChessBoardCoordinateLabelPlacement` with `inside` and `outside` values,
-  while retaining `showsCoordinateLabels` as the separate visibility control.
-- Preserve the current inside-label presentation as the compatibility default.
-- Keep file and rank ordering correct for both White and Black perspectives.
-- Keep the total `ChessBoardView` frame unchanged and shrink the playable 8×8
-  surface predictably to make room for the external gutters.
-- Retain readable contrast without requiring every existing board theme to
-  provide a second coordinate palette.
-- Cover compact board sizes, Dynamic Type, VoiceOver, iPhone, iPad, and Mac.
-- Add Workbench controls and snapshot or UI coverage for inside, outside, and
-  hidden labels from both perspectives.
-
-The implementation uses dark external gutters modeled on the issue's visual
-reference, with ranks at the left and files at the bottom while the top and
-right edges remain flush. The existing public initializer remains available
-with its original signature, and a distinct initializer overload accepts an
-explicit placement. Model, layout, public-API, snapshot, Workbench, and iOS
-harness coverage protects the new behavior, while the existing inside-label
-path remains the compatibility default. More detailed edge selection should be
-added only if there is a demonstrated use case.
-
-The companion [SwiftChessDemo](https://github.com/Trickfest/SwiftChessDemo)
-has also adopted this API through an in-game `None` / `Inside` / `Outside`
-coordinate-label preference. It provides a concrete example of how a package
-consumer can expose label visibility and placement without replacing
-`ChessBoardView`.
-
-The issue discussion also mentions interest in more complex arrows and
-annotations. Those are related analysis features, but they should remain
-separate from the small coordinate-placement change. The reporter later noted
-that there is no longer an immediate dependency on this change, so the issue is
-a useful design request rather than an urgent compatibility blocker.
+External labels are implemented with ranks on the left and files below the
+board, flush top/right edges, and an unchanged outer frame. Inside labels remain
+the source-compatible default. The feature originated in
+[GitHub issue #1](https://github.com/Trickfest/SwiftChessTools/issues/1).
+[SwiftChessDemo](https://github.com/Trickfest/SwiftChessDemo) demonstrates
+None / Inside / Outside controls. See the ChessUI tutorial for usage.
 
 ## Study And Game-Record Foundations
 
-### Linear Game Timeline And Navigation
+### Implemented: Linear Game Timeline And Navigation
 
-Provide a reusable representation of a game's main line that can answer what
-the board looked like at any ply without requiring each application to write
-its own replay loop.
+`ChessCore.GameTimeline` validates a linear move sequence, caches SAN records,
+reconstructs independent games at ply zero through the recorded end, and
+supports atomic append or explicit continuation replacement. Reconstruction
+preserves repetition, move counters, castling, en passant, and rules-derived
+status. Actual draw claims, resignation, and other explicit outcomes remain
+app-owned; they cannot be inferred from moves alone.
 
-Possible capabilities:
+`ChessUI.ChessMoveNavigationView` reports start/previous/next/end intent;
+`ChessMoveListView` supports direct selection and opt-in selected-move scrolling.
+`ChessBoardModel.setGame(_:)` installs an independent full game for display.
+The consuming app owns the cursor, editing policy, engine authority, and storage.
+Existing clients retain their prior defaults without adopting these APIs.
 
-- Position, move record, and game status at ply zero through the final ply.
-- Previous, next, start, end, and direct-ply navigation.
-- Safe undo and redo semantics for applications that want reversible play.
-- Correct reconstruction of repetition counts, draw claims, move counters,
-  castling rights, and en-passant state.
-- A consumer-owned cursor that can drive `ChessBoardView` and
-  `ChessMoveListView` without moving playback policy into `ChessUI`.
+ChessWorkbench demonstrates editable linear exploration.
+[SwiftChessDemo](https://github.com/Trickfest/SwiftChessDemo) demonstrates
+read-only history browsing alongside a separate authoritative live game in
+both gameplay modes. See the ChessCore and ChessUI tutorials for API examples.
 
-The timeline should be designed as the linear main-line view of a future game
-tree rather than as a competing history abstraction.
+This is not a variation tree or a generalized undo manager. Apps decide whether
+to preserve a future line, replace it, or prohibit editing. Recursive variations
+and the public game-tree model below remain future work.
 
 ### Public Game Tree And Recursive PGN Variations
 
@@ -161,49 +130,13 @@ those values into board arrows, square marks, and evaluation displays.
 
 ## ChessUI Presentation And Interaction
 
-### Per-Set Piece Rendering Scale Overrides
+### Implemented: Per-Set Piece Rendering Scale Overrides
 
-Implemented in SwiftChessTools 1.3.0, with physical iPhone, iPad, and Mac
-visual acceptance completed on October 3, 2026. SwiftChessDemo 1.5.0
-demonstrates the controls in both gameplay modes.
-`ChessBoardModel.pieceRenderingScaleOverrides` holds
-per-set values local to each board. Finite values clamp to `0.50...1.00`;
-nonfinite values restore the bundled default. `effectiveRenderingScale(for:)`
-resolves the override or default for stationary, dragged, animated, and
-promotion artwork. ChessWorkbench and both SwiftChessDemo gameplay modes
-provide a slider and per-set default reset. The original design considerations
-are retained below.
-
-Allow package consumers to adjust the effective piece rendering scale for an
-individual `ChessPieceSet` while preserving the bundled defaults when no
-override is supplied. The current defaults keep Sashite Merida at `0.80` and
-the other bundled sets at `0.85`.
-
-This would help applications tune the artwork for their board size and visual
-context. On a compact iPhone board, slightly smaller pieces can preserve more
-separation from inside coordinate labels. On a larger board, an application
-might prefer slightly larger artwork. External coordinate labels already avoid
-piece-and-label overlap and remain a good alternative when an application does
-not need custom scaling.
-
-Possible requirements:
-
-- Keep every existing rendering scale as the source-compatible default.
-- Scope overrides to a board, model, or appearance instance so one application
-  can choose different scales for compact and large layouts without mutating a
-  process-wide piece-set setting.
-- Let a consumer override one set without changing the appearance of the
-  others.
-- Apply the effective scale consistently to board pieces, moving pieces, and
-  promotion choices.
-- Normalize invalid or extreme values to a documented safe range.
-- Preserve each square's layout, interaction target, and accessibility frame;
-  scaling should affect artwork only.
-- Cover compact and large boards with focused rendering tests.
-
-This is presentation polish rather than an urgent dependency. It can be
-designed independently or folded into the broader consumer-defined appearance
-work when that API becomes concrete.
+Board-local overrides preserve bundled defaults and scale stationary, dragged,
+animated, and promotion artwork consistently without changing square hit targets.
+Finite values clamp to `0.50...1.00`; nonfinite values restore defaults.
+ChessWorkbench and both SwiftChessDemo gameplay modes demonstrate a per-set
+slider and default reset. See the ChessUI tutorial for the public API.
 
 ### Richer Board Annotations
 
@@ -369,6 +302,15 @@ Consider a read-only diagram surface or rendering helper for widgets, teaching
 material, and image or PDF export. This should reuse `ChessBoardView` styling
 where practical and avoid adding a second rendering system that drifts from the
 interactive board.
+
+### Additional Display Components
+
+Consider captured-piece panels, material-balance widgets, opening-book displays,
+and a full PGN viewer for tags, comments, NAGs, variations, and results. These
+should render caller-supplied data and report intent, leaving analysis and
+product-specific game banners or training policy to consumers. Variation UI
+depends on the game-tree foundation above; probing and engine integration belong
+in dedicated adapters rather than ChessCore or ChessUI.
 
 ## Ideas To Keep Outside SwiftChessTools
 

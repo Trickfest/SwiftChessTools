@@ -37,6 +37,16 @@ struct HarnessView: View {
     @State private var drawClaimResult = "No draw claim"
 
     var body: some View {
+        if ProcessInfo.processInfo.environment["CHESS_UI_HARNESS_HISTORY"] == "1" {
+            HistoryHarnessView()
+        } else if ProcessInfo.processInfo.environment["CHESS_UI_HARNESS_NAVIGATION"] == "1" {
+            NavigationHarnessView()
+        } else {
+            boardHarness
+        }
+    }
+
+    private var boardHarness: some View {
         VStack(spacing: 8) {
             primaryControls
 
@@ -213,5 +223,138 @@ struct HarnessView: View {
         model.setFEN(fen, animatedMove: attempt.move)
         currentFEN = fen
         lastMove = attempt.coordinateMove
+    }
+}
+
+/// Package-level integration fixture, not production app policy.
+private struct HistoryHarnessView: View {
+    @State private var timeline = initialTimeline()
+    @State private var selectedPly = 100
+    @State private var alternate = false
+    @State private var jumpOnDrag = false
+    @State private var attempts = 0
+    @State private var model = ChessBoardModel(moveAnimationDuration: 0)
+    private var horizontal: Bool { ProcessInfo.processInfo.environment["HISTORY_HORIZONTAL"] == "1" }
+    private var legacy: Bool { ProcessInfo.processInfo.environment["HISTORY_LEGACY"] == "1" }
+
+    var body: some View {
+        VStack(spacing: 12) {
+            ChessBoardView(model: model)
+                .onMove { _ in attempts += 1 }
+                .frame(width: 180, height: 180)
+            Text("Attempts \(attempts)")
+                .accessibilityIdentifier("Harness.historyAttempts")
+            Text("Ply \(selectedPly), count \(timeline.moveCount)")
+                .accessibilityIdentifier("Harness.historyState")
+            ChessMoveNavigationView(selectedPly: selectedPly, moveCount: timeline.moveCount, onSelectPly: select)
+                .buttonStyle(.bordered)
+            Group {
+                if legacy {
+                    // Exercise the unchanged initializer, not the new explicit policy.
+                    ChessMoveListView(records: timeline.moveRecords, selectedPly: selectedPly,
+                                      title: nil, layout: horizontal ? .horizontal : .vertical,
+                                      onSelectRecord: { select($0.ply) })
+                } else {
+                    ChessMoveListView(records: timeline.moveRecords, selectedPly: selectedPly,
+                                      title: nil, layout: horizontal ? .horizontal : .vertical,
+                                      scrollBehavior: .selectedMove, onSelectRecord: { select($0.ply) })
+                }
+            }
+            .frame(width: 320, height: horizontal ? 60 : 120)
+            HStack {
+                Button("One") { select(1) }
+                Button("Middle") { select(50) }
+                Button("Grow") {
+                    let cycle = Self.cycle(count: timeline.moveCount + 1, alternate: alternate)
+                    try! timeline.append(cycle.last!)
+                }
+                Button("Replace") {
+                    alternate = true
+                    try! timeline.replaceContinuation(afterPly: 0, with: Self.cycle(count: timeline.moveCount, alternate: true))
+                    select(selectedPly)
+                }
+                Button("Reset") {
+                    alternate = false
+                    timeline = try! GameTimeline()
+                    select(0)
+                }
+            }
+            .buttonStyle(.bordered)
+            Button("Jump on drag") { jumpOnDrag = true }
+        }
+        .frame(maxWidth: 340)
+        .padding()
+        .onAppear { select(legacy ? 1 : 100) }
+        .onChange(of: model.dropTarget?.row) { _, row in
+            if jumpOnDrag && row != nil {
+                jumpOnDrag = false
+                select(1)
+            }
+        }
+    }
+
+    private func select(_ ply: Int) {
+        guard let displayed = try? timeline.game(atPly: ply) else { return }
+        model.setGame(displayed)
+        selectedPly = ply
+    }
+
+    private static func cycle(count: Int, alternate: Bool = false) -> [Move] {
+        let moves = (alternate ? ["b1c3", "b8c6", "c3b1", "c6b8"] : ["g1f3", "g8f6", "f3g1", "f6g8"])
+            .map { try! Move(string: $0) }
+        return (0..<count).map { moves[$0 % 4] }
+    }
+
+    private static func initialTimeline() -> GameTimeline {
+        let fullMoveNumber = Int(ProcessInfo.processInfo.environment["HISTORY_FULL_MOVE_NUMBER"] ?? "1") ?? 1
+        let position = try! FENSerializer().position(from:
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 \(fullMoveNumber)")
+        return try! GameTimeline(initialPosition: position, moves: cycle(count: 100))
+    }
+}
+
+/// Isolated control fixture; deliberately has no board, timeline, or engine.
+private struct NavigationHarnessView: View {
+    @State private var ply = 0
+    @State private var count = 4
+    @State private var requests = 0
+    @State private var lastRequest = -1
+    @State private var acceptsRequests = true
+    @State private var shortcuts = false
+    @State private var text = ""
+    @FocusState private var editing: Bool
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Navigation control")
+            Text("Ply \(ply), count \(count), requests \(requests), last \(lastRequest)")
+                .accessibilityIdentifier("Harness.navigationState")
+            ChessMoveNavigationView(
+                selectedPly: ply, moveCount: count,
+                keyboardShortcutsEnabled: shortcuts && !editing
+            ) {
+                requests += 1
+                lastRequest = $0
+                if acceptsRequests { ply = $0 }
+            }
+            .buttonStyle(.bordered)
+            .tint(.blue)
+            .frame(maxWidth: 340)
+            Toggle("Accept requests", isOn: $acceptsRequests)
+                .accessibilityIdentifier("Harness.acceptNavigation")
+            Toggle("Keyboard shortcuts", isOn: $shortcuts)
+                .accessibilityIdentifier("Harness.navigationShortcuts")
+            TextField("Keyboard editing check", text: $text)
+                .textFieldStyle(.roundedBorder)
+                .focused($editing)
+                .accessibilityIdentifier("Harness.navigationEditor")
+            HStack {
+                Button("Empty") { ply = 0; count = 0 }
+                Button("Invalid") { ply = -1 }
+                Button("Grow") { count += 1 }
+                Button("Reset") { ply = 0; count = 4; editing = false }
+            }
+        }
+        .padding()
     }
 }

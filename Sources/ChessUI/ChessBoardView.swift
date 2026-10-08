@@ -343,7 +343,8 @@ public class ChessBoardModel {
     public var lastMoveHighlightColor: Color = ChessBoardTheme.artDecoMonochrome.lastMoveHighlight
 
     /// Source and destination squares for the most recent move passed through
-    /// `setFEN(_:animatedMove:)`. Direct `fen` assignment clears this value
+    /// `setFEN(_:animatedMove:)`, or the final history move from `setGame(_:)`.
+    /// Direct `fen` assignment clears this value
     /// because a raw FEN string does not reliably identify the move that
     /// produced it.
     public private(set) var lastMoveSquares: (from: BoardSquare, to: BoardSquare)?
@@ -356,7 +357,12 @@ public class ChessBoardModel {
     /// Apps may inspect or mutate this game directly, but the board only
     /// redraws from the model's current position. After applying a move, call
     /// `setFEN(_:animatedMove:)` when you want ChessUI's move feedback.
+    /// Use `setGame(_:)` to install a complete independent historical game.
     public var game: Game
+
+    // Changing only the gesture surface identity cancels any in-flight drag
+    // when a caller installs a historical game, including an equal position.
+    private(set) var displayedGameID = UUID()
 
     /// The most recent FEN parsing error produced by `fen` assignment or
     /// `setFEN(_:animatedMove:)`. A successful position update clears this.
@@ -600,6 +606,35 @@ public class ChessBoardModel {
     private static func normalizedMoveAnimationDuration(_ duration: Double) -> Double {
         guard duration.isFinite else { return 0 }
         return min(max(0, duration), 60)
+    }
+
+    /// Immediately displays an independent copy of a complete game.
+    ///
+    /// Unlike loading a different FEN, this preserves move history, repetition
+    /// counts, and an explicit claimed draw. Neither subsequent caller mutations
+    /// nor board mutations affect the other game. Use this for history browsing.
+    /// The final history move supplies the last-move highlight; an empty history
+    /// clears it. Navigation never animates backward or across arbitrary jumps.
+    /// Selection, drag, animation, and pending promotion are cleared. Board
+    /// preferences, waiting policy, hints, arrows, and callbacks are preserved;
+    /// callers remain responsible for updating position-specific annotations.
+    public func setGame(_ game: Game) {
+        let displayedGame = game.copy()
+        fenError = nil
+        animatedMove = nil
+        movingPiece = nil
+        deselect()
+        dropTarget = nil
+        clearPendingPromotionState()
+        isPromotionPickerPresented = false
+        if let move = displayedGame.moveHistory.last {
+            lastMoveSquares = (BoardSquare(row: move.from.rank, column: move.from.file),
+                               BoardSquare(row: move.to.rank, column: move.to.file))
+        } else {
+            lastMoveSquares = nil
+        }
+        self.game = displayedGame
+        displayedGameID = UUID()
     }
 
     func clearMovingPieceIfCurrent(_ movingPiece: (piece: Piece, from: BoardSquare, to: BoardSquare)) {
@@ -1382,6 +1417,7 @@ public struct ChessBoardView: View {
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
             piecesView
+                .id(model.displayedGameID)
                 .allowsHitTesting(!isBoardInteractionBlocked)
                 .accessibilityHidden(isBoardInteractionBlocked)
                 .accessibilityElement(children: .contain)
@@ -2069,8 +2105,10 @@ private struct ChessPieceView: View {
     }
 
     var dragGesture: some Gesture {
-        DragGesture()
+        let displayedGameID = boardModel.displayedGameID
+        return DragGesture()
             .onChanged { value in
+                guard boardModel.displayedGameID == displayedGameID else { return }
                 if isInteractionBlocked {
                     return
                 }
@@ -2107,6 +2145,10 @@ private struct ChessPieceView: View {
                 offset = value.translation
             }
             .onEnded { value in
+                // A history replacement can happen before SwiftUI removes the
+                // old gesture surface. Never report that old gesture as a move
+                // in the newly displayed game.
+                guard boardModel.displayedGameID == displayedGameID else { return }
                 boardModel.selectedSquare = nil
                 boardModel.dropTarget = nil
                 isDragging = false

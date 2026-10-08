@@ -18,7 +18,7 @@ final class ChessWorkbenchUITests: XCTestCase {
     private static let queenD7FEN = "5k2/1P1Qbn2/8/8/8/8/3K4/8 b - - 1 1"
     private static let fiftyMoveClaimFEN = "4k3/8/8/8/8/8/Q7/4K3 w - - 100 1"
     private static let knightCycleFEN = "6nk/8/8/8/8/8/8/K5N1 w - - 0 1"
-    private static let knightCycleFinalFEN = "6nk/8/8/8/8/8/8/K5N1 w - - 20 11"
+    private static let knightCycleFinalFEN = "6nk/8/8/8/8/8/8/K5N1 w - - 16 9"
 
     private var pieceSetNames: [String] {
         ChessPieceSet.availableSets.map(\.displayName)
@@ -49,6 +49,131 @@ final class ChessWorkbenchUITests: XCTestCase {
         XCTAssertTrue(square("e7").label.contains("Black bishop, e7"))
         XCTAssertTrue(square("f7").label.contains("Black knight, f7"))
         XCTAssertTrue(square("f8").label.contains("Black king, f8"))
+    }
+
+    func testTimelineNavigationSameNextAndReplacement() {
+        setFEN(initialFEN)
+        playMove("e2", "e4")
+        playMove("e7", "e5")
+        playMove("g1", "f3")
+        waitForTimeline(ply: 3, count: 3)
+        navigation("start").click()
+        waitForTimeline(ply: 0, count: 3)
+        XCTAssertFalse(navigation("previous").isEnabled)
+        XCTAssertTrue(square("e2").label.contains("White pawn"))
+        // Replaying an existing next move must retain the rest of the line.
+        playMove("e2", "e4")
+        waitForTimeline(ply: 1, count: 3)
+        XCTAssertTrue(element("ChessUI.moveList.move.3").exists)
+        element("ChessUI.moveList.move.2").click()
+        waitForTimeline(ply: 2, count: 3)
+        XCTAssertTrue(square("e5").label.contains("Black pawn"))
+        // Replace White's recorded Nf3 with Bc4.
+        playMove("f1", "c4")
+        waitForTimeline(ply: 3, count: 3)
+        waitForLabel(containing: "2. White Bc4", in: element("ChessUI.moveList.move.3"))
+        XCTAssertTrue(square("g1").label.contains("White knight"))
+        XCTAssertFalse(navigation("next").isEnabled)
+        navigation("start").click()
+        playMove("d2", "d4")
+        waitForTimeline(ply: 1, count: 1)
+        XCTAssertFalse(element("ChessUI.moveList.move.2").exists)
+        navigation("start").click()
+        navigation("end").click()
+        waitForTimeline(ply: 1, count: 1)
+        XCTAssertTrue(square("d4").label.contains("White pawn"))
+        resetPosition()
+        waitForTimeline(ply: 0, count: 0)
+    }
+
+    func testTimelineFENResetInvalidInputAndKeyboardOwnership() {
+        moveQueenToD7()
+        waitForTimeline(ply: 1, count: 1)
+        navigation("start").click()
+        XCTAssertTrue(app.buttons["Workbench.resetPosition"].isEnabled)
+        navigation("next").click()
+        let editor = fenEditor()
+        editor.click()
+        app.typeKey(.leftArrow, modifierFlags: [])
+        waitForTimeline(ply: 1, count: 1)
+        app.typeKey("a", modifierFlags: .command)
+        app.typeText("not a FEN")
+        waitForTimeline(ply: 1, count: 1)
+        XCTAssertTrue(square("d7").label.contains("White queen"))
+        navigation("start").click()
+        waitForFEN(Self.startingFEN)
+        app.typeKey(.rightArrow, modifierFlags: [])
+        waitForTimeline(ply: 1, count: 1)
+        app.typeKey(.leftArrow, modifierFlags: .command)
+        waitForTimeline(ply: 0, count: 1)
+        app.typeKey(.rightArrow, modifierFlags: .command)
+        waitForTimeline(ply: 1, count: 1)
+        // A genuinely edited FEN creates a new root instead of navigation
+        // accidentally feeding its own FEN back through the importer.
+        setFEN(Self.fiftyMoveClaimFEN)
+        waitForTimeline(ply: 0, count: 0)
+        XCTAssertTrue(element("ChessUI.moveList.empty").exists)
+        XCTAssertFalse(navigation("start").isEnabled)
+        XCTAssertFalse(navigation("end").isEnabled)
+    }
+
+    func testTimelineRetainsClaimedDrawAcrossNavigationAndBlocksFurtherMoves() {
+        setFEN("4k3/8/8/8/8/8/Q7/4K3 w - - 99 1")
+        playMove("a2", "a3")
+        waitForTimeline(ply: 1, count: 1)
+        app.buttons["ChessUI.gameStatus.claim.fiftyMoveRule"].click()
+        waitForText("Draw by fifty-move rule", in: element("ChessUI.gameStatus.text"))
+        playMove("e8", "f8")
+        waitForTimeline(ply: 1, count: 1)
+        XCTAssertTrue(square("e8").label.contains("Black king"))
+        navigation("start").click()
+        navigation("end").click()
+        waitForText("Draw by fifty-move rule", in: element("ChessUI.gameStatus.text"))
+        navigation("start").click()
+        // Branching earlier discards the explicit claim along with its suffix.
+        playMove("a2", "b2")
+        waitForTimeline(ply: 1, count: 1)
+        waitForText("Black to move. Draw claim available: fifty-move rule", in: element("ChessUI.gameStatus.text"))
+    }
+
+    func testTimelineBlackRootPromotionAndNavigationPreserveDisplayPreferences() {
+        let coordinates = element("Workbench.coordinateLabelModePicker")
+        coordinates.click()
+        app.menuItems["Outside"].click()
+        selectMoveListLayout("Horizontal")
+        let root = "4k3/8/8/8/8/8/p7/4K3 b - - 0 42"
+        setFEN(root)
+        playMove("a2", "a1")
+        app.buttons["ChessUI.promotion.queen"].click()
+        waitForTimeline(ply: 1, count: 1)
+        waitForLabel(containing: "42. Black a1=Q+", in: element("ChessUI.moveList.move.1"))
+        XCTAssertTrue(square("a1").label.contains("Black queen"))
+        navigation("start").click()
+        waitForFEN(root)
+        XCTAssertTrue(square("a2").label.contains("Black pawn"))
+        navigation("end").click()
+        XCTAssertTrue(square("a1").label.contains("Black queen"))
+        waitForValue("Outside", in: coordinates)
+        waitForValue("Horizontal", in: element("Workbench.moveListLayoutPicker"))
+        resetPosition()
+        waitForTimeline(ply: 0, count: 0)
+        waitForValue("Outside", in: coordinates)
+    }
+
+    private func navigation(_ action: String) -> XCUIElement {
+        app.buttons["ChessUI.moveNavigation.\(action)"]
+    }
+
+    private func waitForTimeline(ply: Int, count: Int) {
+        waitForText("Position \(ply) of \(count)", in: element("Workbench.timelineState"))
+    }
+
+    private func playMove(_ from: String, _ to: String) {
+        // Animation makes squares temporarily non-activatable. Wait for the
+        // native button trait to return, rather than clicking an inert square.
+        XCTAssertTrue(app.buttons["ChessUI.square.\(from)"].waitForExistence(timeout: 3))
+        tapSquare(from)
+        tapSquare(to)
     }
 
     func testPieceSizeSliderUpdatesAndRestoresDefault() {
@@ -264,11 +389,20 @@ final class ChessWorkbenchUITests: XCTestCase {
         waitForFEN(Self.knightCycleFinalFEN, timeout: 4)
 
         let moveList = element("ChessUI.moveList")
-        let newestMove = element("ChessUI.moveList.move.20")
+        let newestMove = element("ChessUI.moveList.move.16")
         assertExists(moveList)
         waitForHittable(newestMove, timeout: 3, message: "Newest move should be visible after long history")
         XCTAssertGreaterThanOrEqual(newestMove.frame.minY, moveList.frame.minY - 1)
         XCTAssertLessThanOrEqual(newestMove.frame.maxY, moveList.frame.maxY + 1)
+        waitForTimeline(ply: 16, count: 16)
+        playMove("g1", "f3") // Fivefold repetition ended the displayed game.
+        waitForTimeline(ply: 16, count: 16)
+        navigation("start").click()
+        navigation("next").click()
+        waitForTimeline(ply: 1, count: 16)
+        waitForHittable(element("ChessUI.moveList.move.1"))
+        navigation("end").click()
+        waitForTimeline(ply: 16, count: 16)
     }
 
     func testHorizontalMoveListUpdatesAfterLegalMoveAndClearsOnReset() {
@@ -319,7 +453,7 @@ final class ChessWorkbenchUITests: XCTestCase {
         waitForFEN(Self.knightCycleFinalFEN, timeout: 4)
 
         let moveList = element("ChessUI.moveList")
-        let newestMove = element("ChessUI.moveList.move.20")
+        let newestMove = element("ChessUI.moveList.move.16")
         assertExists(moveList)
         waitForHittable(newestMove, timeout: 3, message: "Newest horizontal move should be visible after long history")
         assertElementIsHorizontallyInside(newestMove, of: moveList)
@@ -403,15 +537,13 @@ final class ChessWorkbenchUITests: XCTestCase {
     }
 
     private func playKnightCycleHistory() {
-        for _ in 0..<5 {
-            tapSquare("g1")
-            tapSquare("f3")
-            tapSquare("g8")
-            tapSquare("f6")
-            tapSquare("f3")
-            tapSquare("g1")
-            tapSquare("f6")
-            tapSquare("g8")
+        // Stop at fivefold repetition: interactive Workbench recording must
+        // not add moves after the displayed game becomes terminal.
+        let cycle = [("g1", "f3"), ("g8", "f6"), ("f3", "g1"), ("f6", "g8")]
+        for ply in 0..<16 {
+            let move = cycle[ply % 4]
+            playMove(move.0, move.1)
+            waitForTimeline(ply: ply + 1, count: ply + 1)
         }
     }
 

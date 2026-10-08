@@ -507,6 +507,152 @@ The selected ply is visual state only. The app decides what selection means:
 jumping to a position, showing annotation, updating a side panel, or doing
 nothing.
 
+### Move Navigation
+
+`ChessMoveNavigationView` provides caller-controlled navigation. Supply a
+zero-based position index (`selectedPly`) and the number of
+recorded half-moves (`moveCount`). Position zero is the initial position, even
+for a custom FEN beginning with Black or a later full move number.
+
+```swift
+struct HistoryControls: View {
+    let timeline: GameTimeline
+    @Binding var selectedPly: Int
+    var isActiveBoard = false
+    var isEditingText = false
+
+    var body: some View {
+        ChessMoveNavigationView(
+            selectedPly: selectedPly,
+            moveCount: timeline.moveCount,
+            keyboardShortcutsEnabled: isActiveBoard && !isEditingText
+        ) { requestedPly in
+            selectedPly = requestedPly
+        }
+        .buttonStyle(.bordered)
+        .tint(.blue)
+        .frame(maxWidth: 340)
+    }
+}
+```
+
+The caller may accept, defer, or ignore the callback. Ignoring it leaves the
+control's selection unchanged. Growing a recorded line does not automatically
+follow its end. The app must synchronize its displayed game, board, and move
+list when accepting a selection; the widget does none of that on its own.
+It also works without `GameTimeline` if an app has another linear history.
+
+Empty lines disable all four buttons. At the start or end, unavailable actions
+are disabled. Negative counts, negative selections, and selections beyond the
+recorded end disable every action without clamping app state. Use
+`ChessMoveNavigationState.destination(for:)` with a `ChessMoveNavigationAction`
+to apply the same rules in custom app controls or commands.
+
+Buttons inherit the surrounding `buttonStyle`, tint, and enabled state. Each
+label has a minimum width of 44 points and height of 48 points; the four buttons
+are separated by 10 points. Allow sufficient width (at least 206 points before
+any custom style's padding) and avoid clipping the outer view. Icons scale with
+Dynamic Type. Native button accessibility includes action labels and hints;
+the group describes the selected ply and recorded count. Button identifiers
+are `ChessUI.moveNavigation.start`, `.previous`, `.next`, and `.end`.
+
+Shortcuts are **off by default**. When explicitly enabled, Left/Right request
+the previous/next ply and Command-Left/Command-Right request the start/end.
+SwiftUI keyboard shortcuts apply across the active window or scene, not just
+when the bar has focus. Enable them for only one active board and turn them off
+while editing FEN, PGN, or other text. Apps with existing commands should keep
+this option off and reuse the state helper in those commands. See Apple's
+[keyboardShortcut documentation](https://developer.apple.com/documentation/swiftui/view/keyboardshortcut(_:)-3vjx6).
+
+### Synchronizing a Historical Board and Move List
+
+For browsing, opt into selected-move scrolling in either layout:
+
+```swift
+ChessMoveListView(
+    records: timeline.moveRecords,
+    selectedPly: selectedPly,
+    layout: .horizontal,
+    scrollBehavior: .selectedMove
+) { record in
+    select(record.ply)
+}
+```
+
+The original initializer still follows the newest move when content overflows.
+With `.selectedMove`, the list reveals the selected record on appearance,
+selection changes, content replacement/growth, or viewport changes. It does not
+change selection or invoke the callback itself. At ply zero it reveals the
+beginning with no selected row. Nil or unavailable selections request no scroll.
+Automatic scrolling respects Reduce Motion. A newly selected ply cancels any
+pending earlier scroll request.
+
+Route list taps and navigation-bar requests through the same app-owned method:
+
+```swift
+private func select(_ ply: Int) {
+    do {
+        let displayedGame = try timeline.game(atPly: ply)
+        boardModel.setGame(displayedGame)
+        selectedPly = ply
+    } catch {
+        // Keep the existing display and selection; report the error in app UI.
+        navigationError = error.localizedDescription
+    }
+}
+```
+
+The example assumes app-owned `timeline`, `boardModel`, `selectedPly`, and
+`navigationError` properties. Call it for the initial display as well, and
+again after replacing a line even if the selected ply has not changed.
+
+`setGame(_:)` copies the entire supplied `Game`: position, move history,
+repetition counts, and an existing claimed draw. Subsequent mutations of either
+copy are independent. It uses the final history move for the displayed-move
+highlight; an empty history clears the highlight. Selection, drag feedback,
+in-flight gestures, pending promotion, FEN errors, and animation are cleared.
+Position jumps are immediate, including backward jumps. Perspective, theme,
+piece set/scales, coordinate placement, highlight preferences, interaction mode,
+waiting state, and callbacks stay unchanged. Hints and arrows remain
+caller-owned; clear or recompute them when they refer to a different position.
+
+Existing `setFEN(_:animatedMove:)` behavior remains available for animated live
+play. Loading a different FEN cannot reconstruct repetition history, so use
+`setGame(_:)` when supplying a reconstructed historical game. `GameTimeline`
+cannot infer an earlier explicit draw claim, resignation, or timeout; carrying
+such outcomes remains app policy. Neither API starts/stops an engine or edits
+the authoritative live game.
+
+### Browsing While a Live Game Continues
+
+[SwiftChessDemo](https://github.com/Trickfest/SwiftChessDemo)
+uses these APIs in both human-vs-engine and engine-vs-engine gameplay. It keeps
+the live `Game` separate from the board's displayed copy. Engine requests,
+reply validation, legal moves, claims, and results always use the live game.
+
+When a live move arrives, the app records whether the user was at the old end,
+appends the move to its timeline, and advances the selected ply only when the
+user was following live play. Otherwise the historical board stays unchanged.
+Selecting the new end resumes live following. This follow policy belongs to
+the app, not the navigation bar or move list.
+
+Historical boards are read-only; the app hides live suggestion arrows and
+supplies a recorded evaluation only when it matches the selected old position.
+The engine/depth label distinguishes that recorded estimate from live output,
+and unscored positions remain unavailable. The app owns this score cache; the
+timeline and evaluation-bar widget do not start analysis. It labels
+live engine activity separately from historical status and offers Return to
+Live. Changing display position neither starts a historical search nor changes
+the live engine-vs-engine pause state. To preserve an actual draw claim at the
+live end, the app displays its authoritative Game rather than inferring the
+claim from the timeline's move sequence. Resignation, timeout, and other
+app-specific outcomes still require separate app-owned state and presentation.
+
+See Demo's `GameViewModel.swift` for the state boundary and `GameView.swift`
+for the consumer-owned controls. ChessWorkbench demonstrates the alternative
+policy: an editable linear exploration session whose future is preserved when
+replaying the same next move and replaced when playing a different move.
+
 ## 13. Game Status
 
 `ChessGameStatusView` renders caller-supplied `GameStatus` values:

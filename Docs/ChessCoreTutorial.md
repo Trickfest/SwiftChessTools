@@ -61,6 +61,8 @@ These are the types most apps use first:
   move counters.
 - `Game`: a playable wrapper around `Position` with legal moves, move history,
   repetition state, draw claims, and status.
+- `GameTimeline`: a validated linear history with cached SAN
+  records and independent game reconstruction at any ply.
 
 Use `Position` when you need to store, validate, or serialize one board state.
 Use `Game` when moves are involved.
@@ -248,6 +250,53 @@ let replayed = try Game.replay(initialPosition: .standard, moves: moves)
 `Game(position:moveHistory:)` stores `moveHistory` as metadata only. It does not
 replay moves or rebuild counters. Use `Game.replay` for validated
 reconstruction.
+
+### Linear timelines
+
+Use `GameTimeline` when you need repeated history access or editable linear
+continuations rather than a single replay result:
+
+```swift
+var timeline = try GameTimeline(
+    initialPosition: .standard,
+    moves: ["e2e4", "e7e5", "g1f3"].map { try Move(string: $0) }
+)
+let selectedPly = 1 // Owned by your app; zero means the initial position.
+let displayedGame = try timeline.game(atPly: selectedPly)
+let moveRows = timeline.moveRecords
+
+// Explicitly replace everything after 1. e4 with 1...c5.
+try timeline.replaceContinuation(afterPly: selectedPly, with: [Move(string: "c7c5")])
+let nextRecord = try timeline.append(Move(string: "g1f3"))
+```
+
+Valid position indices are `0...timeline.moveCount`, independent of the root's
+FEN full-move number. Out-of-range indices throw instead of clamping. The root
+is immutable, and construction validates its counters and semantic position
+constraints before replaying the line. Invalid edits leave moves and records
+unchanged, even when a replacement starts legally and fails at a later move.
+An empty replacement truncates at the selected ply. Replacing with just the
+existing next move still discards the later suffix; to browse that future,
+change only your app's cursor.
+
+Returned Games are independent mutable objects, with the prefix's move history
+and repetition counts. Use their status and draw claims; `position(atPly:)`
+alone cannot convey repetition. The timeline is a Sendable value, but a Game
+returned from it remains non-Sendable and belongs in the caller's isolation
+context. Copying or editing a timeline does not change previously returned Games.
+
+Timeline validation follows `Game.replay`: it checks move legality, not whether
+the app allows play after a game ends. Analysis continuations after automatic
+draws can therefore be recorded. Interactive apps must separately gate new
+moves using their authoritative game outcome. Claims actually made, resignations,
+timeouts, and agreed results remain live-game/app state; they are not inferred
+from recorded moves. Earlier repetition before the supplied root is unknown.
+
+SAN records are cached; game access and edit validation initially replay the
+needed prefix. Prefer bulk construction for long imports. A repeatable optimized
+diagnostic is provided in `Scripts/benchmark-game-timeline.swift`; its header
+contains build/run commands. It measures a repetitive 1,000-ply analysis line,
+not UI responsiveness on every device.
 
 ## 10. SAN
 
@@ -626,6 +675,7 @@ ChessCore uses typed errors:
 - `PGNParsingError`: malformed PGN or semantic replay failure
 - `PGNSerializationError`: invalid move list or inconsistent `PGNGame` export
 - `GameReplayError`: illegal move during replay
+- `GameTimelineError`: invalid timeline ply, initial counters, or recorded move
 - `GameDrawClaimError`: unavailable draw claim
 
 Handle PGN failures with context:
@@ -744,20 +794,22 @@ let displayedPosition = pgnGame.finalPosition
 let moveRows = pgnGame.moveRecords
 ```
 
-For interactive playback, replay `mainlineMoves` up to the selected ply:
+For interactive playback, build a timeline once
+and ask it for the selected prefix:
 
 ```swift
-let selectedPly = 12
-let playback = try Game.replay(
+let timeline = try GameTimeline(
     initialPosition: pgnGame.initialPosition,
-    moves: Array(pgnGame.mainlineMoves.prefix(selectedPly))
+    moves: pgnGame.mainlineMoves
 )
-
+let selectedPly = min(12, timeline.moveCount) // App-owned selection policy.
+let playback = try timeline.game(atPly: selectedPly)
 let positionToDisplay = playback.position
 ```
 
-That keeps the data pipeline simple: `ChessCore` validates and models chess
-data, then your app or `ChessUI` decides how to present it.
+The explicit `Game.replay` prefix approach from section 9 remains available.
+Both approaches keep the boundary simple: ChessCore validates
+and models chess data, then your app or ChessUI decides how to present it.
 
 ## Appendix A: Common Recipes
 
