@@ -49,7 +49,7 @@ or declare it directly in `Package.swift`:
 dependencies: [
     .package(
         url: "https://github.com/Trickfest/SwiftChessTools.git",
-        from: "1.3.0"
+        from: "1.4.0"
     ),
 ]
 ```
@@ -474,6 +474,9 @@ records should parse them with `ChessCore` and pass the move records they want
 to display into ChessUI.
 
 ### Move Navigation
+
+The timeline and navigation APIs are available in SwiftChessTools 1.4.0 and
+later. SwiftChessDemo 1.6.0 demonstrates their live-game integration.
 
 `ChessMoveNavigationView` adds start, previous, next, and line-end controls.
 The caller supplies selection and decides whether to accept each requested

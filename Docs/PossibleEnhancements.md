@@ -28,7 +28,7 @@ The following sequence would produce useful increments while allowing the
 larger study model to develop carefully:
 
 1. External coordinate-label placement. *(Implemented.)*
-2. Linear game timeline and historical-position navigation. *(Implemented.)*
+2. Linear game timeline and historical-position navigation. *(Implemented in 1.4.0.)*
 3. Typed PGN comment directives.
 4. Public game tree and recursive PGN variations.
 5. Annotated variation UI and richer board annotations.
@@ -51,6 +51,9 @@ None / Inside / Outside controls. See the ChessUI tutorial for usage.
 ## Study And Game-Record Foundations
 
 ### Implemented: Linear Game Timeline And Navigation
+
+Available in SwiftChessTools 1.4.0, with live-game browsing demonstrated by
+SwiftChessDemo 1.6.0.
 
 `ChessCore.GameTimeline` validates a linear move sequence, caches SAN records,
 reconstructs independent games at ply zero through the recorded end, and

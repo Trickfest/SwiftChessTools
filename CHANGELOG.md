@@ -5,7 +5,7 @@ All notable changes to SwiftChessTools should be documented in this file.
 Entries stay under `Unreleased` until they are assigned to a planned or tagged
 release. Tagged releases use dated version headings.
 
-## Timeline and Move Navigation
+## 1.4.0 - 2026-10-08
 
 Owner validation is complete across Mac, physical iPhone/iPad, accessibility/
 layout, and documentation review. Completed planning records were removed;
@@ -21,7 +21,7 @@ current API guidance remains in the tutorials and examples.
 
 ### Added
 
-- SwiftChessDemo demonstrates the timeline/navigation APIs
+- SwiftChessDemo 1.6.0 demonstrates the timeline/navigation APIs
   in both gameplay modes, with read-only history separated from live engine
   authority, selected-position scrolling, and explicit return-to-live behavior.
 - Integrated linear history navigation/editing into ChessWorkbench, with
